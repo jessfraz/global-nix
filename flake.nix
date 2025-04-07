@@ -24,17 +24,21 @@
         bash-completion
         curl
         fenix.packages."aarch64-darwin".minimal.toolchain # rust
+        gh
         git
         git-lfs
+        gnumake
         gnupg
         gnused
         go
         jq
+        just
         neovim
         nodejs
         ripgrep
         #rust-analyzer-nightly
         silver-searcher
+        starship
         tree
         uv
         yarn
