@@ -93,6 +93,7 @@
         just
         neovim
         nodejs
+        pinentry-tty
         ripgrep
         fenixPkgs.rust-analyzer
         silver-searcher

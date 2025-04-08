@@ -1,7 +1,7 @@
 {
   config,
   pkgs,
-inputs,
+  inputs,
   ...
 }: {
   programs.bash.enable = true;
@@ -11,11 +11,11 @@ inputs,
     home = "/Users/jessfraz";
   };
 
- environment = {
+  environment = {
     systemPackages = [inputs.self.packages.aarch64-darwin.default];
-};
+  };
 
-nix = {
+  nix = {
     enable = true;
     gc = {
       automatic = true;
@@ -29,11 +29,10 @@ nix = {
     };
     settings = {
       experimental-features = ["nix-command" "flakes"];
-      trusted-users = [ "jessfraz" ];
+      trusted-users = ["jessfraz"];
     };
     package = pkgs.nixVersions.stable;
   };
-
 
   system.defaults.NSGlobalDomain.AppleShowAllExtensions = true;
 
