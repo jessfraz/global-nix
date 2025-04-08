@@ -13,6 +13,9 @@
 
   outputs = { self, nixpkgs, unstable, rust-overlay }: {
 
+    nixpkgs.overlays = [
+      rust-overlay.overlays.default
+    ];
     packages."aarch64-darwin".default = let
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
       unstablePkgs = unstable.legacyPackages."aarch64-darwin";
@@ -22,7 +25,6 @@
         bash
         bash-completion
         curl
-        rust-bin.stable.latest.default # rust
         gh
         git
         git-lfs
@@ -36,6 +38,7 @@
         nodejs
         ripgrep
         #rust-analyzer-nightly
+        rust-bin.stable.latest.default # rust
         silver-searcher
         starship
         tree
