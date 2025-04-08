@@ -22,7 +22,7 @@
         bash
         bash-completion
         curl
-        (fenix.packages."aarch64-darwin".complete.withComponents [
+        (fenix.packages."aarch64-darwin".stable.withComponents [
           "cargo"
           "clippy"
           "rust-src"
@@ -41,7 +41,7 @@
         neovim
         nodejs
         ripgrep
-        rust-analyzer-nightly
+        fenix.packages."aarch64-darwin".rust-analyzer
         silver-searcher
         starship
         tree
