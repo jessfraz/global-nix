@@ -122,6 +122,7 @@
           # macOS-specific packages
           with pkgs; [
             # Add macOS-specific packages here
+            pinentry_mac
           ];
     in
       pkgs.buildEnv {
