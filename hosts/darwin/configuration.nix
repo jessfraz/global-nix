@@ -30,6 +30,8 @@
 
       "com.apple.dock" = {
         autohide = true; # Auto-hide the Dock
+        magnification = true;
+        largesize = 48;
       };
 
       "com.apple.menuextra.battery" = {
