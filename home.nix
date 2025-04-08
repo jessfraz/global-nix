@@ -30,4 +30,5 @@ in {
     bash.enable = true;
   };
 
+  fonts.fontconfig.enable = true;
 }

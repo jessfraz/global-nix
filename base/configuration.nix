@@ -20,6 +20,10 @@ in {
     systemPackages = [inputs.self.packages.${pkgs.system}.default];
   };
 
+  fonts.packages = with pkgs; [
+    nerd-fonts.hack
+  ];
+
   nix = {
     enable = true;
     gc = {
