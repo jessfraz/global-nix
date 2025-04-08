@@ -15,4 +15,7 @@
   # Used for backwards compatibility, please read the changelog before changing.
   # $ darwin-rebuild changelog
   system.stateVersion = 6;
+
+  # Disable the darwin-nix stuff since we install from Determinate Systems.
+  nix.enable = false;
 }
