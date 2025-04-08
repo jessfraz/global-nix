@@ -11,6 +11,16 @@
       AppleShowAllExtensions = true;
     };
 
+    dock = {
+      enable-spring-load-actions-on-all-items = true;
+      mouse-over-hilite-stack = true;
+
+      mineffect = "genie";
+      orientation = "left";
+      show-recents = false;
+      tilesize = 44;
+    };
+
     CustomUserPreferences = {
       "com.apple.finder" = {
         # Show all files.
