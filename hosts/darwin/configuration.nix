@@ -14,6 +14,8 @@
       AppleShowAllExtensions = true;
     };
 
+    menuExtraClock.Show24Hour = true; # show 24 hour clock
+
     dock = {
       autohide = true; # Auto-hide the Dock.
       enable-spring-load-actions-on-all-items = true;
@@ -61,10 +63,6 @@
       "com.apple.menuextra.battery" = {
         # Battery percentage in menu bar
         ShowPercent = "YES";
-      };
-
-      "com.apple.menuextra.clock" = {
-        Show24Hour = true;
       };
 
       "com.apple.controlcenter" = {
