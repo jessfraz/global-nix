@@ -6,8 +6,9 @@ Global nix configuration for my desktop and laptops.
 
 Refer to the instructions in [github.com/DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer).
 
-1. For initial installation, run `nix profile install .` (inside the folder). This registered the flake.nix as part of the global nix profile. 
-2. Running `nix profile list` shows the profile. 
-3. To update, you need to run `nix profile upgrade global-nix`.
+## MacOS
+
+1. `nix build .#darwinConfigurations.macinator.system`
+2. `./result/sw/bin/darwin-rebuild switch --flake .#macinator`
 
 To cleanup the world run `nix store gc`
