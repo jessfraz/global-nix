@@ -16,13 +16,14 @@
     packages."aarch64-darwin".default = let
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
       unstablePkgs = unstable.legacyPackages."aarch64-darwin";
+      fenixPkgs = fenix.packages."aarch64-darwin";
     in pkgs.buildEnv {
       name = "home-packages";
       paths = with pkgs; [
         bash
         bash-completion
         curl
-        (fenix.packages."aarch64-darwin".stable.withComponents [
+        (fenixPkgs.stable.withComponents [
           "cargo"
           "clippy"
           "rust-src"
@@ -41,7 +42,7 @@
         neovim
         nodejs
         ripgrep
-        fenix.packages."aarch64-darwin".rust-analyzer
+        fenixPkgs.rust-analyzer
         silver-searcher
         starship
         tree
