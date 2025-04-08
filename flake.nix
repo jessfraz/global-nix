@@ -40,7 +40,7 @@
     fenix,
     alejandra,
     ghostty,
-  }: let
+  }@ inputs:{ let
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux" "aarch64-linux"];
 
@@ -135,5 +135,43 @@
 
     # Make sure we define a default package per system
     defaultPackage = forAllSystems (system: self.packages.${system}.default);
+
+    # NixOS configurations
+    nixosConfigurations = {
+      system76-pc = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux"; # or aarch64-linux if you're on ARM
+         specialArgs = {inherit inputs;};
+        modules = [
+          ./linux/configuration.nix
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.jessfraz.imports = [
+              ./home.nix
+            ];
+          }
+        ];
+      };
+    };
+
+    # macOS configurations
+    darwinConfigurations = {
+      macinator = nix-darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+         specialArgs = {inherit inputs;};
+        modules = [
+          ./darwin/configuration.nix
+          home-manager.darwinModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.jessfraz.imports = [
+              ./home.nix
+            ];
+          }
+        ];
+      };
+    };
   };
 }
