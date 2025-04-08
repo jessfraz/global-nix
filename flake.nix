@@ -5,9 +5,24 @@
     nixpkgs.url = "github:nixos/nixpkgs";
     unstable.url = "nixpkgs/nixos-unstable";
 
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "unstable";
+    };
+
+    nix-darwin = {
+      url = "github:LnL7/nix-darwin";
+      inputs.nixpkgs.follows = "unstable";
+    };
+
     # rust, see https://github.com/nix-community/fenix#usage
     fenix = {
       url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "unstable";
+    };
+
+    alejandra = {
+      url = "github:kamadorueda/alejandra/3.0.0";
       inputs.nixpkgs.follows = "unstable";
     };
 
