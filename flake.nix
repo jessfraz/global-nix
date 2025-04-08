@@ -5,14 +5,13 @@
     nixpkgs.url = "github:nixos/nixpkgs";
     unstable.url = "nixpkgs/nixos-unstable";
 
-    # rust, see https://github.com/nix-community/fenix#usage
-    fenix = {
-      url = "github:nix-community/fenix";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "unstable";
     };
   };
 
-  outputs = { self, nixpkgs, unstable, fenix }: {
+  outputs = { self, nixpkgs, unstable, rust-overlay }: {
 
     packages."aarch64-darwin".default = let
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
@@ -23,7 +22,7 @@
         bash
         bash-completion
         curl
-        fenix.packages."aarch64-darwin".minimal.toolchain # rust
+        rust-overlay.packages."aarch64-darwin".rust-bin.stable.latest.default # rust
         gh
         git
         git-lfs
