@@ -21,7 +21,7 @@
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
       unstablePkgs = unstable.legacyPackages."aarch64-darwin";
       fenixPkgs = fenix.packages."aarch64-darwin";
-      ghosttyPkgs = ghostty.packages."aarch64-darwin";
+      ghosttyPkgs = ghostty.packages."aarch64-darwin"; # this only works on linux
     in pkgs.buildEnv {
       name = "home-packages";
       paths = with pkgs; [
@@ -36,7 +36,6 @@
           "rustfmt"
         ])
         gh
-        ghosttyPkgs.default
         git
         git-lfs
         gnumake
