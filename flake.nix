@@ -152,7 +152,6 @@
             home-manager.useUserPackages = true;
             home-manager.users.jessfraz.imports = [
               ./home/default.nix
-              ./home/gitconfig.nix
             ];
           }
         ];
@@ -173,7 +172,6 @@
             home-manager.useUserPackages = true;
             home-manager.users.jessfraz.imports = [
               ./home/default.nix
-              ./home/gitconfig.nix
             ];
           }
         ];

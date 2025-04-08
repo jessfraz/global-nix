@@ -9,6 +9,10 @@
     then "/home/jessfraz"
     else "/Users/jessfraz";
 in {
+  imports = [
+    ./gitconfig.nix
+  ];
+
   home = {
     username = "jessfraz";
     homeDirectory = lib.mkForce homeDir;
@@ -26,7 +30,6 @@ in {
   programs = {
     # Let Home Manager install and manage itself.
     home-manager.enable = true;
-    git.enable = true;
     bash.enable = true;
   };
 
