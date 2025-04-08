@@ -4,7 +4,10 @@
   inputs,
   ...
 }: {
-  # macOS system preferences
+  # Add ability to used TouchID for sudo authentication.
+  security.pam.services.sudo_local.touchIdAuth = true;
+
+  # MacOS system preferences.
   system.defaults = {
     NSGlobalDomain = {
       # Show all the file extensions.
@@ -12,6 +15,7 @@
     };
 
     dock = {
+      autohide = true; # Auto-hide the Dock.
       enable-spring-load-actions-on-all-items = true;
       mouse-over-hilite-stack = true;
 
@@ -21,19 +25,37 @@
       tilesize = 44;
     };
 
-    CustomUserPreferences = {
-      "com.apple.finder" = {
-        # Show all files.
-        AppleShowAllFiles = true;
-        ShowPathBar = true;
-        FXRemoveOldTrashItems = true;
-        ShowStatusBar = true;
-      };
+    finder = {
+      FXRemoveOldTrashItems = true;
+      _FXShowPosixPathInTitle = true; # show full path in finder title
+      AppleShowAllExtensions = true; # show all file extensions
+      FXEnableExtensionChangeWarning = false; # disable warning when changing file extension
+      QuitMenuItem = true; # enable quit menu item
+      ShowPathbar = true; # show path bar
+      ShowStatusBar = true; # show status bar
+    };
 
+    CustomUserPreferences = {
       "com.apple.dock" = {
-        autohide = true; # Auto-hide the Dock
         magnification = true;
         largesize = 48;
+      };
+
+      "com.apple.desktopservices" = {
+        # Avoid creating .DS_Store files on network or USB volumes
+        DSDontWriteNetworkStores = true;
+        DSDontWriteUSBStores = true;
+      };
+
+      "com.apple.finder" = {
+        AppleShowAllFiles = true;
+        ShowExternalHardDrivesOnDesktop = true;
+        ShowHardDrivesOnDesktop = true;
+        ShowMountedServersOnDesktop = true;
+        ShowRemovableMediaOnDesktop = true;
+        _FXSortFoldersFirst = true;
+        # When performing a search, search the current folder by default
+        FXDefaultSearchScope = "SCcf";
       };
 
       "com.apple.menuextra.battery" = {
@@ -47,6 +69,10 @@
 
       "com.apple.controlcenter" = {
         BatteryShowPercentage = true;
+      };
+
+      "com.apple.AdLib" = {
+        allowApplePersonalizedAdvertising = false;
       };
     };
   };
