@@ -10,13 +10,18 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "unstable";
     };
+
+    ghostty = {
+      url = "github:ghostty-org/ghostty";
+    };
   };
 
-  outputs = { self, nixpkgs, unstable, fenix }: {
+  outputs = { self, nixpkgs, unstable, fenix, ghostty }: {
     packages."aarch64-darwin".default = let
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
       unstablePkgs = unstable.legacyPackages."aarch64-darwin";
       fenixPkgs = fenix.packages."aarch64-darwin";
+      ghosttyPkgs = ghostty.packages."aarch64-darwin";
     in pkgs.buildEnv {
       name = "home-packages";
       paths = with pkgs; [
