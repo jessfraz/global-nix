@@ -5,17 +5,17 @@
     nixpkgs.url = "github:nixos/nixpkgs";
     unstable.url = "nixpkgs/nixos-unstable";
 
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
+    # rust, see https://github.com/nix-community/fenix#usage
+    fenix = {
+      url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "unstable";
     };
   };
 
-  outputs = { self, nixpkgs, unstable, rust-overlay }: {
+  outputs = { self, nixpkgs, unstable, fenix }: {
+    packages."aarch64-darwin".default = fenix.packages."aarch64-darwin".minimal.toolchain;
 
-    nixpkgs.overlays = [
-      rust-overlay.overlays.default
-    ];
+
     packages."aarch64-darwin".default = let
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
       unstablePkgs = unstable.legacyPackages."aarch64-darwin";
@@ -25,6 +25,13 @@
         bash
         bash-completion
         curl
+        (fenix.complete.withComponents [
+          "cargo"
+          "clippy"
+          "rust-src"
+          "rustc"
+          "rustfmt"
+        ])
         gh
         git
         git-lfs
@@ -37,8 +44,7 @@
         neovim
         nodejs
         ripgrep
-        #rust-analyzer-nightly
-        rust-bin.stable.latest.default # rust
+        rust-analyzer-nightly
         silver-searcher
         starship
         tree
