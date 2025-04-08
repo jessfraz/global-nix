@@ -26,6 +26,8 @@
         # Show all files.
         AppleShowAllFiles = true;
         ShowPathBar = true;
+        FXRemoveOldTrashItems = true;
+        ShowStatusBar = true;
       };
 
       "com.apple.dock" = {
@@ -41,6 +43,10 @@
 
       "com.apple.menuextra.clock" = {
         Show24Hour = true;
+      };
+
+      "com.apple.controlcenter" = {
+        BatteryShowPercentage = true;
       };
     };
   };
