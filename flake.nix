@@ -44,6 +44,8 @@
         pkgs = nixpkgs.legacyPackages.${system};
         unstablePkgs = unstable.legacyPackages.${system};
         fenixPkgs = fenix.packages.${system};
+        alejandraPkg = alejandra.defaultPackage.${system};
+
         # Check if system is Linux-based for ghostty
         isLinux = builtins.match ".*-linux" system != null;
         # Only include ghostty on Linux systems
@@ -51,6 +53,7 @@
 
         # Common packages for all systems
         commonPackages = with pkgs; [
+          alejandraPkg
           bash
           bash-completion
           coreutils
