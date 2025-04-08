@@ -33,5 +33,16 @@ in {
     bash.enable = true;
   };
 
+  xdg = {
+    configFile."ghostty/config".text = ''
+      command = "/etc/profiles/per-user/jessfraz/bin/bash"
+      font-family = "Hack Nerd Font Mono"
+      theme = "Ayu Mirage"
+      macos-titlebar-style = tabs
+      background-opacity = 0.9
+      background-blur-radius = 20
+    '';
+  };
+
   fonts.fontconfig.enable = true;
 }
