@@ -30,22 +30,4 @@ in {
     bash.enable = true;
   };
 
-  nix = {
-    enable = true;
-    gc = {
-      automatic = true;
-      interval = {
-        Day = 5;
-      };
-      options = "--delete-older-than 1w";
-    };
-    optimise = {
-      automatic = true;
-    };
-    settings = {
-      experimental-features = ["nix-command" "flakes"];
-      trusted-users = ["jessfraz"];
-    };
-    package = pkgs.nixVersions.stable;
-  };
 }
