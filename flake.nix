@@ -144,6 +144,7 @@
         system = "x86_64-linux"; # or aarch64-linux if you're on ARM
         specialArgs = {inherit inputs;};
         modules = [
+          ./base/configuration.nix
           ./linux/configuration.nix
           home-manager.nixosModules.home-manager
           {
@@ -163,6 +164,7 @@
         system = "aarch64-darwin";
         specialArgs = {inherit inputs;};
         modules = [
+          ./base/configuration.nix
           ./darwin/configuration.nix
           home-manager.darwinModules.home-manager
           {
