@@ -40,7 +40,7 @@
     fenix,
     alejandra,
     ghostty,
-  }@ inputs:{ let
+  }@ inputs: let
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux" "aarch64-linux"];
 
