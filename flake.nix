@@ -144,14 +144,15 @@
         system = "x86_64-linux"; # or aarch64-linux if you're on ARM
         specialArgs = {inherit inputs;};
         modules = [
-          ./base/configuration.nix
-          ./linux/configuration.nix
+          ./hosts/base/configuration.nix
+          ./hosts/linux/configuration.nix
           home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.jessfraz.imports = [
-              ./home.nix
+              ./home/default.nix
+              ./home/gitconfig.nix
             ];
           }
         ];
@@ -164,14 +165,15 @@
         system = "aarch64-darwin";
         specialArgs = {inherit inputs;};
         modules = [
-          ./base/configuration.nix
-          ./darwin/configuration.nix
+          ./hosts/base/configuration.nix
+          ./hosts/darwin/configuration.nix
           home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.jessfraz.imports = [
-              ./home.nix
+              ./home/default.nix
+              ./home/gitconfig.nix
             ];
           }
         ];
