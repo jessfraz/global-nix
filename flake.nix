@@ -53,6 +53,7 @@
         commonPackages = with pkgs; [
           bash
           bash-completion
+          coreutils
           curl
           (fenixPkgs.stable.withComponents [
             "cargo"
@@ -61,6 +62,7 @@
             "rustc"
             "rustfmt"
           ])
+          findutils
           gh
           git
           git-lfs
