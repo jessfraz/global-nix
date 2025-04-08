@@ -11,4 +11,10 @@ Refer to the instructions in [github.com/DeterminateSystems/nix-installer](https
 1. `nix build .#darwinConfigurations.macinator.system`
 2. `./result/sw/bin/darwin-rebuild switch --flake .#macinator`
 
+**OR**
+
+If nix is already installed, you can just do:
+
+`darwin-rebuild switch --flake .#macinator`
+
 To cleanup the world run `nix store gc`
