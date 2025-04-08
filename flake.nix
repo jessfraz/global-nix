@@ -36,6 +36,7 @@
           "rustfmt"
         ])
         gh
+        ghosttyPkgs.default
         git
         git-lfs
         gnumake
