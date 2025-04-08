@@ -4,7 +4,7 @@ Global nix configuration for my desktop and laptops.
 
 # Installation
 
-Refer to the instructions in [github.com/DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer).
+Refer to the instructions in [github.com/DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer). Do the vanilla install on MacOS so that we can use the `darwin-rebuild` command.
 
 ## MacOS
 

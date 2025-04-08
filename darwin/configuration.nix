@@ -10,12 +10,28 @@
     home = "/Users/jessfraz";
   };
 
+  nix = {
+    enable = true;
+    gc = {
+      automatic = true;
+      interval = {
+        Day = 5;
+      };
+      options = "--delete-older-than 1w";
+    };
+    optimise = {
+      automatic = true;
+    };
+    settings = {
+      experimental-features = ["nix-command" "flakes"];
+      trusted-users = ["iterion"];
+    };
+    package = pkgs.nixVersions.stable;
+  };
+
   system.defaults.NSGlobalDomain.AppleShowAllExtensions = true;
 
   # Used for backwards compatibility, please read the changelog before changing.
   # $ darwin-rebuild changelog
   system.stateVersion = 6;
-
-  # Disable the darwin-nix stuff since we install from Determinate Systems.
-  nix.enable = false;
 }
