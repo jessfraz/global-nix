@@ -46,6 +46,7 @@
         silver-searcher
         starship
         tree
+        typescript-language-server
         uv
         yarn
       ];
