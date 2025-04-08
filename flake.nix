@@ -13,12 +13,10 @@
   };
 
   outputs = { self, nixpkgs, unstable, fenix }: {
-    packages."aarch64-darwin".default = fenix.packages."aarch64-darwin".minimal.toolchain;
-
-
     packages."aarch64-darwin".default = let
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
       unstablePkgs = unstable.legacyPackages."aarch64-darwin";
+      fenixPkgs = fenix.packages."aarch64-darwin".minimal.toolchain;
     in pkgs.buildEnv {
       name = "home-packages";
       paths = with pkgs; [
