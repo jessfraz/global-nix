@@ -24,7 +24,7 @@
     };
     settings = {
       experimental-features = ["nix-command" "flakes"];
-      trusted-users = ["iterion"];
+      trusted-users = ["jessfraz"];
     };
     package = pkgs.nixVersions.stable;
   };
