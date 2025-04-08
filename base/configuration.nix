@@ -17,7 +17,7 @@ in {
   };
 
   environment = {
-    systemPackages = [inputs.self.packages.${system}.default];
+    systemPackages = [inputs.self.packages.${pkgs.system}.default];
   };
 
   nix = {
