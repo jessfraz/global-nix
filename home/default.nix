@@ -10,7 +10,8 @@
     else "/Users/jessfraz";
 in {
   imports = [
-    ./gitconfig.nix
+    ./programs/bash.nix
+    ./programs/git.nix
   ];
 
   home = {
@@ -30,7 +31,6 @@ in {
   programs = {
     # Let Home Manager install and manage itself.
     home-manager.enable = true;
-    bash.enable = true;
   };
 
   xdg = {
