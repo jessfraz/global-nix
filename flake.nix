@@ -22,7 +22,7 @@
         bash
         bash-completion
         curl
-        rust-overlay.packages."aarch64-darwin".rust-bin.stable.latest.default # rust
+        rust-bin.stable.latest.default # rust
         gh
         git
         git-lfs
