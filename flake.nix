@@ -4,19 +4,15 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     unstable.url = "nixpkgs/nixos-unstable";
-
-    # rust, see https://github.com/nix-community/fenix#usage
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "unstable";
-    };
   };
 
   outputs = { self, nixpkgs, unstable, fenix }: {
+    nixpkgs.overlays = [
+    (import "${fetchTarball "https://github.com/nix-community/fenix/archive/main.tar.gz"}/overlay.nix")
+  ];
     packages."aarch64-darwin".default = let
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
       unstablePkgs = unstable.legacyPackages."aarch64-darwin";
-      fenixPkgs = fenix.packages."aarch64-darwin".minimal.toolchain;
     in pkgs.buildEnv {
       name = "home-packages";
       paths = with pkgs; [
