@@ -1,5 +1,5 @@
 {
-  description = "Desktop and laptop configuration for NixOS";
+  description = "Desktop and laptop configuration for NixOS and macOS";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
@@ -16,45 +16,81 @@
     };
   };
 
-  outputs = { self, nixpkgs, unstable, fenix, ghostty }: {
-    packages."aarch64-darwin".default = let
-      pkgs = nixpkgs.legacyPackages."aarch64-darwin";
-      unstablePkgs = unstable.legacyPackages."aarch64-darwin";
-      fenixPkgs = fenix.packages."aarch64-darwin";
-      ghosttyPkgs = ghostty.packages."aarch64-darwin"; # this only works on linux
-    in pkgs.buildEnv {
-      name = "home-packages";
-      paths = with pkgs; [
-        bash
-        bash-completion
-        curl
-        (fenixPkgs.stable.withComponents [
-          "cargo"
-          "clippy"
-          "rust-src"
-          "rustc"
-          "rustfmt"
-        ])
-        gh
-        git
-        git-lfs
-        gnumake
-        gnupg
-        gnused
-        go
-        jq
-        just
-        neovim
-        nodejs
-        ripgrep
-        fenixPkgs.rust-analyzer
-        silver-searcher
-        starship
-        tree
-        typescript-language-server
-        uv
-        yarn
-      ];
+  outputs = { self, nixpkgs, unstable, fenix, ghostty }:
+  let
+      # Define the systems we want to support
+      supportedSystems = [ "aarch64-darwin" "x86_64-linux" "aarch64-linux" ];
+
+      # Helper function to generate attributes for each system
+      forAllSystems = f: builtins.listToAttrs (map (system: { name = system; value = f system; }) supportedSystems);
+
+      # Create packages for each system
+      mkPackages = system: let
+        pkgs = nixpkgs.legacyPackages.${system};
+        unstablePkgs = unstable.legacyPackages.${system};
+        fenixPkgs = fenix.packages.${system};
+        # Check if system is Linux-based for ghostty
+        isLinux = builtins.match ".*-linux" system != null;
+        # Only include ghostty on Linux systems
+        ghosttyPkgs = if isLinux then ghostty.packages.${system} else null;
+
+        # Common packages for all systems
+        commonPackages = with pkgs; [
+          bash
+          bash-completion
+          curl
+          (fenixPkgs.stable.withComponents [
+            "cargo"
+            "clippy"
+            "rust-src"
+            "rustc"
+            "rustfmt"
+          ])
+          gh
+          git
+          git-lfs
+          gnumake
+          gnupg
+          gnused
+          go
+          jq
+          just
+          neovim
+          nodejs
+          ripgrep
+          fenixPkgs.rust-analyzer
+          silver-searcher
+          starship
+          tree
+          typescript-language-server
+          uv
+          yarn
+        ];
+
+        # System-specific packages
+        systemSpecificPackages = if isLinux then
+          # Linux-specific packages
+          with pkgs; [
+            # Add Linux-specific packages here
+            # For example, if ghostty is only for Linux:
+            (if ghosttyPkgs != null then ghosttyPkgs.default else null)
+          ]
+          else
+          # macOS-specific packages
+          with pkgs; [
+            # Add macOS-specific packages here
+          ];
+      in pkgs.buildEnv {
+        name = "home-packages";
+        paths = commonPackages ++ (builtins.filter (p: p != null) systemSpecificPackages);
+      };
+  in {
+      # Generate packages for all supported systems
+      packages = forAllSystems (system: {
+        default = mkPackages system;
+      });
+
+      # Make sure we define a default package per system
+      defaultPackage = forAllSystems (system: self.packages.${system}.default);
     };
-  };
-}
+  }
