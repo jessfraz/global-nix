@@ -6,10 +6,10 @@
     unstable.url = "nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs, unstable, fenix }: {
+  outputs = { self, nixpkgs, unstable }: {
     nixpkgs.overlays = [
-    (import "${fetchTarball "https://github.com/nix-community/fenix/archive/main.tar.gz"}/overlay.nix")
-  ];
+      (import "${fetchTarball "https://github.com/nix-community/fenix/archive/main.tar.gz"}/overlay.nix")
+    ];
     packages."aarch64-darwin".default = let
       pkgs = nixpkgs.legacyPackages."aarch64-darwin";
       unstablePkgs = unstable.legacyPackages."aarch64-darwin";
