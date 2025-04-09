@@ -15,6 +15,13 @@
     extraGroups = ["audio" "docker" "networkmanager" "wheel" "libvirtd" "plugdev"];
   };
 
+  boot = {
+    # Bootloader.
+    loader = {
+      efi.canTouchEfiVariables = true;
+    };
+  };
+
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
 
