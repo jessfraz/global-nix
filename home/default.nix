@@ -30,8 +30,14 @@ in {
   };
 
   programs = {
-    # Let Home Manager install and manage itself.
-    home-manager.enable = true;
+    home-manager = {
+      # Let Home Manager install and manage itself.
+      enable = true;
+    };
+
+    man = {
+      enable = true;
+    };
   };
 
   xdg = {
