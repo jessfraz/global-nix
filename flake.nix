@@ -117,6 +117,7 @@
               then ghosttyPkgs.default
               else null
             )
+            pinentry-tty
           ]
         else
           # macOS-specific packages

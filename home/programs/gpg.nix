@@ -2,11 +2,12 @@
   config,
   pkgs,
   ...
-}:let pinentryPkg =
+}: let
+  pinentryPkg =
     if pkgs.stdenv.isLinux
     then pkgs.pinentry-tty
-    else pkgs.pinentry-mac;
-{
+    else pkgs.pinentry_mac;
+in {
   programs.gpg = {
     enable = true;
 
@@ -57,6 +58,6 @@
     pinentryPackage = pinentryPkg;
 
     defaultCacheTtl = 60;
-    maxCacheTtl=120;
+    maxCacheTtl = 120;
   };
 }
