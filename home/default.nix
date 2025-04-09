@@ -13,6 +13,7 @@ in {
     ./programs/bash.nix
     ./programs/git.nix
     ./programs/gpg.nix
+    ./programs/starship.nix
   ];
 
   home = {
