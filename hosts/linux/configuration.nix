@@ -4,6 +4,11 @@
   inputs,
   ...
 }: {
+  # Enable networking
+  networking.networkmanager.enable = true;
+
+  networking.nameservers = ["8.8.8.8" "8.8.4.4" "1.1.1.1"];
+
   users.groups.plugdev = {};
   users.users.jessfraz = {
     isNormalUser = true;
