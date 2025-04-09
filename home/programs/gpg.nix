@@ -59,5 +59,7 @@ in {
 
     defaultCacheTtl = 60;
     maxCacheTtl = 120;
+
+    enableBashIntegration = true;
   };
 }
