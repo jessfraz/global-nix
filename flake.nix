@@ -69,6 +69,7 @@
 
       # Common packages for all systems
       commonPackages = with pkgs; [
+        _1password-cli
         alejandraPkg
         bash
         bash-completion
