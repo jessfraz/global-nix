@@ -22,7 +22,7 @@
       mouse-over-hilite-stack = true;
 
       mineffect = "genie";
-      orientation = "left";
+      orientation = "bottom";
       show-recents = false;
       tilesize = 44;
     };
