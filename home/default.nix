@@ -39,6 +39,11 @@ in {
     man = {
       enable = true;
     };
+
+    ssh = {
+      enable = true;
+      addKeysToAgent = "yes";
+    };
   };
 
   xdg = {
