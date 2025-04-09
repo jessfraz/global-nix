@@ -61,5 +61,7 @@ in {
     maxCacheTtl = 120;
 
     enableBashIntegration = true;
+
+    verbose = true;
   };
 }
