@@ -9,7 +9,6 @@
     then "/home/jessfraz"
     else "/Users/jessfraz";
 in {
-  programs.bash.enable = true;
   users.users.jessfraz = {
     description = "Jessie Frazelle";
     shell = pkgs.bash;
