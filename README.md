@@ -19,7 +19,7 @@ If nix is already installed, you can just do:
 
 ## Linux
 
-1. `nix build .#linuxConfigurations.system76.system`
+1. `nix build .#nixosConfigurations.system76.system`
 2. `./result/sw/bin/nixos-rebuild switch --flake .#system76`
 
 **OR**
