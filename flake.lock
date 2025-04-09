@@ -33,8 +33,8 @@
         "unstable": "unstable"
       },
       "locked": {
-        "lastModified": 1744180158,
-        "narHash": "sha256-x7ZYmwojR1f+VDMe+24nIEeHRvOhDnUvYA3uL62otOE=",
+        "lastModified": 1744181325,
+        "narHash": "sha256-nXR3x9wIUylQIUaTmcMAP0bJ+oFpqQKioCWNKQwI3QU=",
         "path": "/Users/jessfraz/vim",
         "type": "path"
       },
@@ -292,11 +292,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1744178885,
-        "narHash": "sha256-Nf/ucWCGNK51G5JxLns2eumB/spxrLR+bwSY0vsSEkI=",
+        "lastModified": 1744180809,
+        "narHash": "sha256-NLEJ3ChLJGlpta2TjabZJwzRgjqB3GnAeUic4uCrd5c=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "27c0f6a10eb19224e089099f74cab06ed23070d3",
+        "rev": "8e7cc728eb122b728913ff497946bb3fb494c280",
         "type": "github"
       },
       "original": {
