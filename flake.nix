@@ -98,7 +98,6 @@
           "rustfmt"
         ])
         findutils
-        gh
         git
         git-lfs
         gnumake

@@ -31,11 +31,11 @@
         "unstable": "unstable"
       },
       "locked": {
-        "lastModified": 1744231952,
-        "narHash": "sha256-4D4uZ/O3xcUmnHiBcaDp0cmXJJBeEPJ7LPQjgBzkycY=",
+        "lastModified": 1744237651,
+        "narHash": "sha256-BeTC2atj7rc8y+L9rTiRDukeYnE4FW+X4ghSUykA89g=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "5cb695755269df374994a2a6c2b8d13fe757e0a7",
+        "rev": "6fc9bd2cbe7db8d0277a7b713b4750c172032b8f",
         "type": "github"
       },
       "original": {
