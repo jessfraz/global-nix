@@ -114,6 +114,7 @@
         silver-searcher
         starship
         tree
+        typescript
         typescript-language-server
         uv
         watch
