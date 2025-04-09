@@ -33,14 +33,19 @@
         "unstable": "unstable"
       },
       "locked": {
-        "lastModified": 1744181325,
-        "narHash": "sha256-nXR3x9wIUylQIUaTmcMAP0bJ+oFpqQKioCWNKQwI3QU=",
-        "path": "/Users/jessfraz/vim",
-        "type": "path"
+        "lastModified": 1744181320,
+        "narHash": "sha256-LEbvLTkGNu6kB1lNP5S4DPK+dM/8ZKb5whuFsoBE/dw=",
+        "ref": "refs/heads/master",
+        "rev": "42bbb1d884a05bd58cb71f13ec1254183a76627d",
+        "revCount": 632,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/jessfraz/.vim"
       },
       "original": {
-        "path": "/Users/jessfraz/vim",
-        "type": "path"
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/jessfraz/.vim"
       }
     },
     "fenix": {
