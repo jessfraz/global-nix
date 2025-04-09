@@ -21,11 +21,6 @@
       inputs.nixpkgs.follows = "unstable";
     };
 
-    alejandra = {
-      url = "github:kamadorueda/alejandra/3.1.0";
-      inputs.nixpkgs.follows = "unstable";
-    };
-
     ghostty = {
       url = "github:ghostty-org/ghostty";
     };
@@ -42,7 +37,6 @@
     home-manager,
     nix-darwin,
     fenix,
-    alejandra,
     ghostty,
     dotvim,
   } @ inputs: let
@@ -75,7 +69,6 @@
         };
       };
       fenixPkgs = fenix.packages.${system};
-      alejandraPkg = alejandra.defaultPackage.${system};
 
       # Check if system is Linux-based for ghostty
       isLinux = builtins.match ".*-linux" system != null;
@@ -88,7 +81,6 @@
       # Common packages for all systems
       commonPackages = with pkgs; [
         _1password-cli
-        alejandraPkg
         bash
         bash-completion
         coreutils
@@ -107,20 +99,13 @@
         gnumake
         gnupg
         gnused
-        go
-        gopls
         jq
         just
-        neovim
         nodejs
         pinentry-tty
-        ripgrep
-        fenixPkgs.rust-analyzer
         silver-searcher
         starship
         tree
-        typescript
-        typescript-language-server
         uv
         watch
         yarn
