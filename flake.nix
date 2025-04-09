@@ -25,6 +25,10 @@
       url = "github:ghostty-org/ghostty";
     };
 
+    dotfiles = {
+      url = "github:jessfraz/dotfiles";
+    };
+
     dotvim = {
       url = "git+https://github.com/jessfraz/.vim?submodules=1";
     };
@@ -38,6 +42,7 @@
     nix-darwin,
     fenix,
     ghostty,
+    dotfiles,
     dotvim,
   } @ inputs: let
     # Define the systems we want to support
@@ -159,8 +164,9 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.jessfraz.imports = [
-              ./home/default.nix
+              dotfiles.homeManagerModules.default
               dotvim.homeManagerModules.default
+              ./home/default.nix
             ];
           }
         ];
@@ -180,8 +186,9 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.jessfraz.imports = [
-              ./home/default.nix
+              dotfiles.homeManagerModules.default
               dotvim.homeManagerModules.default
+              ./home/default.nix
             ];
           }
         ];
