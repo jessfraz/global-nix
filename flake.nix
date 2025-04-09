@@ -148,7 +148,7 @@
 
     # NixOS configurations
     nixosConfigurations = {
-      system76-pc = nixpkgs.lib.nixosSystem {
+      system76 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux"; # or aarch64-linux if you're on ARM
         specialArgs = {inherit inputs;};
         modules = [

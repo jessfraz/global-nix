@@ -17,4 +17,18 @@ If nix is already installed, you can just do:
 
 `darwin-rebuild switch --flake .#macinator`
 
+## Linux
+
+1. `nix build .#linuxConfigurations.system76.system`
+2. `./result/sw/bin/nixos-rebuild switch --flake .#system76`
+
+**OR**
+
+If nix is already installed, you can just do:
+
+`nixos-rebuild switch --flake .#system76`
+
+
+## Shared
+
 To cleanup the world run `nix store gc`
