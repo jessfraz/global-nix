@@ -28,9 +28,7 @@ in {
     enable = true;
     gc = {
       automatic = true;
-      interval = {
-        Day = 5;
-      };
+      dates = "weekly";
       options = "--delete-older-than 1w";
     };
     optimise = {
