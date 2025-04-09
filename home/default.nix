@@ -12,6 +12,7 @@ in {
   imports = [
     ./programs/bash.nix
     ./programs/git.nix
+    ./programs/gpg.nix
   ];
 
   home = {
