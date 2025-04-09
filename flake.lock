@@ -53,11 +53,11 @@
         "unstable": "unstable_2"
       },
       "locked": {
-        "lastModified": 1744227570,
-        "narHash": "sha256-3HtqQRfEKaUmEHsfbMXeD+eBilPmQln3cDsplUESQj4=",
+        "lastModified": 1744237801,
+        "narHash": "sha256-Q+byomsn/Il40N6gk4TKioE8nXAhjgyvJnO1O0rLXtw=",
         "ref": "refs/heads/master",
-        "rev": "f97f66baab8ec7800cad127bde19730a6e4c2272",
-        "revCount": 633,
+        "rev": "0d4ebab03c6f789cc307b99d755fac967a9e54d3",
+        "revCount": 634,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
@@ -353,11 +353,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1744234817,
-        "narHash": "sha256-+aEJEhvKp2lEp/2dpjJN5sqTCxzfjtXzEPtx5tzRdGg=",
+        "lastModified": 1744237838,
+        "narHash": "sha256-1zqONLIYLN36AJO1z2S0iXxO8FblUOFs+dUzCXDtMMo=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "231f9b27731b95f38302451781642b09912ff777",
+        "rev": "56423952b8098a2d2b206289d71690309933b377",
         "type": "github"
       },
       "original": {
