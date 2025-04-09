@@ -129,6 +129,7 @@
               then ghosttyPkgs.default
               else null
             )
+            tailscale
             pinentry-tty
           ]
         else
