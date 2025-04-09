@@ -26,7 +26,7 @@
     };
 
     dotvim = {
-      url = "github:jessfraz/.vim";
+      url = "path:/Users/jessfraz/vim";
     };
   };
 
