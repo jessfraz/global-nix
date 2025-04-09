@@ -54,8 +54,21 @@
 
     # Create packages for each system
     mkPackages = system: let
-      pkgs = nixpkgs.legacyPackages.${system};
-      unstablePkgs = unstable.legacyPackages.${system};
+      # Apply allowUnfree to all package sets
+      pkgs = import nixpkgs {
+        inherit system;
+        config = {
+          allowUnfree = true;
+          allowUnfreePredicate = _: true;
+        };
+      };
+      unstablePkgs = import unstable {
+        inherit system;
+        config = {
+          allowUnfree = true;
+          allowUnfreePredicate = _: true;
+        };
+      };
       fenixPkgs = fenix.packages.${system};
       alejandraPkg = alejandra.defaultPackage.${system};
 
@@ -90,6 +103,7 @@
         gnupg
         gnused
         go
+        gopls
         jq
         just
         neovim
@@ -102,6 +116,7 @@
         tree
         typescript-language-server
         uv
+        watch
         yarn
       ];
 
