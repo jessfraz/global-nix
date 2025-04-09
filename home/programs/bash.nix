@@ -32,5 +32,13 @@
     bashrcExtra = ''
       source ${config.home.homeDirectory}/.nixbash
     '';
+
+    # Fix for https://github.com/nix-community/home-manager/issues/5997
+    initExtra = ''
+      gpgconf --launch gpg-agent
+    '';
+    sessionVariables = {
+      SSH_AUTH_SOCK = "$(gpgconf --list-dirs agent-ssh-socket)";
+    };
   };
 }
