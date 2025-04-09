@@ -22,5 +22,15 @@
       # Warn if closing shell with running jobs.
       "checkjobs"
     ];
+
+    historySize = 50000000;
+    historyFileSize = 50000000;
+    historyControl = ["ignoredups"];
+    historyIgnore = ["exit"];
+
+    # Load the other bash dotfiles we have.
+    bashrcExtra = ''
+      source ${config.home.homeDirectory}/.nixbash
+    '';
   };
 }
