@@ -50,7 +50,7 @@
       }
 
       function fetch-stripe-key() {
-          export STRIPE_KEY=$(op --account kittycadinc.1password.com item get "stripe prod zoo" --fields credential --reveal)
+          export STRIPE_API_KEY=$(op --account kittycadinc.1password.com item get "stripe prod zoo" --fields credential --reveal)
       }
 
       function fetch-hoops-key() {

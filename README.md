@@ -25,3 +25,8 @@ If nix is already installed, you can just do:
 ## Shared
 
 To cleanup the world run `nix store gc`
+
+# Helpful Links
+
+- [NixOS Module Source](https://github.com/NixOS/nixpkgs/tree/master/nixos/modules)
+- [Home Manager Module Source](https://github.com/nix-community/home-manager/tree/master/modules)
