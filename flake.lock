@@ -56,11 +56,11 @@
         "unstable": "unstable_2"
       },
       "locked": {
-        "lastModified": 1744309857,
-        "narHash": "sha256-T+06caKxl1Tf0uojcZqOyIOvHukPvLKNeXTmtuE42zY=",
+        "lastModified": 1744312026,
+        "narHash": "sha256-gbVFKQTcgCVdvDH/jF0j+iMcYR56AJLcwE1G1Um0zcs=",
         "ref": "refs/heads/master",
-        "rev": "056e9c390256fc14ddf03b72ba370b70f30028e0",
-        "revCount": 664,
+        "rev": "ab2bdf8b52d9cfbeed11ca06a3f250273999a15f",
+        "revCount": 669,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
@@ -436,11 +436,11 @@
     },
     "nixpkgs_4": {
       "locked": {
-        "lastModified": 1744308098,
-        "narHash": "sha256-76bHGpr/eJDdIF1egz6aN6BfVaZXVOb5d4ZZTfZ24P8=",
+        "lastModified": 1744311219,
+        "narHash": "sha256-J6nv74SQj+0MmG2pY3O5ywc7jz2d/oBJSKk3Hdpgny8=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "4a0b66d1f59a2bb3570cc2cd65a38cf3f2a4e8f7",
+        "rev": "5997b997dc3766386dd7a8a867ba925d61b3f7f1",
         "type": "github"
       },
       "original": {
@@ -451,11 +451,11 @@
     },
     "nixpkgs_5": {
       "locked": {
-        "lastModified": 1744308098,
-        "narHash": "sha256-76bHGpr/eJDdIF1egz6aN6BfVaZXVOb5d4ZZTfZ24P8=",
+        "lastModified": 1744311521,
+        "narHash": "sha256-XSxPOkRbVnKSDeth3xho5/Xk4DVjFdGXgQI87R6a4QM=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "4a0b66d1f59a2bb3570cc2cd65a38cf3f2a4e8f7",
+        "rev": "d84b0024f614e33880745951c19a419ed2b09be9",
         "type": "github"
       },
       "original": {
@@ -548,11 +548,11 @@
     "selfClone": {
       "flake": false,
       "locked": {
-        "lastModified": 1744309577,
-        "narHash": "sha256-FtleFaq/5HIjYcFpQgRuRx+kwyPRvtOoa2zhcdkjnJs=",
+        "lastModified": 1744311054,
+        "narHash": "sha256-24ARpxrVuePWVCbTLjqO1jXg+NzUQ7mXafkon7drfOw=",
         "ref": "refs/heads/master",
-        "rev": "b15223318e59f3e6980ad601a89bf9f21776dbde",
-        "revCount": 663,
+        "rev": "465add08e74175c11f1aa0657d5797019403a101",
+        "revCount": 667,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"

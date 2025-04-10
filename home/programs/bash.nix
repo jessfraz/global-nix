@@ -34,6 +34,25 @@
 
       function fetch-github-token() {
           export GITHUB_TOKEN=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
+
+          # Add the token to our .netrc file
+          cat <<EOF > ~/.netrc
+          machine github.com
+          login jessfraz
+          password $GITHUB_TOKEN
+
+          machine api.github.com
+          login jessfraz
+          password $GITHUB_TOKEN
+          EOF
+
+          chmod 600 ~/.netrc
+
+          # Add the token to our ~/.config/nix/nix.conf
+          mkdir -p ~/.config/nix
+          cat <<EOF > ~/.config/nix/nix.conf
+          access-tokens = github.com=$GITHUB_TOKEN
+          EOF
       }
 
       function fetch-openai-key() {
