@@ -121,6 +121,7 @@
         then
           # Linux-specific packages
           with pkgs; [
+            _1password-gui
             # Add Linux-specific packages here
             # For example, if ghostty is only for Linux:
             (
