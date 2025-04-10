@@ -159,6 +159,7 @@
         modules = [
           ./hosts/base/configuration.nix
           ./hosts/linux/configuration.nix
+          ./hosts/linux/system76/configuration.nix
           home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
