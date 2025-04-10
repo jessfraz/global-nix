@@ -4,11 +4,9 @@
   inputs,
   ...
 }: {
-  /*
-    imports = [
+  imports = [
     ./disable-sleep-on-ssh.nix
   ];
-  */
 
   nixpkgs.config = {
     allowUnfree = true;
