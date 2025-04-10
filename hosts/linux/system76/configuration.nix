@@ -13,6 +13,10 @@
 
   boot.loader.systemd-boot.enable = true;
 
+  nixpkgs.config = {
+    nvidia.acceptLicense = true;
+  };
+
   networking = {
     hostName = "system76";
 
