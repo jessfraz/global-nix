@@ -4,6 +4,10 @@
   inputs,
   ...
 }: {
+  imports = [
+    ./disable-sleep-on-ssh.nix
+  ];
+
   nixpkgs.config = {
     allowUnfree = true;
     nvidia.acceptLicense = true;
