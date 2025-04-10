@@ -194,6 +194,7 @@
               dotfiles.homeManagerModules.default
               dotvim.homeManagerModules.default
               ./home/default.nix
+              ./home/hosts/darwin.nix
             ];
           }
         ];
