@@ -1,4 +1,16 @@
-{config, ...}: {
+{config, ...}: let
+  netRcContents = ''
+    cat <<-EOF > ~/.netrc
+    machine github.com
+    login jessfraz
+    password $GITHUB_TOKEN
+
+    machine api.github.com
+    login jessfraz
+    password $GITHUB_TOKEN
+    EOF
+  '';
+in {
   programs.bash = {
     enable = true;
 
@@ -36,24 +48,15 @@
           export GITHUB_TOKEN=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
 
           # Add the token to our .netrc file
-          cat <<EOF > ~/.netrc
-          machine github.com
-          login jessfraz
-          password $GITHUB_TOKEN
-
-          machine api.github.com
-          login jessfraz
-          password $GITHUB_TOKEN
-          EOF
+          ${netRcContents}
 
           chmod 600 ~/.netrc
 
           # Add the token to our ~/.config/nix/nix.conf
           mkdir -p ~/.config/nix
-          cat <<EOF > ~/.config/nix/nix.conf
-          access-tokens = github.com=$GITHUB_TOKEN
-          EOF
+          echo "access-tokens = github.com=$GITHUB_TOKEN" > ~/.config/nix/nix.conf
       }
+      alias fetch-gh-token="fetch-github-token"
 
       function fetch-openai-key() {
           export OPENAI_API_KEY=$(op --account my.1password.com item get "openai.com" --fields apikey --reveal)
