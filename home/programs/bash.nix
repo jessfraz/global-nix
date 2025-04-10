@@ -32,7 +32,7 @@
     bashrcExtra = ''
       source ${config.home.homeDirectory}/.nixbash
 
-      function fetch-github-key() {
+      function fetch-github-token() {
           export GITHUB_TOKEN=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
       }
 
