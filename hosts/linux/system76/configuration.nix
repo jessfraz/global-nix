@@ -15,15 +15,6 @@
 
   networking = {
     hostName = "system76";
-
-    firewall = {
-      allowedTCPPorts = [
-        8585 # running machine-api locally
-      ];
-      allowedUDPPorts = [
-        5353 # mDNS allow for machine-api
-      ];
-    };
   };
 
   # Enable graphics

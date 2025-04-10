@@ -9,10 +9,22 @@
     nvidia.acceptLicense = true;
   };
 
-  # Enable networking
-  networking.networkmanager.enable = true;
+  networking = {
+    networkmanager = {
+      enable = true;
+    };
 
-  networking.nameservers = ["8.8.8.8" "8.8.4.4" "1.1.1.1"];
+    nameservers = ["8.8.8.8" "8.8.4.4" "1.1.1.1"];
+
+    firewall = {
+      allowedTCPPorts = [
+        8585 # running machine-api locally
+      ];
+      allowedUDPPorts = [
+        5353 # mDNS allow for machine-api
+      ];
+    };
+  };
 
   users.groups.plugdev = {};
   users.users.jessfraz = {
@@ -76,7 +88,7 @@
     chromium = {
       enable = true;
 
-      #package = pkgs.google-chrome;
+      package = pkgs.google-chrome;
     };
   };
 
