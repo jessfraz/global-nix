@@ -129,8 +129,9 @@
               then ghosttyPkgs.default
               else null
             )
-            tailscale
             pinentry-tty
+            tailscale
+            xclip
           ]
         else
           # macOS-specific packages
