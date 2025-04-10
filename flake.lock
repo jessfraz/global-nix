@@ -49,15 +49,16 @@
         "alejandra": "alejandra",
         "fenix": "fenix_2",
         "home-manager": "home-manager_2",
-        "nixpkgs": "nixpkgs_2",
+        "modeling-app": "modeling-app",
+        "nixpkgs": "nixpkgs_4",
         "unstable": "unstable_2"
       },
       "locked": {
-        "lastModified": 1744247866,
-        "narHash": "sha256-AXb3f4cA6saALSwTwH7kXP7B8ZUo/ffiPBr3wUteCzQ=",
+        "lastModified": 1744258337,
+        "narHash": "sha256-1OSe9aftH4UipRXtYhQwY3xvcUpK/cebn7Sdyj9WJMs=",
         "ref": "refs/heads/master",
-        "rev": "883c99819295c4ef0da725d46f11bd90c955e8e7",
-        "revCount": 635,
+        "rev": "9b0fd66ba86a33fd711ef5403cbe250305fca574",
+        "revCount": 636,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
@@ -269,6 +270,48 @@
         "type": "github"
       }
     },
+    "modeling-app": {
+      "inputs": {
+        "naersk": "naersk",
+        "nixpkgs": [
+          "dotvim",
+          "unstable"
+        ],
+        "rust-overlay": "rust-overlay"
+      },
+      "locked": {
+        "lastModified": 1744259680,
+        "narHash": "sha256-+/YdK3yAIUAEttjAHzASZtkfVKcwzibMmOLZSTju0tQ=",
+        "owner": "kittycad",
+        "repo": "modeling-app",
+        "rev": "b168ad8127d25c39766215c7387e59f534f0c3c0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kittycad",
+        "ref": "repetitive-structs",
+        "repo": "modeling-app",
+        "type": "github"
+      }
+    },
+    "naersk": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1743800763,
+        "narHash": "sha256-YFKV+fxEpMgP5VsUcM6Il28lI0NlpM7+oB1XxbBAYCw=",
+        "owner": "nix-community",
+        "repo": "naersk",
+        "rev": "ed0232117731a4c19d3ee93aa0c382a8fe754b01",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "naersk",
+        "type": "github"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
@@ -338,6 +381,38 @@
     },
     "nixpkgs_2": {
       "locked": {
+        "lastModified": 1744096231,
+        "narHash": "sha256-kUfx3FKU1Etnua3EaKvpeuXs7zoFiAcli1gBwkPvGSs=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b2b0718004cc9a5bca610326de0a82e6ea75920b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
+        "lastModified": 1728538411,
+        "narHash": "sha256-f0SBJz1eZ2yOuKUr5CA9BHULGXVSn6miBuUWdTyhUhU=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b69de56fac8c2b6f8fd27f2eca01dcda8e0a4221",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_4": {
+      "locked": {
         "lastModified": 1744173197,
         "narHash": "sha256-osrVG4lppyifM05QazFTDUmZryoXY0kWQHr3ct0wHIc=",
         "owner": "nixos",
@@ -351,13 +426,13 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
+    "nixpkgs_5": {
       "locked": {
-        "lastModified": 1744248201,
-        "narHash": "sha256-xPBcb4T9RgIxADC0VD4BPTUmqTWMKDdKGDC3kdRrLmM=",
+        "lastModified": 1744259723,
+        "narHash": "sha256-biriN0MOywStWcH1Jz1VIGYT4ipGK6DGFVykdolDLiE=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "72279b768779d1947b172d4b177af8bfe512305c",
+        "rev": "a3ecc2321143478a27821105e95fc55e1ec14e30",
         "type": "github"
       },
       "original": {
@@ -374,7 +449,7 @@
         "ghostty": "ghostty",
         "home-manager": "home-manager_3",
         "nix-darwin": "nix-darwin",
-        "nixpkgs": "nixpkgs_3",
+        "nixpkgs": "nixpkgs_5",
         "unstable": "unstable_3"
       }
     },
@@ -426,6 +501,24 @@
         "owner": "rust-lang",
         "ref": "nightly",
         "repo": "rust-analyzer",
+        "type": "github"
+      }
+    },
+    "rust-overlay": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_3"
+      },
+      "locked": {
+        "lastModified": 1736476219,
+        "narHash": "sha256-+qyv3QqdZCdZ3cSO/cbpEY6tntyYjfe1bB12mdpNFaY=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "de30cc5963da22e9742bbbbb9a3344570ed237b9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
         "type": "github"
       }
     },
