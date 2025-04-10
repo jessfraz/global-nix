@@ -56,21 +56,10 @@
     };
   };
 
-  nix = {
-    enable = true;
-    gc = {
-      automatic = true;
-      dates = "weekly";
-      options = "--delete-older-than 1w";
-    };
-    optimise = {
-      automatic = true;
-    };
-    settings = {
-      experimental-features = ["nix-command" "flakes"];
-      trusted-users = ["jessfraz"];
-    };
-    package = pkgs.nixVersions.stable;
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 1w";
   };
 
   services = {

@@ -4,23 +4,12 @@
   inputs,
   ...
 }: {
-  nix = {
-    enable = true;
-    gc = {
-      automatic = true;
-      interval = {
-        Day = 5;
-      };
-      options = "--delete-older-than 1w";
+  nix.gc = {
+    automatic = true;
+    interval = {
+      Day = 5;
     };
-    optimise = {
-      automatic = true;
-    };
-    settings = {
-      experimental-features = ["nix-command" "flakes"];
-      trusted-users = ["jessfraz"];
-    };
-    package = pkgs.nixVersions.stable;
+    options = "--delete-older-than 1w";
   };
 
   # Add ability to used TouchID for sudo authentication.

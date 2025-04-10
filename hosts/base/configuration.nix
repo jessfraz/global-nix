@@ -15,6 +15,18 @@ in {
     home = homeDir;
   };
 
+  nix = {
+    enable = true;
+    optimise = {
+      automatic = true;
+    };
+    settings = {
+      experimental-features = ["nix-command" "flakes"];
+      trusted-users = ["jessfraz"];
+    };
+    package = pkgs.nixVersions.stable;
+  };
+
   environment = {
     systemPackages = [inputs.self.packages.${pkgs.system}.default];
   };
