@@ -16,7 +16,8 @@
   security.pam.services.sudo_local.touchIdAuth = true;
 
   # MacOS system preferences.
-  system.defaults = {
+  /*
+    system.defaults = {
     NSGlobalDomain = {
       # Show all the file extensions.
       AppleShowAllExtensions = true;
@@ -82,6 +83,7 @@
       };
     };
   };
+  */
 
   # Used for backwards compatibility, please read the changelog before changing.
   # $ darwin-rebuild changelog
