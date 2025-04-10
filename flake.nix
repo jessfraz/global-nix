@@ -129,6 +129,7 @@
               then ghosttyPkgs.default
               else null
             )
+            google-chrome
             pinentry-tty
             tailscale
             xclip

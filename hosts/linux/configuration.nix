@@ -62,6 +62,15 @@
     options = "--delete-older-than 1w";
   };
 
+  # Enable Google Chrome
+  packages = {
+    chromium = {
+      enable = true;
+
+      package = pkgs.google-chrome;
+    };
+  };
+
   services = {
     tailscale = {
       enable = true;
