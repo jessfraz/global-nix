@@ -11,45 +11,142 @@
     ./hardware-configuration.nix
   ];
 
-  # Bootloader.
   boot.loader.systemd-boot.enable = true;
 
-  networking.hostName = "system76"; # Define your hostname.
+  networking = {
+    hostName = "system76";
+
+    firewall = {
+      allowedTCPPorts = [
+        8585 # running machine-api locally
+      ];
+      allowedUDPPorts = [
+        5353 # mDNS allow for machine-api
+      ];
+    };
+  };
+
+  # Enable graphics
+  hardware = {
+    graphics = {
+      enable = true;
+      enable32Bit = true;
+      extraPackages = [
+        # pkgs.intel-media-driver
+        pkgs.nvidia-vaapi-driver
+      ];
+    };
+
+    nvidia-container-toolkit = {
+      enable = false;
+    };
+
+    nvidia = {
+      # Modesetting is required.
+      modesetting.enable = true;
+
+      # Nvidia power management. Experimental, and can cause sleep/suspend to fail.
+      powerManagement.enable = true;
+
+      # Fine-grained power management. Turns off GPU when not in use.
+      # Experimental and only works on modern Nvidia GPUs (Turing or newer).
+      powerManagement.finegrained = true;
+
+      # open source driver, it doesn't suck?
+      open = true;
+
+      # forceFullCompositionPipeline = true;
+
+      # Enable the Nvidia settings menu,
+      # accessible via `nvidia-settings`.
+      #nvidiaSettings = true;
+      package = config.boot.kernelPackages.nvidiaPackages.beta;
+      # package = config.boot.kernelPackages.nvidiaPackages.mkDriver {
+      #    version = "535.171.04";
+      #    sha256_64bit = "sha256-6PFkO0vJXYrNZaRHB4SpfazkZC8UkjZGYSDbKqlCQ3o=";
+      #    settingsSha256 = "sha256-/+op7FyDk6JH+Oau3dGtawCUtoDdOnfxEXBgYVfufTA=";
+      #    persistencedSha256 = "sha256-P90qWA1yObhQQl3sKTWw+uUq7S9ZZcCzKnx/jHbfclo=";
+      # };
+
+      # package = let
+      #   rcu_patch = pkgs.fetchpatch {
+      #     url = "https://github.com/gentoo/gentoo/raw/c64caf53/x11-drivers/nvidia-drivers/files/nvidia-drivers-470.223.02-gpl-pfn_valid.patch";
+      #     hash = "sha256-eZiQQp2S/asE7MfGvfe6dA/kdCvek9SYa/FFGp24dVg=";
+      #   };
+      # in config.boot.kernelPackages.nvidiaPackages.mkDriver {
+      #     version = "550.40.07";
+      #     sha256_64bit = "sha256-KYk2xye37v7ZW7h+uNJM/u8fNf7KyGTZjiaU03dJpK0=";
+      #     sha256_aarch64 = "sha256-AV7KgRXYaQGBFl7zuRcfnTGr8rS5n13nGUIe3mJTXb4=";
+      #     openSha256 = "sha256-mRUTEWVsbjq+psVe+kAT6MjyZuLkG2yRDxCMvDJRL1I=";
+      #     settingsSha256 = "sha256-c30AQa4g4a1EHmaEu1yc05oqY01y+IusbBuq+P6rMCs=";
+      #     persistencedSha256 = "sha256-11tLSY8uUIl4X/roNnxf5yS2PQvHvoNjnd2CB67e870=";
+      #     patches = [ rcu_patch ];
+      #  };
+
+      prime = {
+        # offload = {
+        #  enable = false;
+        #  enableOffloadCmd = false;
+        # };
+
+        reverseSync = {
+          enable = true;
+        };
+        intelBusId = "PCI:0:2:0";
+        nvidiaBusId = "PCI:1:0:0";
+      };
+    };
+  };
 
   # Enable the X11 windowing system.
-  services.xserver.enable = true;
+  services = {
+    xserver = {
+      enable = true;
 
-  # Enable the GNOME Desktop Environment.
-  services.xserver.displayManager.gdm.enable = true;
-  services.xserver.desktopManager.gnome.enable = true;
+      videoDrivers = ["nvidia"];
 
-  # Configure keymap in X11
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
+      # Enable the GNOME Desktop Environment.
+      displayManager.gdm.enable = true;
+      desktopManager.gnome.enable = true;
+
+      # Configure keymap in X11
+      xkb = {
+        layout = "us";
+        variant = "";
+      };
+
+      # Enable touchpad support (enabled default in most desktopManager).
+      # libinput.enable = true;
+    };
+
+    printing = {
+      # Enable CUPS to print documents.
+      enable = false;
+    };
+
+    # Enable sound with pipewire.
+    pulseaudio = {
+      enable = false;
+    };
+    pipewire = {
+      enable = true;
+      alsa.enable = true;
+      alsa.support32Bit = true;
+      pulse.enable = true;
+      # If you want to use JACK applications, uncomment this
+      #jack.enable = true;
+
+      # use the example session manager (no others are packaged yet so this is enabled by default,
+      # no need to redefine it in your config for now)
+      #media-session.enable = true;
+    };
   };
 
-  # Enable CUPS to print documents.
-  services.printing.enable = true;
-
-  # Enable sound with pipewire.
-  services.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-    # If you want to use JACK applications, uncomment this
-    #jack.enable = true;
-
-    # use the example session manager (no others are packaged yet so this is enabled by default,
-    # no need to redefine it in your config for now)
-    #media-session.enable = true;
+  security = {
+    rtkit = {
+      enable = true;
+    };
   };
-
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions

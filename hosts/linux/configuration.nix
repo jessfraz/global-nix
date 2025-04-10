@@ -4,6 +4,10 @@
   inputs,
   ...
 }: {
+  nixpkgs.config = {
+    nvidia.acceptLicense = true;
+  };
+
   # Enable networking
   networking.networkmanager.enable = true;
 
