@@ -33,7 +33,7 @@
       source ${config.home.homeDirectory}/.nixbash
 
       function fetch-github-key() {
-          export OPENAI_API_KEY=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
+          export GITHUB_TOKEN=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
       }
 
       function fetch-openai-key() {
