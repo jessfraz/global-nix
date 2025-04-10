@@ -135,7 +135,7 @@
 
   # Remove stupid gnome packages.
   environment = {
-    gnome.excludePackages = with pkgs.gnome; [
+    gnome.excludePackages = with pkgs; [
       baobab # disk usage analyzer
       cheese # photo booth
       eog # image viewer
@@ -154,6 +154,7 @@
       gnome-calendar
       gnome-characters
       gnome-clocks
+      gnome-connections
       gnome-contacts
       gnome-font-viewer
       gnome-logs
@@ -164,7 +165,6 @@
       gnome-system-monitor
       gnome-weather
       gnome-disk-utility
-      pkgs.gnome-connections
     ];
   };
 
