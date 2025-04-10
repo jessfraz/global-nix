@@ -88,6 +88,7 @@
         _1password-cli
         bash
         bash-completion
+        unstablePkgs.claude-code
         coreutils
         curl
         (fenixPkgs.stable.withComponents [
