@@ -29,7 +29,7 @@
   users.groups.plugdev = {};
   users.users.jessfraz = {
     isNormalUser = true;
-    extraGroups = ["audio" "docker" "networkmanager" "wheel" "libvirtd" "plugdev"];
+    extraGroups = ["audio" "docker" "networkmanager" "wheel" "libvirtd" "plugdev" "onepassword-cli" "onepassword"];
   };
 
   boot = {
@@ -83,12 +83,22 @@
     options = "--delete-older-than 1w";
   };
 
-  # Enable Google Chrome
   programs = {
-    chromium = {
+    _1password-gui = {
       enable = true;
 
-      #package = pkgs.google-chrome;
+      package = pkgs._1password-gui;
+    };
+
+    # 1Password CLI
+    _1password = {
+      enable = true;
+
+      package = pkgs._1password-cli;
+    };
+
+    chromium = {
+      enable = true;
     };
   };
 
