@@ -16,7 +16,7 @@
     extraModprobeConfig = ''
       options nvidia_uvm uvm_disable_hmm=1
     '';
-    blacklistedKernelModules = ["i915"];
+    #blacklistedKernelModules = ["i915"];
     loader.systemd-boot.enable = true;
   };
 
