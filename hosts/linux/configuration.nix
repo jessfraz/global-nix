@@ -91,6 +91,7 @@
     _1password-gui = {
       enable = true;
 
+      polkitPolicyOwners = ["jessfraz"];
       package = pkgs._1password-gui;
     };
 
