@@ -26,8 +26,6 @@
     hostName = "system76";
   };
 
-  boot.
-
   # Enable graphics
   hardware = {
     system76 = {
