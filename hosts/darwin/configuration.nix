@@ -3,7 +3,9 @@
   pkgs,
   inputs,
   ...
-}:let hostname = "macinator"; {
+}: let
+  hostname = "macinator";
+in {
   nix.gc = {
     automatic = true;
     interval = {
@@ -62,10 +64,10 @@
       orientation = "bottom";
       show-recents = false;
       tilesize = 44;
-        #  Magnify icon on hover.
-        magnification = true;
-        # Magnified icon size on hover.
-        largesize = 48;
+      #  Magnify icon on hover.
+      magnification = true;
+      # Magnified icon size on hover.
+      largesize = 48;
 
       # Enable spring loading for all Dock items.
       enable-spring-load-actions-on-all-items = true;
