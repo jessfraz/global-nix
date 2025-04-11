@@ -46,7 +46,7 @@
     dotvim,
   } @ inputs: let
     # Define the systems we want to support
-    supportedSystems = ["aarch64-darwin" "x86_64-linux" "aarch64-linux"];
+    supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
     # Helper function to generate attributes for each system
     forAllSystems = f:
