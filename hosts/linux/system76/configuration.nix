@@ -11,14 +11,28 @@
     ./hardware-configuration.nix
   ];
 
-  boot.loader.systemd-boot.enable = true;
+  boot = {
+    kernelPackages = pkgs.linuxPackages;
+    initrd.kernelModules = ["nvidia"];
+    kernelParams = ["nvidia-drm.fbdev=1"];
+    extraModprobeConfig = ''
+      options nvidia_uvm uvm_disable_hmm=1
+    '';
+    blacklistedKernelModules = ["i915"];
+    loader.systemd-boot.enable = true;
+  };
 
   networking = {
     hostName = "system76";
   };
 
+  boot.
+
   # Enable graphics
   hardware = {
+    system76 = {
+      enableAll = true;
+    };
     graphics = {
       enable = true;
       enable32Bit = true;
