@@ -109,14 +109,23 @@
       videoDrivers = ["nvidia"];
 
       # Enable the GNOME Desktop Environment.
-      displayManager.gdm.enable = true;
-      desktopManager.gnome.enable = true;
+      displayManager = {
+        gdm = {enable = true;};
+        gnome = {
+          enable = true;
+        };
+        xterm = {
+          enable = false;
+        };
+      };
 
       # Configure keymap in X11
       xkb = {
         layout = "us";
         variant = "";
       };
+
+      excludePackages = [pkgs.xterm];
 
       # Enable touchpad support (enabled default in most desktopManager).
       # libinput.enable = true;
@@ -175,6 +184,7 @@
       gnome-photos
       gnome-screenshot
       gnome-system-monitor
+      gnome-tour
       gnome-weather
       gnome-disk-utility
     ];
