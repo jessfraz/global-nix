@@ -31,11 +31,11 @@
         "unstable": "unstable"
       },
       "locked": {
-        "lastModified": 1744331519,
-        "narHash": "sha256-OUNQ8Be6By02poACe/F2LvkC1Ds6lKIPoPNJOZJgobQ=",
+        "lastModified": 1744341928,
+        "narHash": "sha256-iVtgJasjdb2BI9wphwDzHVfdjuKgXi0gGkPYfkTg/II=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "a02682fef8b2ac9393bba894a84d709f49e6ee9c",
+        "rev": "ce0064d8f8f79177dac039be2d67cb4257b9f570",
         "type": "github"
       },
       "original": {
@@ -56,11 +56,11 @@
         "unstable": "unstable_2"
       },
       "locked": {
-        "lastModified": 1744313953,
-        "narHash": "sha256-BWTOEXZl6vIKJqSRhBxqOVmKny4800Bz8fxCa0x9H8Q=",
-        "ref": "refs/heads/master",
-        "rev": "7478f5ae875f018df1318f91d2f9b4d3ee436d18",
-        "revCount": 670,
+        "lastModified": 1744345879,
+        "narHash": "sha256-vL3l9b/340eNj+1xg0KvBxA/e8gHtetKXNE0OkmIZFA=",
+        "ref": "refs/heads/main",
+        "rev": "1e82ae1807054ad1299545e3ac16dae1ac3ea9c5",
+        "revCount": 691,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
@@ -218,11 +218,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1744223888,
-        "narHash": "sha256-reYpe0J1J+wH34JFs7KKp0G5nP7+XSQ5z0ZLFJcfJr8=",
+        "lastModified": 1744316889,
+        "narHash": "sha256-qS0BhvsL9J7gt4cOpBZdzT0EqylGPKyKnU9v/6SJvFI=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "79461936709b12e17adb9c91dd02d1c66d577f09",
+        "rev": "543caa313abe45b56520efdaa35d379703f79e3a",
         "type": "github"
       },
       "original": {
@@ -239,11 +239,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1744307861,
-        "narHash": "sha256-c4i69OsEMi3e5+HuWrwgcx9sOsn1Z1hxLlyiQOiWJi8=",
+        "lastModified": 1744316889,
+        "narHash": "sha256-qS0BhvsL9J7gt4cOpBZdzT0EqylGPKyKnU9v/6SJvFI=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "140a7df916f6257c755b8663fb27ed79e81c8e89",
+        "rev": "543caa313abe45b56520efdaa35d379703f79e3a",
         "type": "github"
       },
       "original": {
@@ -259,11 +259,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1744316889,
-        "narHash": "sha256-qS0BhvsL9J7gt4cOpBZdzT0EqylGPKyKnU9v/6SJvFI=",
+        "lastModified": 1744343724,
+        "narHash": "sha256-DkiOZlkXbdf6f09pSulJPE0IaaJi1p7sqia/G2kqNKI=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "543caa313abe45b56520efdaa35d379703f79e3a",
+        "rev": "f1ffd097e717a8d1b441577b8d23f9d2c96e0657",
         "type": "github"
       },
       "original": {
@@ -282,16 +282,15 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1744303989,
-        "narHash": "sha256-9BzZ7FDXZ/tAg5QkX8ovXTSS6l2yUL5Ip00UrghK558=",
+        "lastModified": 1744339985,
+        "narHash": "sha256-+m4gfF0mZ2LJCrHXh1iJ3fd7+JtNNS/sidmh1Wbd9/0=",
         "owner": "kittycad",
         "repo": "modeling-app",
-        "rev": "c2f999f305b4dca1cc82ee2e3b8f556ce2f1e65b",
+        "rev": "1b8eee86a1113f0d170aa80f11e17cf44492c580",
         "type": "github"
       },
       "original": {
         "owner": "kittycad",
-        "ref": "repetitive-structs",
         "repo": "modeling-app",
         "type": "github"
       }
@@ -357,11 +356,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1744226741,
-        "narHash": "sha256-CUJO6z9f63/mGtzuwqIj7CeMV2UtREHiD0eX1l2toMs=",
+        "lastModified": 1744340397,
+        "narHash": "sha256-oIfpWVSJuVZpGhrTNnQ7X+JhI3quHqzFXYdhXP7KQSs=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "1b62e27af66cfdc05619ddd790aa063eb787c840",
+        "rev": "daa1933a4122110654a86459e458f6fa2dabbe9f",
         "type": "github"
       },
       "original": {
@@ -436,11 +435,11 @@
     },
     "nixpkgs_4": {
       "locked": {
-        "lastModified": 1744311219,
-        "narHash": "sha256-J6nv74SQj+0MmG2pY3O5ywc7jz2d/oBJSKk3Hdpgny8=",
+        "lastModified": 1744340397,
+        "narHash": "sha256-oIfpWVSJuVZpGhrTNnQ7X+JhI3quHqzFXYdhXP7KQSs=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "5997b997dc3766386dd7a8a867ba925d61b3f7f1",
+        "rev": "daa1933a4122110654a86459e458f6fa2dabbe9f",
         "type": "github"
       },
       "original": {
@@ -451,11 +450,11 @@
     },
     "nixpkgs_5": {
       "locked": {
-        "lastModified": 1744330375,
-        "narHash": "sha256-U/ECrt3Nh/2AfQSSN7bCKoQnNabSOqI8LXfdsxfii/U=",
+        "lastModified": 1744343887,
+        "narHash": "sha256-CRXGVboyv+kami09CPGhESn4umb8ttYTK/g7LOTP58U=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "aed881aa96ee685aa3fff03bc99c21345d86a77a",
+        "rev": "cd553c665f5501f0788c5660488aa16f58d45b9f",
         "type": "github"
       },
       "original": {
@@ -548,11 +547,11 @@
     "selfClone": {
       "flake": false,
       "locked": {
-        "lastModified": 1744311054,
-        "narHash": "sha256-24ARpxrVuePWVCbTLjqO1jXg+NzUQ7mXafkon7drfOw=",
-        "ref": "refs/heads/master",
-        "rev": "465add08e74175c11f1aa0657d5797019403a101",
-        "revCount": 667,
+        "lastModified": 1744340336,
+        "narHash": "sha256-TrC1NtX0MexydzgSbR/9NWENFb0duk3bD34B2o+w9mo=",
+        "ref": "refs/heads/main",
+        "rev": "95df8c745f85e928f4c05e5d2b5df2ed0ac464c3",
+        "revCount": 677,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
