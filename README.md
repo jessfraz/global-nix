@@ -30,3 +30,5 @@ To cleanup the world run `nix store gc`
 
 - [NixOS Module Source](https://github.com/NixOS/nixpkgs/tree/master/nixos/modules)
 - [Home Manager Module Source](https://github.com/nix-community/home-manager/tree/master/modules)
+- [nix-darwin Module
+    Source](https://github.com/nix-darwin/nix-darwin/tree/master/modules)
