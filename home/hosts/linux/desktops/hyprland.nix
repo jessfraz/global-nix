@@ -3,11 +3,8 @@
   inputs,
   ...
 }: let
-  wallpapers = pkgs.callPackage ../../../../modules/wallpapers {inherit pkgs;};
 in {
   home.packages = with pkgs; [
-    wallpapers
-
     # toolbar
     waybar
 
@@ -25,28 +22,6 @@ in {
     wl-clipboard
   ];
 
-  home.pointerCursor = {
-    package = pkgs.vanilla-dmz;
-    name = "Vanilla-DMZ";
-    size = 48;
-    gtk.enable = true;
-  };
-
-  qt = {
-    enable = true;
-  };
-
-  gtk = {
-    enable = true;
-    iconTheme = {
-      name = "Pop";
-      package = pkgs.pop-icon-theme;
-    };
-    theme = {
-      name = "Pop";
-      package = pkgs.pop-gtk-theme;
-    };
-  };
 
   # notifications
   services.mako = {
@@ -54,19 +29,6 @@ in {
     extraConfig = ''
       on-button-right=dismiss-all
     '';
-  };
-
-  services.hyprpaper = {
-    enable = true;
-    package = inputs.hyprpaper.packages.${pkgs.system}.hyprpaper;
-    settings = {
-      ipc = "on";
-      splash = false;
-
-      preload = ["${wallpapers}/share/wallpapers/nix-wallpaper-binary-black.png"];
-
-      wallpaper = [",${wallpapers}/share/wallpapers/nix-wallpaper-binary-black.png"];
-    };
   };
 
   services.hypridle = {
@@ -100,7 +62,6 @@ in {
       };
       background = [
         {
-          path = "${wallpapers}/share/wallpapers/nix-wallpaper-binary-black.png";
           blur_passes = 1;
         }
       ];
@@ -117,11 +78,20 @@ in {
   wayland.windowManager.hyprland = {
     enable = true;
     package = pkgs.hyprland;
-    xwayland.enable = true;
+
+    plugins = [
+      inputs.hyprland-plugins.packages.${pkgs.system}.borders-plus-plus
+      inputs.hyprland-plugins.packages.${pkgs.system}.hyprbars
+      inputs.hyprland-plugins.packages.${pkgs.system}.hyprtrails
+    ];
+
+    xwayland = {enable = true;}
+
     systemd = {
       enable = true;
       variables = ["--all"];
     };
+
     settings = {
       "$mod" = "SUPER";
       "debug:disable_logs" = false;
