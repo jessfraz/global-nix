@@ -131,7 +131,6 @@ in {
 
       input = {
         kb_layout = "us";
-        kb_variant = "dvorak";
       };
       cursor = {
         no_hardware_cursors = true;
