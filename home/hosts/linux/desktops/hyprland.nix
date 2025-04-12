@@ -22,7 +22,6 @@ in {
     wl-clipboard
   ];
 
-
   # notifications
   services.mako = {
     enable = true;
@@ -85,7 +84,7 @@ in {
       inputs.hyprland-plugins.packages.${pkgs.system}.hyprtrails
     ];
 
-    xwayland = {enable = true;}
+    xwayland = {enable = true;};
 
     systemd = {
       enable = true;
