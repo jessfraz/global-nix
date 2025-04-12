@@ -67,9 +67,6 @@
       };
       fenixPkgs = fenix.packages.${system};
 
-      # Check if system is Linux-based
-      isLinux = builtins.match ".*-linux" system != null;
-
       # Common packages for all systems
       commonPackages = with pkgs; [
         _1password-cli
@@ -105,7 +102,7 @@
 
       # System-specific packages
       systemSpecificPackages =
-        if isLinux
+        if pkgs.stdenv.isLinux
         then
           # Linux-specific packages
           with pkgs; [
