@@ -175,6 +175,37 @@ in {
             ",XF86AudioRaiseVolume,  exec, ags -r 'audio.speaker.volume += 0.05; indicator.speaker()'"
             ",XF86AudioLowerVolume,  exec, ags -r 'audio.speaker.volume -= 0.05; indicator.speaker()'"
           ];
+
+          plugin = {
+            borders-plus-plus = {
+              add_borders = 1; # 0 - 9
+
+              # you can add up to 9 borders
+              col.border_1 = "rgb ffffff";
+              col.border_2 = "rgb (2222 ff)";
+
+              # -1 means "default" as in the one defined in general:border_size
+              border_size_1 = 10;
+              border_size_2 = -1;
+
+              # makes outer edges match rounding of the parent. Turn on / off to better understand. Default = on.
+              natural_rounding = "yes";
+            };
+
+            hyprbars = {
+              # example config
+              bar_height = 20;
+
+              # example buttons (R -> L)
+              # hyprbars-button = color, size, on-click
+              hyprbars-button = "rgb(ff4040), 10, 󰖭, hyprctl dispatch killactive";
+              hyprbars-button = "rgb(eeee11), 10, , hyprctl dispatch fullscreen 1";
+            };
+
+            hyprtrails = {
+              color = "rgba(ffaa00ff)";
+            };
+          };
         };
       };
     };
