@@ -11,7 +11,7 @@
 
   boot = {
     kernelPackages = pkgs.linuxPackages;
-    initrd.kernelModules = ["nvidia"];
+    #initrd.kernelModules = ["nvidia"];
     kernelParams = ["nvidia-drm.fbdev=1"];
     extraModprobeConfig = ''
       options nvidia_uvm uvm_disable_hmm=1

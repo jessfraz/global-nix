@@ -164,9 +164,6 @@
       default = mkPackages system;
     });
 
-    # Make sure we define a default package per system
-    defaultPackage = forAllSystems (system: self.packages.${system}.default);
-
     # NixOS configurations
     nixosConfigurations = {
       system76 = nixpkgs.lib.nixosSystem {
@@ -185,7 +182,7 @@
               dotfiles.homeManagerModules.default
               dotvim.homeManagerModules.default
               ./home/default.nix
-              ./home/hosts/hyprland.nix
+              ./home/hosts/linux/desktops/hyprland.nix
             ];
           }
         ];
@@ -209,7 +206,7 @@
               dotfiles.homeManagerModules.default
               dotvim.homeManagerModules.default
               ./home/default.nix
-              ./home/hosts/darwin.nix
+              ./home/hosts/darwin/default.nix
             ];
           }
         ];
