@@ -3,7 +3,7 @@
   inputs,
   ...
 }: let
-  wallpapers = pkgs.callPackage ../../wallpapers {inherit pkgs;};
+  wallpapers = pkgs.callPackage ../../modules/wallpapers {inherit pkgs;};
 in {
   home.packages = with pkgs; [
     wallpapers
