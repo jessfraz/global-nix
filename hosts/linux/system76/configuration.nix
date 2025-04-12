@@ -9,7 +9,6 @@
 
     # Desktop configurations.
     ../desktops/minimal-gnome.nix
-    #../desktops/hyprland.nix
   ];
 
   boot = {

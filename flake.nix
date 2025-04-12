@@ -29,21 +29,6 @@
       url = "git+https://github.com/jessfraz/.vim?submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    hyprland = {
-      url = "github:hyprwm/Hyprland";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    hyprland-contrib = {
-      url = "github:hyprwm/contrib";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    hyprland-plugins = {
-      url = "github:hyprwm/hyprland-plugins";
-      inputs.hyprland.follows = "hyprland";
-    };
   };
 
   outputs = {
@@ -54,9 +39,6 @@
     fenix,
     dotfiles,
     dotvim,
-    hyprland,
-    hyprland-contrib,
-    hyprland-plugins,
   } @ inputs: let
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
