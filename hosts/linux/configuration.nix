@@ -87,6 +87,13 @@
     options = "--delete-older-than 1w";
   };
 
+  environment = {
+    systemPackages = with pkgs; [
+      # Auth with 1Password
+      polkit_gnome
+    ];
+  };
+
   programs = {
     _1password-gui = {
       enable = true;
