@@ -147,10 +147,15 @@ in {
         );
 
       bindle = [
+        ",XF86Launch4,   exec, ags -r 'recorder.start()'"
+        ",Print,         exec, ags -r 'recorder.screenshot()'"
+        "SHIFT,Print,    exec, ags -r 'recorder.screenshot(true)'"
         ",XF86MonBrightnessUp,   exec, ags -r 'brightness.screen += 0.05; indicator.display()'"
         ",XF86MonBrightnessDown, exec, ags -r 'brightness.screen -= 0.05; indicator.display()'"
         ",XF86KbdBrightnessUp,   exec, ags -r 'brightness.kbd++; indicator.kbd()'"
         ",XF86KbdBrightnessDown, exec, ags -r 'brightness.kbd--; indicator.kbd()'"
+        ",XF86AudioRaiseVolume,  exec, ags -r 'audio.speaker.volume += 0.05; indicator.speaker()'"
+        ",XF86AudioLowerVolume,  exec, ags -r 'audio.speaker.volume -= 0.05; indicator.speaker()'"
       ];
     };
   };
