@@ -30,12 +30,6 @@ If nix is already installed, you can just do:
 
 To cleanup the world run `nix store gc`
 
-# Helpful Links
-
-- [NixOS Module Source](https://github.com/NixOS/nixpkgs/tree/master/nixos/modules)
-- [Home Manager Module Source](https://github.com/nix-community/home-manager/tree/master/modules)
-- [nix-darwin Module Source](https://github.com/nix-darwin/nix-darwin/tree/master/modules)
-- [Nix lang visual 'splainer](https://zaynetro.com/explainix)
 
 # My personal opinon on how to get started.
 
@@ -47,4 +41,11 @@ The reason I mention this is THERE IS A LOT OF CONTENT ON NIX out there and SO M
 
 - Claude and OpenAI are decent at Nix files. But you have to know what to ask for or else they will fuck it all up. It's almost better to be like "deep research X nix specific thing and tell me your findings". This will eliminate the overhead (all us nerds do) of learning something new and going super deep on blogs.
 
-- Use the links above to the module sources. I found this the best way to get the current options for specific modules.
+- Use the links below to the module sources. I found this the best way to get the current options for specific modules.
+
+## Helpful Links
+
+- [NixOS Module Source](https://github.com/NixOS/nixpkgs/tree/master/nixos/modules)
+- [Home Manager Module Source](https://github.com/nix-community/home-manager/tree/master/modules)
+- [nix-darwin Module Source](https://github.com/nix-darwin/nix-darwin/tree/master/modules)
+- [Nix lang visual 'splainer](https://zaynetro.com/explainix)
