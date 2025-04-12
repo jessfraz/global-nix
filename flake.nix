@@ -187,7 +187,7 @@
               dotfiles.homeManagerModules.default
               dotvim.homeManagerModules.default
               ./home/default.nix
-              ./home/hosts/linux/desktops/hyprland.nix
+              ./home/hosts/linux/default.nix
             ];
           }
         ];
