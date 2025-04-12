@@ -8,13 +8,6 @@ in {
     # toolbar
     waybar
 
-    # some desktop libs & utils
-    wlr-randr
-    qt6.qtwayland
-    libsForQt5.qt5.qtwayland
-    gtk3
-    gtk4
-
     #wayland screenshots
     inputs.hyprland-contrib.packages.${pkgs.system}.grimblast
 
@@ -76,7 +69,7 @@ in {
 
   wayland.windowManager.hyprland = {
     enable = true;
-    package = pkgs.hyprland;
+    package = inputs.hyprland-plugins.packages.${pkgs.system}.hyprland;
 
     plugins = [
       inputs.hyprland-plugins.packages.${pkgs.system}.borders-plus-plus
@@ -84,7 +77,9 @@ in {
       inputs.hyprland-plugins.packages.${pkgs.system}.hyprtrails
     ];
 
-    xwayland = {enable = true;};
+    xwayland = {
+      enable = true;
+    };
 
     systemd = {
       enable = true;
@@ -96,33 +91,37 @@ in {
       "debug:disable_logs" = false;
       "general:gaps_out" = 5;
       #"decoration:inactive_opacity" = 0.8;
-      xwayland.force_zero_scaling = true;
+      xwayland = {
+        force_zero_scaling = true;
+      };
 
       input = {
         kb_layout = "us";
         natural_scroll = true;
       };
+
       cursor = {
         no_hardware_cursors = true;
       };
+
       env = [
         "GBM_BACKEND,nvidia-drm"
         #"AQ_DRM_DEVICES,/dev/dri/by-path/pci-0000:01:00.0-card"
       ];
+
       exec-once = [
         "${pkgs.mako}/bin/mako"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
         "${pkgs.waybar}/bin/waybar"
       ];
+
       layerrule = [];
+
       bind =
         [
           "$mod, C, sendshortcut, CTRL, C, class:(google-chrome)"
           "$mod, V, sendshortcut, CTRL, V, class:(google-chrome)"
           "$mod, X, sendshortcut, CTRL, X, class:(google-chrome)"
-          "$mod, C, sendshortcut, CTRL_SHIFT, C, class:(Alacritty)"
-          "$mod, V, sendshortcut, CTRL_SHIFT, V, class:(Alacritty)"
-          "$mod, X, sendshortcut, CTRL_SHIFT, X, class:(Alacritty)"
           "$mod, G, exec, ${pkgs.google-chrome}/bin/google-chrome-stable"
           "$mod, Return, exec, gtk-launch com.mitchellh.ghostty.desktop"
           "$mod, Left, movewindow, l"
@@ -146,6 +145,13 @@ in {
             )
             10)
         );
+
+      bindle = [
+        ",XF86MonBrightnessUp,   exec, ags -r 'brightness.screen += 0.05; indicator.display()'"
+        ",XF86MonBrightnessDown, exec, ags -r 'brightness.screen -= 0.05; indicator.display()'"
+        ",XF86KbdBrightnessUp,   exec, ags -r 'brightness.kbd++; indicator.kbd()'"
+        ",XF86KbdBrightnessDown, exec, ags -r 'brightness.kbd--; indicator.kbd()'"
+      ];
     };
   };
 }

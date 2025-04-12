@@ -89,11 +89,11 @@
         "unstable": "unstable_2"
       },
       "locked": {
-        "lastModified": 1744428729,
-        "narHash": "sha256-0WW99yy+PWUDwO56aTmKy8l+Yey/QJQGEj+uBw+OYzw=",
+        "lastModified": 1744429046,
+        "narHash": "sha256-9n9z4gbwDvCuKyYhpzoEGZRU7xPreLc/ZcZ534fSGf8=",
         "ref": "refs/heads/main",
-        "rev": "20a6762a3b3371b6a6fb4557d5d6abd5978cc6f8",
-        "revCount": 693,
+        "rev": "57b77904fe73f6af391422e8fab87d4159b39958",
+        "revCount": 694,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
