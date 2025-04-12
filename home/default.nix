@@ -10,7 +10,7 @@
     else "/Users/jessfraz";
   ghosttyPkg =
     if pkgs.stdenv.isLinux
-    then pkgs.ghostty
+    then inputs.ghostty.packages.${pkgs.stdenv.system}.default;
     else null; # We install on our own on macOS
 in {
   imports = [

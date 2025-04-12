@@ -20,6 +20,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    ghostty = {
+      url = "github:ghostty-org/ghostty";
+    };
+
     dotfiles = {
       url = "github:jessfraz/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -37,6 +41,7 @@
     home-manager,
     nix-darwin,
     fenix,
+    ghostty,
     dotfiles,
     dotvim,
   } @ inputs: let
