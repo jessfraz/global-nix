@@ -1,9 +1,9 @@
 {pkgs, ...}: {
   imports = [
-    ./desktops/hyprland.nix
+    #./desktops/hyprland.nix
   ];
 
   home.packages = with pkgs; [
-    egl-wayland
+    #egl-wayland
   ];
 }

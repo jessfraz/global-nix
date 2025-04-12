@@ -6,7 +6,10 @@
   imports = [
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
-    ../desktops/hyprland.nix
+
+    # Desktop configurations.
+    ../desktops/minimal-gnome.nix
+    #../desktops/hyprland.nix
   ];
 
   boot = {
