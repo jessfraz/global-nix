@@ -1,4 +1,4 @@
-{...}: {
+{okgs, ...}: {
   imports = [
     ./desktops/hyprland.nix
   ];
