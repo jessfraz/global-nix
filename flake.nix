@@ -2,44 +2,47 @@
   description = "Desktop and laptop configuration for NixOS and macOS";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs";
-    unstable.url = "nixpkgs/nixos-unstable";
+    nixpkgs.url = "nixpkgs/nixos-unstable";
 
     home-manager = {
       url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     nix-darwin = {
       url = "github:LnL7/nix-darwin";
-      inputs.nixpkgs.follows = "unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     # rust, see https://github.com/nix-community/fenix#usage
     fenix = {
       url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     ghostty = {
       url = "github:ghostty-org/ghostty";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     dotfiles = {
       url = "github:jessfraz/dotfiles";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     dotvim = {
       url = "git+https://github.com/jessfraz/.vim?submodules=1";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     hyprland = {
       url = "github:hyprwm/Hyprland";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     hyprland-contrib = {
       url = "github:hyprwm/contrib";
-      inputs.nixpkgs.follows = "unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     hyprland-plugins = {
@@ -51,7 +54,6 @@
   outputs = {
     self,
     nixpkgs,
-    unstable,
     home-manager,
     nix-darwin,
     fenix,
@@ -80,14 +82,6 @@
         inherit system;
         config = {
           allowUnfree = true;
-          allowUnfreePredicate = _: true;
-        };
-      };
-      unstablePkgs = import unstable {
-        inherit system;
-        config = {
-          allowUnfree = true;
-          allowUnfreePredicate = _: true;
         };
       };
       fenixPkgs = fenix.packages.${system};
@@ -105,7 +99,7 @@
         _1password-cli
         bash
         bash-completion
-        unstablePkgs.claude-code
+        claude-code
         coreutils
         curl
         (fenixPkgs.stable.withComponents [
