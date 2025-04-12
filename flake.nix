@@ -20,11 +20,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    ghostty = {
-      url = "github:ghostty-org/ghostty";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     dotfiles = {
       url = "github:jessfraz/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -57,7 +52,6 @@
     home-manager,
     nix-darwin,
     fenix,
-    ghostty,
     dotfiles,
     dotvim,
     hyprland,
@@ -86,13 +80,8 @@
       };
       fenixPkgs = fenix.packages.${system};
 
-      # Check if system is Linux-based for ghostty
+      # Check if system is Linux-based
       isLinux = builtins.match ".*-linux" system != null;
-      # Only include ghostty on Linux systems
-      ghosttyPkgs =
-        if isLinux
-        then ghostty.packages.${system}
-        else null;
 
       # Common packages for all systems
       commonPackages = with pkgs; [
@@ -134,13 +123,6 @@
           # Linux-specific packages
           with pkgs; [
             _1password-gui
-            # Add Linux-specific packages here
-            # For example, if ghostty is only for Linux:
-            (
-              if ghosttyPkgs != null
-              then ghosttyPkgs.default
-              else null
-            )
             google-chrome
             pinentry-tty
             tailscale
@@ -166,7 +148,6 @@
     # NixOS configurations
     nixosConfigurations = {
       system76 = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux"; # or aarch64-linux if you're on ARM
         specialArgs = {inherit inputs;};
         modules = [
           ./hosts/base/configuration.nix
@@ -191,7 +172,6 @@
     # macOS configurations
     darwinConfigurations = {
       macinator = nix-darwin.lib.darwinSystem {
-        system = "aarch64-darwin";
         specialArgs = {inherit inputs;};
         modules = [
           ./hosts/base/configuration.nix

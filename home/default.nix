@@ -8,6 +8,10 @@
     if pkgs.stdenv.isLinux
     then "/home/jessfraz"
     else "/Users/jessfraz";
+  ghosttyPkg =
+    if pkgs.stdenv.isLinux
+    then pkgs.ghostty
+    else null; # We install on our own on macOS
 in {
   imports = [
     ./programs/bash.nix
@@ -44,17 +48,23 @@ in {
       enable = true;
       addKeysToAgent = "yes";
     };
-  };
 
-  xdg = {
-    configFile."ghostty/config".text = ''
-      command = "/etc/profiles/per-user/jessfraz/bin/bash"
-      font-family = "Hack Nerd Font Mono"
-      theme = "Ayu Mirage"
-      macos-titlebar-style = tabs
-      background-opacity = 0.9
-      background-blur-radius = 20
-    '';
+    ghostty = {
+      enable = true;
+
+      package = ghosttyPkg;
+
+      settings = {
+        command = "/etc/profiles/per-user/jessfraz/bin/bash";
+        font-family = "Hack Nerd Font Mono";
+        theme = "Ayu Mirage";
+        macos-titlebar-style = "tabs";
+        background-opacity = 0.9;
+        background-blur-radius = 20;
+      };
+
+      enableBashIntegration = true;
+    };
   };
 
   fonts.fontconfig.enable = true;
