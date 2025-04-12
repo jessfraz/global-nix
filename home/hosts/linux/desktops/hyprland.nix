@@ -15,31 +15,33 @@ in {
     wl-clipboard
   ];
 
-  # notifications
-  services.mako = {
-    enable = true;
-    extraConfig = ''
-      on-button-right=dismiss-all
-    '';
-  };
+  services = {
+    # notifications
+    mako = {
+      enable = true;
+      extraConfig = ''
+        on-button-right=dismiss-all
+      '';
+    };
 
-  services.hypridle = {
-    enable = true;
-    settings = {
-      general = {
-        lock_cmd = "pidof hyprlock || ${pkgs.hyprlock}/bin/hyprlock";
+    hypridle = {
+      enable = true;
+      settings = {
+        general = {
+          lock_cmd = "pidof hyprlock || ${pkgs.hyprlock}/bin/hyprlock";
+        };
+        listener = [
+          {
+            timeout = 5 * 60;
+            on-timeout = "loginctl lock-session";
+          }
+          {
+            timeout = 6 * 60;
+            on-timeout = "hyprctl dispatch dpms off";
+            on-resume = "hyprctl dispatch dpms on";
+          }
+        ];
       };
-      listener = [
-        {
-          timeout = 5 * 60;
-          on-timeout = "loginctl lock-session";
-        }
-        {
-          timeout = 6 * 60;
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
-        }
-      ];
     };
   };
 
@@ -64,6 +66,19 @@ in {
           size = "300, 50";
         }
       ];
+    };
+  };
+
+  # To be able to use gtk-launch.
+  gtk = {
+    enable = true;
+    iconTheme = {
+      name = "Pop";
+      package = pkgs.pop-icon-theme;
+    };
+    theme = {
+      name = "Pop";
+      package = pkgs.pop-gtk-theme;
     };
   };
 
