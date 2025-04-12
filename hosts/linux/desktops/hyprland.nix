@@ -15,8 +15,12 @@
   };
 
   environment = {
-    # Enable Ozone Wayland support in Chromium and Electron apps.
-    sessionVariables.NIXOS_OZONE_WL = "1";
+    sessionVariables = {
+      # Enable Ozone Wayland support in Chromium and Electron apps.
+      NIXOS_OZONE_WL = "1";
+      EGL_PLATFORM = "wayland";
+    };
+
     systemPackages = [
       pkgs.kitty # required for the default Hyprland config
     ];
