@@ -141,7 +141,7 @@ in {
               "$mod, X, sendshortcut, CTRL, X, class:(google-chrome)"
               "$mod, G, exec, ${pkgs.google-chrome}/bin/google-chrome-stable"
               "$mod, K, exec, ${pkgs.kitty}/bin/kitty"
-              "$mod, Return, exec, gtk-launch com.mitchellh.ghostty.desktop"
+              "$mod, Return, exec, gtk-launch ${pkgs.ghostty}/bin/ghostty"
               "$mod, Left, movewindow, l"
               "$mod, Right, movewindow, r"
               "$mod SHIFT, Apostrophe, killactive,"
