@@ -149,6 +149,7 @@
     nixosConfigurations = {
       system76 = nixpkgs.lib.nixosSystem {
         specialArgs = {inherit inputs;};
+        system = "x86_64-linux"; # or aarch64-linux if you're on ARM
         modules = [
           ./hosts/base/configuration.nix
           ./hosts/linux/configuration.nix
@@ -173,6 +174,7 @@
     darwinConfigurations = {
       macinator = nix-darwin.lib.darwinSystem {
         specialArgs = {inherit inputs;};
+        system = "aarch64-darwin";
         modules = [
           ./hosts/base/configuration.nix
           ./hosts/darwin/configuration.nix
