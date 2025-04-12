@@ -6,6 +6,8 @@ These are just mine. They are imperfect in so many ways, but they work. I tried 
 
 # Installation
 
+> **NOTE:** Don't actually install these configs on your machine. My username is hard coded places!!
+
 Refer to the instructions in [github.com/DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer). Do the vanilla install on MacOS so that we can use the `darwin-rebuild` command.
 
 ## MacOS
