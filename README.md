@@ -2,7 +2,9 @@
 
 Global nix configuration for my desktop and laptops.
 
-These are just mine. They are imperfect in so many ways, but they work. I tried not to use a lot of plugins and just the raw Nix language. I like flakes. I get some people don't but I do :) sue me.
+These are just mine. They are imperfect in so many ways, but they work. I tried not to use a lot of plugins and just the raw Nix language. But then I received [a complete refactor PR 😯](https://github.com/jessfraz/global-nix/pull/2) that implements the ["every Nix file is a flake-part module" pattern](https://discourse.nixos.org/t/pattern-every-file-is-a-flake-parts-module/61271?u=mightyiam).
+
+Also, I like flakes. I get some people don't but I do :) sue me.
 
 # Installation
 
@@ -25,11 +27,9 @@ If nix is already installed, you can just do:
 
 `nixos-rebuild switch --flake .#system76`
 
-
 ## Shared
 
 To cleanup the world run `nix store gc`
-
 
 # My personal opinon on how to get started.
 

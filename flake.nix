@@ -9,19 +9,40 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    make-shell = {
+      url = "github:nicknovitski/make-shell";
+      inputs.flake-compat.follows = "flake-compat";
+    };
+
     nix-darwin = {
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # rust, see https://github.com/nix-community/fenix#usage
+    # rust, see https://github.com/nix-community/fenix
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    flake-compat.url = "https://flakehub.com/f/edolstra/flake-compat/1.tar.gz";
+
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
+
     ghostty = {
       url = "github:ghostty-org/ghostty";
+      inputs.flake-compat.follows = "flake-compat";
+    };
+
+    git-hooks = {
+      url = "github:cachix/git-hooks.nix";
+      inputs = {
+        flake-compat.follows = "flake-compat";
+        nixpkgs.follows = "nixpkgs";
+      };
     };
 
     dotfiles = {
@@ -33,149 +54,39 @@
       url = "git+https://github.com/jessfraz/.vim?submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    home-manager,
-    nix-darwin,
-    fenix,
-    ghostty,
-    dotfiles,
-    dotvim,
-  } @ inputs: let
-    # Define the systems we want to support
-    supportedSystems = ["aarch64-darwin" "x86_64-linux"];
-
-    # Helper function to generate attributes for each system
-    forAllSystems = f:
-      builtins.listToAttrs (map (system: {
-          name = system;
-          value = f system;
-        })
-        supportedSystems);
-
-    # Create packages for each system
-    mkPackages = system: let
-      # Apply allowUnfree to all package sets
-      pkgs = import nixpkgs {
-        inherit system;
-        config = {
-          allowUnfree = true;
-        };
-      };
-      fenixPkgs = fenix.packages.${system};
-
-      # Common packages for all systems
-      commonPackages = with pkgs; [
-        _1password-cli
-        bash
-        bash-completion
-        claude-code
-        coreutils
-        curl
-        (fenixPkgs.stable.withComponents [
-          "cargo"
-          "clippy"
-          "rust-src"
-          "rustc"
-          "rustfmt"
-        ])
-        findutils
-        git
-        git-lfs
-        gnumake
-        gnupg
-        gnused
-        jq
-        just
-        nodejs
-        pinentry-tty
-        silver-searcher
-        starship
-        tree
-        uv
-        watch
-        yarn
-      ];
-
-      # System-specific packages
-      systemSpecificPackages =
-        if pkgs.stdenv.isLinux
-        then
-          # Linux-specific packages
-          with pkgs; [
-            _1password-gui
-            google-chrome
-            pinentry-tty
-            tailscale
-            xclip
-          ]
-        else
-          # macOS-specific packages
-          with pkgs; [
-            # Add macOS-specific packages here
-            pinentry_mac
-          ];
+  outputs =
+    inputs:
+    let
+      lib = inputs.nixpkgs.lib;
+      modulesPath = ./modules;
     in
-      pkgs.buildEnv {
-        name = "home-packages";
-        paths = commonPackages ++ (builtins.filter (p: p != null) systemSpecificPackages);
+    inputs.flake-parts.lib.mkFlake
+      {
+        inherit inputs;
+        specialArgs = {
+          lib = lib // {
+            inherit (inputs.nixvim.lib) nixvim;
+          };
+        };
+      }
+      {
+        imports =
+          modulesPath
+          |> lib.filesystem.listFilesRecursive
+          |> lib.filter (lib.hasSuffix ".nix")
+          |> lib.filter (
+            path:
+            path
+            |> lib.path.removePrefix modulesPath
+            |> lib.path.subpath.components
+            |> lib.all (component: !(lib.hasPrefix "_" component))
+          );
       };
-  in {
-    # Generate packages for all supported systems
-    packages = forAllSystems (system: {
-      default = mkPackages system;
-    });
-
-    # NixOS configurations
-    nixosConfigurations = {
-      system76 = nixpkgs.lib.nixosSystem {
-        specialArgs = {inherit inputs;};
-        system = "x86_64-linux"; # or aarch64-linux if you're on ARM
-        modules = [
-          ./hosts/base/configuration.nix
-          ./hosts/linux/configuration.nix
-          ./hosts/linux/system76/configuration.nix
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.extraSpecialArgs = {inherit inputs;};
-            home-manager.users.jessfraz.imports = [
-              dotfiles.homeManagerModules.default
-              dotvim.homeManagerModules.default
-              ./home/default.nix
-              ./home/hosts/linux/default.nix
-            ];
-          }
-        ];
-      };
-    };
-
-    # macOS configurations
-    darwinConfigurations = {
-      macinator = nix-darwin.lib.darwinSystem {
-        specialArgs = {inherit inputs;};
-        system = "aarch64-darwin";
-        modules = [
-          ./hosts/base/configuration.nix
-          ./hosts/darwin/configuration.nix
-          home-manager.darwinModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.extraSpecialArgs = {inherit inputs;};
-            home-manager.users.jessfraz.imports = [
-              dotfiles.homeManagerModules.default
-              dotvim.homeManagerModules.default
-              ./home/default.nix
-              ./home/hosts/darwin/default.nix
-            ];
-          }
-        ];
-      };
-    };
-  };
 }
