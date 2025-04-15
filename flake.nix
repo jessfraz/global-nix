@@ -1,6 +1,11 @@
 {
   description = "Desktop and laptop configuration for NixOS and macOS";
 
+  nixConfig = {
+    abort-on-warn = true;
+    allow-import-from-derivation = false;
+  };
+
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
 
