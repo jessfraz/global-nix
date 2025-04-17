@@ -78,8 +78,8 @@ in {
           export STRIPE_API_KEY=$(op --account kittycadinc.1password.com item get "stripe prod zoo" --fields credential --reveal)
       }
 
-      function fetch-hoops-key() {
-          export HOOPS_KEY=$(op --account kittycadinc.1password.com item get "Hoops Licence" --fields "new license key" --reveal)
+      function fetch-hoops-license() {
+          export HOOPS_LICENSE=$(op --account kittycadinc.1password.com item get "Hoops Licence" --fields "new license key" --reveal)
       }
 
       function fetch-cockroach-license() {
