@@ -82,6 +82,10 @@ in {
           export HOOPS_LICENSE=$(op --account kittycadinc.1password.com item get "Hoops Licence" --fields "new license key" --reveal)
       }
 
+      function fetch-kio-license() {
+          export KERNEL_IO_LICENSE=$(op --account kittycadinc.1password.com item get "3D_KERNEL_IO_LICENSE" --fields "license key" --reveal)
+      }
+
       function fetch-cockroach-license() {
           export COCKROACHDB_ENTERPRISE_LICENSE=$(op --account kittycadinc.1password.com item get "CockroachDB Dev License" --fields "license key" --reveal)
           mkdir -p "${config.home.homeDirectory}/.cockroach"
