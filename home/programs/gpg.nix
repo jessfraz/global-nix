@@ -55,7 +55,9 @@ in {
   services.gpg-agent = {
     enable = true;
     enableSshSupport = true;
-    pinentryPackage = pinentryPkg;
+    pinentry = {
+      package = pinentryPkg;
+    };
 
     defaultCacheTtl = 60;
     maxCacheTtl = 120;
