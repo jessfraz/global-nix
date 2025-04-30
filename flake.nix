@@ -33,6 +33,11 @@
       url = "git+https://github.com/jessfraz/.vim?submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    zoo-cli = {
+      url = "github:kittycad/cli";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -44,6 +49,7 @@
     ghostty,
     dotfiles,
     dotvim,
+    zoo-cli,
   } @ inputs: let
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
@@ -66,6 +72,7 @@
         };
       };
       fenixPkgs = fenix.packages.${system};
+      zooCli = zoo-cli.packages.${pkgs.system}.zoo;
 
       # Common packages for all systems
       commonPackages = with pkgs; [
@@ -98,6 +105,7 @@
         uv
         watch
         yarn
+        zooCli
       ];
 
       # System-specific packages
