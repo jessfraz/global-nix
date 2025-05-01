@@ -59,11 +59,11 @@
         "selfClone": "selfClone"
       },
       "locked": {
-        "lastModified": 1746122698,
-        "narHash": "sha256-ilFF63sW6vtu+6KiQH8M1Z57efqONcKyEkFKa1YGS4A=",
+        "lastModified": 1746138820,
+        "narHash": "sha256-1fRdpaD3TjPXbA2ojH/g4GQohLQZNQqf9Z0Ucq5gNyQ=",
         "ref": "refs/heads/main",
-        "rev": "22a42d4746abeedeadb169107f7e97095954ccb4",
-        "revCount": 727,
+        "rev": "7068a11238c0200f210e52888b23871e7d8490a2",
+        "revCount": 728,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
@@ -262,11 +262,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1746040799,
-        "narHash": "sha256-osgPX/SzIpkR50vev/rqoTEAVkEcOWXoQXmbzsaI4KU=",
+        "lastModified": 1746134275,
+        "narHash": "sha256-sxfY7TIP59o2hcueanoRAtg833PiNroZkQDwlKJxGvs=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "5f217e5a319f6c186283b530f8c975e66c028433",
+        "rev": "015f1913109d44c36e683b55f0e47e283b383caa",
         "type": "github"
       },
       "original": {
@@ -696,11 +696,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1746067723,
-        "narHash": "sha256-LfHPe32skU9AcjRevxy4ZhJALYoP/mzopAaIFDW/qGY=",
+        "lastModified": 1746124317,
+        "narHash": "sha256-J5c4yikcEbkDJOOdkDKf8DH6QMxlm3NsW1yqcMoroIE=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "a1d909022363e0b1b94b086e49754a6977d7c904",
+        "rev": "3a4abe2e78ff90e3c9ca50dc0ce058ec11b57522",
         "type": "github"
       },
       "original": {
