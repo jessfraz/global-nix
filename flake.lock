@@ -59,11 +59,11 @@
         "selfClone": "selfClone"
       },
       "locked": {
-        "lastModified": 1746116675,
-        "narHash": "sha256-7TXkzgCthZt/nNu2aph02tplJeG96h2Rzo2dwil0kV8=",
+        "lastModified": 1746117315,
+        "narHash": "sha256-76nP8BrurX5y4WlIjO0np3LlxXfAYecZpA6p/387bys=",
         "ref": "refs/heads/main",
-        "rev": "ea28335604ab2c1b9f506f059bf83f9d02acd501",
-        "revCount": 723,
+        "rev": "79612e08cd6f66385181d2ca53c8158a997dc7ed",
+        "revCount": 724,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
