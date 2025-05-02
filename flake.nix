@@ -30,7 +30,7 @@
     };
 
     dotvim = {
-      url = "git+https://github.com/jessfraz/.vim?submodules=1";
+      url = "git+https://github.com/jessfraz/.vim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
