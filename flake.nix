@@ -82,7 +82,7 @@
         claude-code
         coreutils
         curl
-        (fenixPkgs.stable.withComponents [
+        (fenixPkgs.complete.withComponents [
           "cargo"
           "clippy"
           "rust-src"
