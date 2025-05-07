@@ -58,11 +58,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1746639156,
-        "narHash": "sha256-a60jejUCVygWpH1D9+OytkHhfT4FodFLz5Sh+ok8B7I=",
+        "lastModified": 1746639476,
+        "narHash": "sha256-PHaO/n/cXRGnaDcxaByrc14CArCydB3uPnFQhFkHvWE=",
         "ref": "refs/heads/main",
-        "rev": "e8b4646261b46dd7ce99ddb50971d542b62b4702",
-        "revCount": 760,
+        "rev": "b135c0f77754fa85ee87c525728bbbcdc841c909",
+        "revCount": 761,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
