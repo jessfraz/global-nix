@@ -58,11 +58,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1746634234,
-        "narHash": "sha256-DlUCn15nqvB2R7MdSt/Vvfep7lsqRPlBSJxeezg7/C0=",
+        "lastModified": 1746639156,
+        "narHash": "sha256-a60jejUCVygWpH1D9+OytkHhfT4FodFLz5Sh+ok8B7I=",
         "ref": "refs/heads/main",
-        "rev": "282e0cb75c00700c1e95f4b278b3ac7403e341e8",
-        "revCount": 759,
+        "rev": "e8b4646261b46dd7ce99ddb50971d542b62b4702",
+        "revCount": 760,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
@@ -273,11 +273,11 @@
         "zon2nix": "zon2nix"
       },
       "locked": {
-        "lastModified": 1746630531,
-        "narHash": "sha256-qfRId7uRVN5VrNB+cvsOsLIdgBGkUKx2u1yT3iOVdqU=",
+        "lastModified": 1746636644,
+        "narHash": "sha256-zYbdq7E9pB9itoTZixi1lo2bqCymVovAjQjDA5WPcmQ=",
         "owner": "ghostty-org",
         "repo": "ghostty",
-        "rev": "f6bb1f5e342c9c44051679ed8967f403a43df3e7",
+        "rev": "c36314ca9842ba5471b9effcd5d383f5397eb5bd",
         "type": "github"
       },
       "original": {
