@@ -66,6 +66,10 @@ in {
           export ANTHROPIC_API_KEY=$(op --account my.1password.com item get "claude.ai" --fields apikey --reveal)
       }
 
+      function fetch-google-ai-key() {
+          export GOOGLE_API_KEY=$(op --account my.1password.com item get "Google AI Studio" --fields credential --reveal)
+      }
+
       function fetch-kc-token() {
           export KITTYCAD_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Token" --fields credential --reveal)
           export KITTYCAD_API_TOKEN=$KITTYCAD_TOKEN
