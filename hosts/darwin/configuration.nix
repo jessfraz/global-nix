@@ -108,6 +108,15 @@
       NetBIOSName = hostname;
       ServerDescription = hostname;
     };
+
+    CustomSystemPreferences = {
+      "com.apple.AdLib" = {
+        allowApplePersonalizedAdvertising = false;
+        allowIdentifierForAdvertising = false;
+        forceLimitAdTracking = true;
+        personalizedAdsMigrated = false;
+      };
+    };
   };
 
   # Used for backwards compatibility, please read the changelog before changing.
