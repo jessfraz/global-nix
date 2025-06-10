@@ -32,6 +32,7 @@ in {
   };
 
   # MacOS system preferences.
+  system.primaryUser = "jessfraz";
   system.defaults = {
     NSGlobalDomain = {
       # Whether to always show hidden files.
