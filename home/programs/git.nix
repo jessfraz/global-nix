@@ -1,11 +1,17 @@
-{githubUsername, ...}: {
+{
+  githubUsername,
+  gitName,
+  gitGpgKey,
+  gitEmail,
+  ...
+}: {
   programs.git = {
     enable = true;
 
-    userName = "Jess Frazelle";
-    userEmail = "github@jessfraz.com";
+    userName = gitName;
+    userEmail = gitEmail;
     signing = {
-      key = "18F3685C0022BFF3";
+      key = gitGpgKey;
       signByDefault = true;
     };
 

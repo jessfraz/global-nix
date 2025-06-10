@@ -54,6 +54,9 @@
     # Global variables
     username = "jessfraz";
     githubUsername = username; # This is the case for me but might not be for everyone.
+    gitGpgKey = "18F3685C0022BFF3";
+    gitName = "Jessie Frazelle";
+    gitEmail = "github@jessfraz.com";
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
@@ -144,7 +147,7 @@
     nixosConfigurations = {
       system76 = nixpkgs.lib.nixosSystem {
         specialArgs = {
-          inherit inputs username githubUsername;
+          inherit inputs username githubUsername gitGpgKey gitName gitEmail;
           homeDir = "/home/${username}";
           hostname = "system76";
         };
@@ -158,7 +161,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit inputs username githubUsername;
+              inherit inputs username githubUsername gitGpgKey gitName gitEmail;
               homeDir = "/home/${username}";
               hostname = "system76";
             };
@@ -177,7 +180,7 @@
     darwinConfigurations = {
       macinator = nix-darwin.lib.darwinSystem {
         specialArgs = {
-          inherit inputs username githubUsername;
+          inherit inputs username githubUsername gitGpgKey gitName gitEmail;
           homeDir = "/Users/${username}";
           hostname = "macinator";
         };
@@ -190,7 +193,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit inputs username githubUsername;
+              inherit inputs username githubUsername gitGpgKey gitName gitEmail;
               homeDir = "/Users/${username}";
               hostname = "macinator";
             };
