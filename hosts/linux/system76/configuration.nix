@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  hostname,
   ...
 }: {
   imports = [
@@ -23,7 +24,7 @@
   };
 
   networking = {
-    hostName = "system76";
+    hostName = hostname;
   };
 
   # Load nvidia driver for Xorg and Wayland

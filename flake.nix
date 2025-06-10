@@ -146,6 +146,7 @@
         specialArgs = {
           inherit inputs username githubUsername;
           homeDir = "/home/${username}";
+          hostname = "system76";
         };
         system = "x86_64-linux"; # or aarch64-linux if you're on ARM
         modules = [
@@ -159,6 +160,7 @@
             home-manager.extraSpecialArgs = {
               inherit inputs username githubUsername;
               homeDir = "/home/${username}";
+              hostname = "system76";
             };
             home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
@@ -177,6 +179,7 @@
         specialArgs = {
           inherit inputs username githubUsername;
           homeDir = "/Users/${username}";
+          hostname = "macinator";
         };
         system = "aarch64-darwin";
         modules = [
@@ -189,6 +192,7 @@
             home-manager.extraSpecialArgs = {
               inherit inputs username githubUsername;
               homeDir = "/Users/${username}";
+              hostname = "macinator";
             };
             home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default

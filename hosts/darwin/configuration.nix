@@ -1,6 +1,8 @@
-{username, ...}: let
-  hostname = "macinator";
-in {
+{
+  username,
+  hostname,
+  ...
+}: {
   nix.gc = {
     automatic = true;
     interval = {
