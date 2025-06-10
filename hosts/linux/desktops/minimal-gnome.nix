@@ -3,23 +3,25 @@
   pkgs,
   ...
 }: {
-  # Enable the X11 windowing system.
   services = {
+    # Enable the GNOME Desktop Environment.
+    desktopManager = {
+      gnome = {
+        enable = true;
+      };
+    };
+    displayManager = {
+      gdm = {
+        enable = true;
+      };
+    };
+    # Enable the X11 windowing system.
     xserver = {
       enable = true;
 
       videoDrivers = ["nvidia"];
 
-      # Enable the GNOME Desktop Environment.
-      displayManager = {
-        gdm = {
-          enable = true;
-        };
-      };
       desktopManager = {
-        gnome = {
-          enable = true;
-        };
         xterm = {
           enable = false;
         };

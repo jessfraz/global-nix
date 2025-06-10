@@ -178,6 +178,7 @@
 
     # macOS configurations
     darwinConfigurations = {
+      # M4 Max MacBook Pro
       macinator = nix-darwin.lib.darwinSystem {
         specialArgs = {
           inherit inputs username githubUsername gitGpgKey gitName gitEmail;
@@ -206,6 +207,39 @@
           }
         ];
       };
+
+      # M1 Mac Mini
+      macmini = let
+        username = "minitron";
+      in
+        nix-darwin.lib.darwinSystem {
+          specialArgs = {
+            inherit inputs username githubUsername gitGpgKey gitName gitEmail;
+            homeDir = "/Users/${username}";
+            hostname = "macmini";
+          };
+          system = "aarch64-darwin";
+          modules = [
+            ./hosts/base/configuration.nix
+            ./hosts/darwin/configuration.nix
+            home-manager.darwinModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.extraSpecialArgs = {
+                inherit inputs username githubUsername gitGpgKey gitName gitEmail;
+                homeDir = "/Users/${username}";
+                hostname = "macmini";
+              };
+              home-manager.users.${username}.imports = [
+                dotfiles.homeManagerModules.default
+                dotvim.homeManagerModules.default
+                ./home/default.nix
+                ./home/hosts/darwin/default.nix
+              ];
+            }
+          ];
+        };
     };
   };
 }
