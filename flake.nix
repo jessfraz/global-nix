@@ -53,6 +53,7 @@
   } @ inputs: let
     # Global variables
     username = "jessfraz";
+    githubUsername = username; # This is the case for me but might not be for everyone.
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
@@ -143,7 +144,7 @@
     nixosConfigurations = {
       system76 = nixpkgs.lib.nixosSystem {
         specialArgs = {
-          inherit inputs username;
+          inherit inputs username githubUsername;
           homeDir = "/home/${username}";
         };
         system = "x86_64-linux"; # or aarch64-linux if you're on ARM
@@ -156,7 +157,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit inputs username;
+              inherit inputs username githubUsername;
               homeDir = "/home/${username}";
             };
             home-manager.users.${username}.imports = [
@@ -174,7 +175,7 @@
     darwinConfigurations = {
       macinator = nix-darwin.lib.darwinSystem {
         specialArgs = {
-          inherit inputs username;
+          inherit inputs username githubUsername;
           homeDir = "/Users/${username}";
         };
         system = "aarch64-darwin";
@@ -186,7 +187,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit inputs username;
+              inherit inputs username githubUsername;
               homeDir = "/Users/${username}";
             };
             home-manager.users.${username}.imports = [

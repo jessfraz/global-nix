@@ -1,12 +1,16 @@
-{config, ...}: let
+{
+  config,
+  githubUsername,
+  ...
+}: let
   netRcContents = ''
     cat <<-EOF > ~/.netrc
     machine github.com
-    login jessfraz
+    login ${githubUsername}
     password $GITHUB_TOKEN
 
     machine api.github.com
-    login jessfraz
+    login ${githubUsername}
     password $GITHUB_TOKEN
     EOF
   '';

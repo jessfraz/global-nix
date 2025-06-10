@@ -1,4 +1,4 @@
-{
+{githubUsername, ...}: {
   programs.git = {
     enable = true;
 
@@ -10,7 +10,7 @@
     };
 
     extraConfig = {
-      github.user = "jessfraz";
+      github.user = githubUsername;
       init.defaultBranch = "main";
       pull.rebase = true;
 
