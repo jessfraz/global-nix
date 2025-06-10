@@ -1,7 +1,6 @@
 {
-  config,
   pkgs,
-  inputs,
+  username,
   ...
 }: {
   imports = [
@@ -31,7 +30,7 @@
   };
 
   users.groups.plugdev = {};
-  users.users.jessfraz = {
+  users.users.${username} = {
     isNormalUser = true;
     extraGroups = ["audio" "docker" "networkmanager" "wheel" "libvirtd" "plugdev" "onepassword-cli" "onepassword"];
   };
@@ -98,7 +97,7 @@
     _1password-gui = {
       enable = true;
 
-      polkitPolicyOwners = ["jessfraz"];
+      polkitPolicyOwners = [username];
       package = pkgs._1password-gui;
     };
 

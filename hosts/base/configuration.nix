@@ -1,15 +1,11 @@
 {
-  config,
   pkgs,
   inputs,
+  homeDir,
+  username,
   ...
-}: let
-  homeDir =
-    if pkgs.stdenv.isLinux
-    then "/home/jessfraz"
-    else "/Users/jessfraz";
-in {
-  users.users.jessfraz = {
+}: {
+  users.users.${username} = {
     description = "Jessie Frazelle";
     shell = pkgs.bash;
     home = homeDir;
@@ -22,7 +18,7 @@ in {
     };
     settings = {
       experimental-features = ["nix-command" "flakes"];
-      trusted-users = ["jessfraz"];
+      trusted-users = [username];
     };
     package = pkgs.nixVersions.stable;
   };

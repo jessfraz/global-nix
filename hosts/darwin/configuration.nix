@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  inputs,
-  ...
-}: let
+{username, ...}: let
   hostname = "macinator";
 in {
   nix.gc = {
@@ -32,7 +27,7 @@ in {
   };
 
   # MacOS system preferences.
-  system.primaryUser = "jessfraz";
+  system.primaryUser = username;
   system.defaults = {
     NSGlobalDomain = {
       # Whether to always show hidden files.

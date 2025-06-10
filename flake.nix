@@ -51,6 +51,8 @@
     dotvim,
     zoo-cli,
   } @ inputs: let
+    # Global variables
+    username = "jessfraz";
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
@@ -140,7 +142,10 @@
     # NixOS configurations
     nixosConfigurations = {
       system76 = nixpkgs.lib.nixosSystem {
-        specialArgs = {inherit inputs;};
+        specialArgs = {
+          inherit inputs username;
+          homeDir = "/home/${username}";
+        };
         system = "x86_64-linux"; # or aarch64-linux if you're on ARM
         modules = [
           ./hosts/base/configuration.nix
@@ -150,8 +155,11 @@
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
-            home-manager.extraSpecialArgs = {inherit inputs;};
-            home-manager.users.jessfraz.imports = [
+            home-manager.extraSpecialArgs = {
+              inherit inputs username;
+              homeDir = "/home/${username}";
+            };
+            home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
               dotvim.homeManagerModules.default
               ./home/default.nix
@@ -165,7 +173,10 @@
     # macOS configurations
     darwinConfigurations = {
       macinator = nix-darwin.lib.darwinSystem {
-        specialArgs = {inherit inputs;};
+        specialArgs = {
+          inherit inputs username;
+          homeDir = "/Users/${username}";
+        };
         system = "aarch64-darwin";
         modules = [
           ./hosts/base/configuration.nix
@@ -174,8 +185,11 @@
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
-            home-manager.extraSpecialArgs = {inherit inputs;};
-            home-manager.users.jessfraz.imports = [
+            home-manager.extraSpecialArgs = {
+              inherit inputs username;
+              homeDir = "/Users/${username}";
+            };
+            home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
               dotvim.homeManagerModules.default
               ./home/default.nix

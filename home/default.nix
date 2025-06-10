@@ -2,12 +2,10 @@
   pkgs,
   lib,
   inputs,
+  homeDir,
+  username,
   ...
 }: let
-  homeDir =
-    if pkgs.stdenv.isLinux
-    then "/home/jessfraz"
-    else "/Users/jessfraz";
   ghosttyPkg =
     if pkgs.stdenv.isLinux
     then inputs.ghostty.packages.${pkgs.stdenv.system}.default
@@ -21,7 +19,7 @@ in {
   ];
 
   home = {
-    username = "jessfraz";
+    username = username;
     homeDirectory = lib.mkForce homeDir;
 
     # This value determines the Home Manager release that your configuration is
@@ -55,7 +53,7 @@ in {
       package = ghosttyPkg;
 
       settings = {
-        command = "/etc/profiles/per-user/jessfraz/bin/bash";
+        command = "/etc/profiles/per-user/${username}/bin/bash";
         font-family = "Hack Nerd Font Mono";
         theme = "Ayu Mirage";
         macos-titlebar-style = "tabs";
