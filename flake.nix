@@ -222,6 +222,7 @@
           modules = [
             ./hosts/base/configuration.nix
             ./hosts/darwin/configuration.nix
+            ./hosts/darwin/home-server.nix
             home-manager.darwinModules.home-manager
             {
               home-manager.useGlobalPkgs = true;

@@ -1,8 +1,5 @@
-{...}: {
-  homebrew = {
-    enable = true;
-    casks = [
-      "docker"
-    ];
-  };
+{pkgs, ...}: {
+  imports = [
+    ../programs/coredns.nix
+  ];
 }
