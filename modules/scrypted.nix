@@ -58,7 +58,6 @@ in {
   config = lib.mkIf config.services.scrypted.enable (lib.mkMerge [
     {
       environment.systemPackages = [
-        config.services.scrypted.package
         config.services.scrypted.nodePackage
         config.services.scrypted.pythonPackage
         pkgs.gst_all_1.gstreamer
@@ -84,21 +83,32 @@ in {
         serviceConfig = {
           ProgramArguments =
             [
-              "${config.services.scrypted.package}/bin/scrypted"
-              "serve"
+              "${config.services.scrypted.nodePackage}/bin/npx"
+              "-y"
+              "@scrypted/server"
             ]
             ++ config.services.scrypted.extraArgs;
 
           EnvironmentVariables = {
             NODE_OPTIONS = "--dns-result-order=ipv4first";
-            PATH = lib.concatStringsSep ":" [
-              "${config.services.scrypted.pythonPackage}/bin"
-              "${config.services.scrypted.nodePackage}/bin"
-              "$PATH" # inherited for brew / system paths if needed
-            ];
+            # prepend the nix bins *then* the standard macOS dirs
+            PATH = lib.concatStringsSep ":" ([
+                "${config.services.scrypted.pythonPackage}/bin"
+                "${config.services.scrypted.nodePackage}/bin"
+              ]
+              ++ [
+                "/usr/local/bin" # keep Homebrew happy if you use it
+                "/usr/bin"
+                "/bin"
+                "/usr/sbin"
+                "/sbin"
+              ]);
+
             SCRYPTED_PYTHON_PATH = "python${config.services.scrypted.pythonPackage.pythonVersion or "3.10"}";
             SCRYPTED_INSTALL_PATH = config.services.scrypted.storagePath;
-            HOME = "/Users/${config.services.scrypted.user}";
+            SCRYPTED_VOLUME = "${config.services.scrypted.storagePath}/volume";
+
+            HOME = config.services.scrypted.storagePath;
           };
 
           UserName = config.services.scrypted.user;

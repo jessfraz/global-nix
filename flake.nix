@@ -60,7 +60,6 @@
 
     overlay = final: prev: {
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
-      scrypted = prev.callPackage ./pkgs/scrypted.nix {};
     };
 
     # Define the systems we want to support
