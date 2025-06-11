@@ -6,7 +6,7 @@
   launchd.user.agents."${hostname}.tripitcalb0t" = {
     serviceConfig = {
       ProgramArguments = [
-        "/usr/local/bin/docker"
+        "/opt/homebrew/bin/docker"
         "run"
         "--rm"
         "--name=tripitcalb0t"

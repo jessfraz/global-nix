@@ -6,7 +6,7 @@
   launchd.user.agents."${hostname}.znc" = {
     serviceConfig = {
       ProgramArguments = [
-        "/usr/local/bin/docker"
+        "/opt/homebrew/bin/docker"
         "run"
         "--rm"
         "--name=znc"
