@@ -4,13 +4,9 @@
   pkgs,
   ...
 }: let
-  isDarwin = pkgs.stdenv.isDarwin;
-
-  cfg = config.services.coredns;
-
   corefilePath =
-    if isDarwin
-    then pkgs.writeText "Corefile" cfg.config
+    if pkgs.stdenv.isDarwin
+    then pkgs.writeText "Corefile" config.services.coredns.config
     else null;
 in {
   /*
@@ -20,7 +16,7 @@ in {
   (pkgs.path + "/nixos/modules/services/networking/coredns.nix");
   */
 
-  options = lib.mkIf isDarwin {
+  options = {
     services.coredns = {
       enable = lib.mkEnableOption "CoreDNS DNS server";
 
@@ -48,7 +44,7 @@ in {
     };
   };
 
-  config = lib.mkIf (isDarwin && cfg.enable) {
+  config = lib.mkIf (pkgs.stdenv.isDarwin && config.services.coredns.enable) {
     # Ship the Corefile.
     environment.etc."coredns/Corefile".source = corefilePath;
 
@@ -56,11 +52,11 @@ in {
       serviceConfig = {
         ProgramArguments =
           [
-            "${lib.getBin cfg.package}/bin/coredns"
+            "${lib.getBin config.services.coredns.package}/bin/coredns"
             "-conf"
             "/etc/coredns/Corefile"
           ]
-          ++ cfg.extraArgs;
+          ++ config.services.coredns.extraArgs;
 
         # Runs as root by default so it can bind :53; override with
         # `launchd.daemons.coredns.serviceConfig.UserName = "something"`
