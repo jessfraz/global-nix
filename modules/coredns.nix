@@ -52,7 +52,7 @@ in {
     # Ship the Corefile.
     environment.etc."coredns/Corefile".source = corefilePath;
 
-    launchd.user.agents.coredns = {
+    launchd.daemons.coredns = {
       serviceConfig = {
         ProgramArguments =
           [
@@ -65,13 +65,13 @@ in {
         # Runs as root by default so it can bind :53; override with
         # `launchd.daemons.coredns.serviceConfig.UserName = "something"`
         # if you’re redirecting port 53 → 1053 via PF.
+
         KeepAlive = true;
         RunAtLoad = true;
+
         StandardOutPath = "/var/log/coredns.log";
         StandardErrorPath = "/var/log/coredns.err";
       };
-
-      managedBy = "services.coredns.enable";
     };
   };
 }
