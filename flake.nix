@@ -60,6 +60,7 @@
 
     overlay = final: prev: {
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
+      scrypted = prev.callPackage ./pkgs/scrypted.nix {};
     };
 
     # Define the systems we want to support
@@ -236,12 +237,12 @@
             inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath;
           };
           modules = [
+            self.darwinModules.homebridge
+            self.darwinModules.scrypted
             ./hosts/base/configuration.nix
             ./hosts/darwin/configuration.nix
             ./hosts/darwin/home-server.nix
             home-manager.darwinModules.home-manager
-            self.darwinModules.homebridge
-            self.darwinModules.scrypted
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;

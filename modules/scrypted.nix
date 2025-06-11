@@ -4,18 +4,25 @@
   pkgs,
   ...
 }: let
-  cfg = config.services.scrypted;
+  defaultUser =
+    if pkgs.stdenv.isDarwin
+    then (config.users.primaryUser or (builtins.getEnv "USER"))
+    else "scrypted";
 in {
   options = {
     services.scrypted = {
       enable = lib.mkEnableOption "Scrypted Smart-Home bridge";
 
+      package = lib.mkOption {
+        type = lib.types.package;
+        default = pkgs.scrypted;
+        description = "Scrypted package to run.";
+      };
+
       user = lib.mkOption {
         type = lib.types.str;
         default =
-          if pkgs.stdenv.isDarwin
-          then config.users.primaryUser or  "${builtins.getEnv "USER"}"
-          else "scrypted";
+          defaultUser;
         description = "Account Scrypted should run under (root not recommended).";
       };
 
@@ -23,7 +30,7 @@ in {
         type = lib.types.path;
         default =
           if pkgs.stdenv.isDarwin
-          then "/Users/${cfg.user}/.scrypted"
+          then "/Users/${config.services.scrypted.user}/.scrypted"
           else "/var/lib/scrypted";
         description = "Where Scrypted stores its database and plugins.";
       };
@@ -51,13 +58,14 @@ in {
   config = lib.mkIf config.services.scrypted.enable (lib.mkMerge [
     {
       environment.systemPackages = [
+        config.services.scrypted.package
         config.services.scrypted.nodePackage
         config.services.scrypted.pythonPackage
         pkgs.gst_all_1.gstreamer
       ];
     }
 
-    (lib.mkIf ((builtins.hasAttr "systemd" lib.options) && config.services.scrypted.user != "root") {
+    (lib.mkIf (pkgs.stdenv.isLinux && config.services.scrypted.user != "root") {
       users.groups.${config.services.scrypted.user} = {};
       users.users.${config.services.scrypted.user} = {
         isSystemUser = true;
@@ -67,27 +75,20 @@ in {
       };
     })
 
-    (lib.mkIf (builtins.hasAttr "launchd" lib.options) {
+    (lib.mkIf pkgs.stdenv.isDarwin {
       system.activationScripts.scrypted-mkdir = ''
         install -d -m0755 -o ${config.services.scrypted.user} -g staff ${config.services.scrypted.storagePath}
       '';
 
-      launchd.agents.scrypted = {
-        # launchd.agents live in ~/Library/LaunchAgents so they run in the
-        # per-user session (solves TCC + multicast issues).
-        enable = true;
-        # Program + args must be in one array (`ProgramArguments`).
+      launchd.user.agents.scrypted = {
         serviceConfig = {
           ProgramArguments =
             [
-              "${config.services.scrypted.nodePackage}/bin/npx"
-              "-y"
-              "scrypted@latest"
+              "${config.services.scrypted.package}/bin/scrypted"
               "serve"
             ]
             ++ config.services.scrypted.extraArgs;
 
-          WorkingDirectory = config.services.scrypted.storagePath;
           EnvironmentVariables = {
             NODE_OPTIONS = "--dns-result-order=ipv4first";
             PATH = lib.concatStringsSep ":" [
@@ -99,16 +100,22 @@ in {
             SCRYPTED_INSTALL_PATH = config.services.scrypted.storagePath;
             HOME = "/Users/${config.services.scrypted.user}";
           };
-          StandardOutPath = "/dev/null";
-          StandardErrorPath = "/dev/null";
-          RunAtLoad = true;
+
+          UserName = config.services.scrypted.user;
+
+          StandardOutPath = "${config.services.scrypted.storagePath}/scrypted.log";
+          StandardErrorPath = "${config.services.scrypted.storagePath}/scrypted.err";
+
           KeepAlive = true;
+          RunAtLoad = true;
         };
+
+        managedBy = "services.scrypted.enable";
       };
     })
 
     /*
-      (lib.mkIf (builtins.hasAttr "systemd" lib.options) {
+      (lib.mkIf pkgs.stdenv.isLinux {
       systemd.tmpfiles.rules = [
         "d ${config.services.scrypted.storagePath} 0755 ${config.services.scrypted.user} ${config.services.scrypted.user} - -"
       ];

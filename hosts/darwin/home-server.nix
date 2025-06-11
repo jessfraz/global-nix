@@ -1,4 +1,8 @@
-{volumesPath, ...}: {
+{
+  username,
+  volumesPath,
+  ...
+}: {
   imports = [
     ./containers/certbot-renew.nix
     #./containers/homebridge.nix
@@ -17,11 +21,14 @@
   services.scrypted = {
     enable = true;
 
-    storagePath = "${volumesPath}/scrypted";
+    user = username;
+    #storagePath = "${volumesPath}/scrypted";
   };
 
   services.homebridge = {
     enable = true;
-    storagePath = "${volumesPath}/homebridge";
+
+    user = username;
+    #storagePath = "${volumesPath}/homebridge";
   };
 }

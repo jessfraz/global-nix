@@ -4,7 +4,10 @@
   pkgs,
   ...
 }: let
-  cfg = config.services.homebridge;
+  defaultUser =
+    if pkgs.stdenv.isDarwin
+    then (config.users.primaryUser or (builtins.getEnv "USER"))
+    else "homebridge";
 in {
   options = {
     services.homebridge = {
@@ -21,7 +24,7 @@ in {
         default =
           if pkgs.stdenv.isDarwin
           then config.users.primaryUser or "${builtins.getEnv "USER"}"
-          else "homebridge";
+          else defaultUser;
         description = "Account the service runs under.";
       };
 
@@ -29,7 +32,7 @@ in {
         type = lib.types.path;
         default =
           if pkgs.stdenv.isDarwin
-          then "/Users/${cfg.user}/.homebridge"
+          then "/Users/${config.services.homebridge.user}/.homebridge"
           else "/var/lib/homebridge";
         description = "Config/cache directory.";
       };
@@ -48,53 +51,64 @@ in {
     };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
+  config = lib.mkIf config.services.homebridge.enable (lib.mkMerge [
     {
       environment.systemPackages = [
-        cfg.package
+        config.services.homebridge.package
         pkgs.nodejs_20
       ];
     }
 
-    (lib.mkIf (builtins.hasAttr "launchd" lib.options) {
+    (lib.mkIf pkgs.stdenv.isDarwin {
       system.activationScripts.homebridge-mkdir = ''
-        install -d -m0755 -o ${cfg.user} -g staff ${cfg.storagePath}
+        install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.storagePath}
       '';
 
-      launchd.agents.homebridge = {
-        enable = true;
+      launchd.user.agents.homebridge = {
         serviceConfig = {
           ProgramArguments =
             [
-              "${cfg.package}/bin/homebridge"
+              "${config.services.homebridge.package}/bin/homebridge"
               "-U"
-              cfg.storagePath
+              config.services.homebridge.storagePath
               "-I"
+              "-P"
+              "${config.services.homebridge.storagePath}/node_modules"
+              "--color"
             ]
-            ++ cfg.extraArgs;
-          WorkingDirectory = cfg.storagePath;
-          UserName = cfg.user;
+            ++ config.services.homebridge.extraArgs;
+
+          UserName = config.services.homebridge.user;
+
+          EnvironmentVariables =
+            {
+              HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
+            }
+            // config.services.homebridge.environment;
+
+          StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
+          StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.err";
+
           KeepAlive = true;
           RunAtLoad = true;
-          StandardOutPath = "${cfg.storagePath}/homebridge.log";
-          StandardErrorPath = "${cfg.storagePath}/homebridge.err";
-          EnvironmentVariables = cfg.environment;
         };
+
+        managedBy = "services.homebridge.enable";
       };
     })
 
     /*
-      (lib.mkIf (builtins.hasAttr "systemd" lib.options) {
-      users.groups.${cfg.user} = {};
-      users.users.${cfg.user} = {
+      (lib.mkIf pkgs.stdenv.isLinux {
+      users.groups.${config.services.homebridge.user} = {};
+      users.users.${config.services.homebridge.user} = {
         isSystemUser = true;
-        group = cfg.user;
-        home = cfg.storagePath;
+        group = config.services.homebridge.user;
+        home = config.services.homebridge.storagePath;
         createHome = true;
       };
 
       systemd.tmpfiles.rules = [
-        "d ${cfg.storagePath} 0755 ${cfg.user} ${cfg.user} - -"
+        "d ${config.services.homebridge.storagePath} 0755 ${config.services.homebridge.user} ${config.services.homebridge.user} - -"
       ];
 
       systemd.services.homebridge = {
@@ -102,15 +116,15 @@ in {
         after = ["network-online.target"];
         wantedBy = ["multi-user.target"];
         serviceConfig = {
-          User = cfg.user;
-          Group = cfg.user;
-          WorkingDirectory = cfg.storagePath;
+          User = config.services.homebridge.user;
+          Group = config.services.homebridge.user;
+          WorkingDirectory = config.services.homebridge.storagePath;
           ExecStart =
-            "${cfg.package}/bin/homebridge -U ${cfg.storagePath} -I "
-            + lib.concatStringsSep " " cfg.extraArgs;
+            "${config.services.homebridge.package}/bin/homebridge -U ${config.services.homebridge.storagePath} -I "
+            + lib.concatStringsSep " " config.services.homebridge.extraArgs;
           Restart = "on-failure";
           Environment =
-            lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") cfg.environment);
+            lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") config.services.homebridge.environment);
         };
       };
     })
