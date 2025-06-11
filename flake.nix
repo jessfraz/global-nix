@@ -58,6 +58,10 @@
     gitName = "Jessie Frazelle";
     gitEmail = "github@jessfraz.com";
 
+    overlay = final: prev: {
+      homebridge = prev.callPackage ./pkgs/homebridge.nix {};
+    };
+
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
@@ -178,6 +182,9 @@
     };
 
     # macOS configurations
+    darwinModules.homebridge = import ./modules/homebridge.nix;
+    darwinModules.scrypted = import ./modules/scrypted.nix;
+
     darwinConfigurations = {
       # M4 Max MacBook Pro
       macinator = nix-darwin.lib.darwinSystem {
@@ -220,6 +227,11 @@
         nix-darwin.lib.darwinSystem {
           system = system;
 
+          pkgs = import nixpkgs {
+            system = system;
+            overlays = [overlay];
+          };
+
           specialArgs = {
             inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath;
           };
@@ -228,6 +240,8 @@
             ./hosts/darwin/configuration.nix
             ./hosts/darwin/home-server.nix
             home-manager.darwinModules.home-manager
+            self.darwinModules.homebridge
+            self.darwinModules.scrypted
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
