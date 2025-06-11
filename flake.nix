@@ -182,6 +182,7 @@
     };
 
     # macOS configurations
+    darwinModules.coredns = import ./modules/coredns-cross.nix;
     darwinModules.homebridge = import ./modules/homebridge.nix;
     darwinModules.scrypted = import ./modules/scrypted.nix;
 
@@ -236,6 +237,7 @@
             inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath;
           };
           modules = [
+            self.darwinModules.coredns
             self.darwinModules.homebridge
             self.darwinModules.scrypted
             ./hosts/base/configuration.nix
