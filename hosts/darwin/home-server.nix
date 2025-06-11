@@ -12,6 +12,11 @@
 
   homebrew = {
     enable = true;
+
+    brews = [
+      "docker"
+    ];
+
     casks = [
       "docker"
       "ghostty"
