@@ -4,7 +4,7 @@
   ...
 }: {
   imports = [
-    #./coredns.nix
+    ./coredns.nix
     ./containers/certbot-renew.nix
     ./containers/nginx.nix
     ./containers/tripitcalb0t.nix

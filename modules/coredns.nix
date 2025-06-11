@@ -45,10 +45,14 @@ in {
   };
 
   config = lib.mkIf (pkgs.stdenv.isDarwin && config.services.coredns.enable) {
+    environment.systemPackages = [
+      config.services.coredns.package
+    ];
+
     # Ship the Corefile.
     environment.etc."coredns/Corefile".source = corefilePath;
 
-    launchd.daemons.coredns = {
+    launchd.user.agents.coredns = {
       serviceConfig = {
         ProgramArguments =
           [
