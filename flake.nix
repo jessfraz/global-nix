@@ -57,6 +57,7 @@
     gitGpgKey = "18F3685C0022BFF3";
     gitName = "Jessie Frazelle";
     gitEmail = "github@jessfraz.com";
+
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
@@ -211,14 +212,17 @@
       # M1 Mac Mini
       macmini = let
         username = "minitron";
+        homeDir = "/Users/${username}";
+        hostname = "macmini";
+        volumesPath = "/Volumes/XTRM-Q/volumes";
+        system = "aarch64-darwin";
       in
         nix-darwin.lib.darwinSystem {
+          system = system;
+
           specialArgs = {
-            inherit inputs username githubUsername gitGpgKey gitName gitEmail;
-            homeDir = "/Users/${username}";
-            hostname = "macmini";
+            inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath;
           };
-          system = "aarch64-darwin";
           modules = [
             ./hosts/base/configuration.nix
             ./hosts/darwin/configuration.nix
@@ -228,9 +232,7 @@
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.extraSpecialArgs = {
-                inherit inputs username githubUsername gitGpgKey gitName gitEmail;
-                homeDir = "/Users/${username}";
-                hostname = "macmini";
+                inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath;
               };
               home-manager.users.${username}.imports = [
                 dotfiles.homeManagerModules.default

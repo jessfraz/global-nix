@@ -1,5 +1,6 @@
 {pkgs, ...}: {
   imports = [
-    ../programs/coredns.nix
+    ../../programs/certbot.nix
+    ../../programs/coredns.nix
   ];
 }

@@ -1,6 +1,6 @@
 {
   config,
-  pkg,
+  pkgs,
   githubUsername,
   ...
 }: let
@@ -9,7 +9,7 @@
   corednsDirPath = "${config.home.homeDirectory}/coredns";
 in {
   home.packages = [
-    pkg.coredns
+    pkgs.coredns
   ];
 
   home.file = {
