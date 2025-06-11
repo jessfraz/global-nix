@@ -182,7 +182,7 @@
     };
 
     # macOS configurations
-    darwinModules.coredns = import ./modules/coredns-cross.nix;
+    darwinModules.coredns = import ./modules/coredns.nix;
     darwinModules.homebridge = import ./modules/homebridge.nix;
     darwinModules.scrypted = import ./modules/scrypted.nix;
 
