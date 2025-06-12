@@ -58,6 +58,10 @@
     gitName = "Jessie Frazelle";
     gitEmail = "github@jessfraz.com";
 
+    # tpl variables
+    tplIpPrefix = "10.42.9";
+    tplResolverFile = "resolver/tpl"; # serves *.tpl
+
     overlay = final: prev: {
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
     };
@@ -190,7 +194,7 @@
       # M4 Max MacBook Pro
       macinator = nix-darwin.lib.darwinSystem {
         specialArgs = {
-          inherit inputs username githubUsername gitGpgKey gitName gitEmail;
+          inherit inputs username githubUsername gitGpgKey gitName gitEmail tplIpPrefix tplResolverFile;
           homeDir = "/Users/${username}";
           hostname = "macinator";
         };
@@ -198,12 +202,13 @@
         modules = [
           ./hosts/base/configuration.nix
           ./hosts/darwin/configuration.nix
+          ./hosts/darwin/resolver-tpl.nix
           home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.extraSpecialArgs = {
-              inherit inputs username githubUsername gitGpgKey gitName gitEmail;
+              inherit inputs username githubUsername gitGpgKey gitName gitEmail tplIpPrefix tplResolverFile;
               homeDir = "/Users/${username}";
               hostname = "macinator";
             };
@@ -234,7 +239,7 @@
           };
 
           specialArgs = {
-            inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath;
+            inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath tplIpPrefix tplResolverFile;
           };
           modules = [
             self.darwinModules.coredns
@@ -248,7 +253,7 @@
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.extraSpecialArgs = {
-                inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath;
+                inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath tplIpPrefix tplResolverFile;
               };
               home-manager.users.${username}.imports = [
                 dotfiles.homeManagerModules.default
