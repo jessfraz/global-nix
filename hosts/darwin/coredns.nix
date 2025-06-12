@@ -6,6 +6,8 @@
 }: let
   tplIpPrefix = "10.42.9";
   tplIpPrefixReverse = "9.42.10";
+  myNameserver = "${tplIpPrefix}.254";
+  resolverFile = "resolver/tpl"; # serves *.tpl
 
   arpaFile = pkgs.writeText "${tplIpPrefixReverse}.in-addr.arpa" ''
     $ORIGIN ${tplIpPrefixReverse}.in-addr.arpa.
@@ -48,6 +50,13 @@ in {
   # copy the files into /etc where CoreDNS can read them
   environment.etc."coredns/${tplIpPrefixReverse}.in-addr.arpa".source = arpaFile;
   environment.etc."coredns/${githubUsername}.tpl".source = zoneFile;
+
+  environment.etc.${resolverFile} = {
+    text = ''
+      nameserver ${myNameserver}
+      port 53
+    '';
+  };
 
   services.coredns = {
     enable = true;

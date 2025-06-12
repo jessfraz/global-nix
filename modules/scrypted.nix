@@ -114,7 +114,7 @@ in {
           UserName = config.services.scrypted.user;
 
           StandardOutPath = "${config.services.scrypted.storagePath}/scrypted.log";
-          StandardErrorPath = "${config.services.scrypted.storagePath}/scrypted.err";
+          StandardErrorPath = "${config.services.scrypted.storagePath}/scrypted.log";
 
           KeepAlive = true;
           RunAtLoad = true;

@@ -22,8 +22,8 @@
       ];
       KeepAlive = true; # restart if the container exits
       RunAtLoad = true; # fire at login
-      StandardOutPath = "/tmp/znc.out.log";
-      StandardErrorPath = "/tmp/znc.err.log";
+      StandardOutPath = "/tmp/znc.log";
+      StandardErrorPath = "/tmp/znc.log";
     };
 
     # Make sure the Docker CLI lives in PATH for the agent

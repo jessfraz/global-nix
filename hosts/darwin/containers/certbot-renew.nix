@@ -77,8 +77,9 @@
     ]; # launchd has no “*/2” modulo, you enumerate months  [oai_citation:1‡stackoverflow.com](https://stackoverflow.com/questions/70127661/running-launchd-services-with-non-root-user-on-macos?utm_source=chatgpt.com)
 
     serviceConfig.KeepAlive = false; # run–exit–done
-    serviceConfig.StandardOutPath = "/tmp/certbot-renew.out.log";
-    serviceConfig.StandardErrorPath = "/tmp/certbot-renew.err.log";
+
+    serviceConfig.StandardOutPath = "/tmp/certbot-renew.log";
+    serviceConfig.StandardErrorPath = "/tmp/certbot-renew.log";
 
     environment.PATH = "/opt/homebrew/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin";
   };

@@ -87,7 +87,7 @@ in {
             // config.services.homebridge.environment;
 
           StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
-          StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.err";
+          StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
 
           KeepAlive = true;
           RunAtLoad = true;

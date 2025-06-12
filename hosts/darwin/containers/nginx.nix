@@ -22,8 +22,8 @@
       ];
       KeepAlive = true; # restart if the container exits
       RunAtLoad = true; # fire at login
-      StandardOutPath = "/tmp/nginx.out.log";
-      StandardErrorPath = "/tmp/nginx.err.log";
+      StandardOutPath = "/tmp/nginx.log";
+      StandardErrorPath = "/tmp/nginx.log";
     };
 
     # Make sure the Docker CLI lives in PATH for the agent

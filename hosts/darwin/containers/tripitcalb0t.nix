@@ -22,8 +22,8 @@
       ];
       KeepAlive = true; # restart if the container exits
       RunAtLoad = true; # fire at login
-      StandardOutPath = "/tmp/tripitcalb0t.out.log";
-      StandardErrorPath = "/tmp/tripitcalb0t.err.log";
+      StandardOutPath = "/tmp/tripitcalb0t.log";
+      StandardErrorPath = "/tmp/tripitcalb0t.log";
     };
 
     # Make sure the Docker CLI lives in PATH for the agent

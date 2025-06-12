@@ -70,7 +70,7 @@ in {
         RunAtLoad = true;
 
         StandardOutPath = "/var/log/coredns.log";
-        StandardErrorPath = "/var/log/coredns.err";
+        StandardErrorPath = "/var/log/coredns.log";
       };
     };
   };
