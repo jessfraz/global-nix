@@ -67,7 +67,7 @@ in {
         forward . 10.42.254.51 10.42.254.52
         errors
         log
-        bind ${tplIpPrefix}.254
+        bind 0.0.0.0 ${tplIpPrefix}.254
       }
 
       ${githubUsername}.tpl {
