@@ -74,6 +74,24 @@ in {
         bind 0.0.0.0 ${tplIpPrefix}.254
       }
 
+      tpl {
+        forward . 10.42.254.51 10.42.254.52 {
+          policy sequential
+          max_fails 2
+          expire     10s
+        }
+
+        # firewall: allow LAN/VPN, block everyone else
+        acl {
+          allow net 10.42.0.0/16   # your network
+          block net *              # all other sources → REFUSED
+        }
+
+        errors
+        log
+        bind 10.42.9.254
+      }
+
       ${githubUsername}.tpl {
         file /etc/coredns/${githubUsername}.tpl
 
@@ -83,9 +101,11 @@ in {
           policy sequential
         }
 
-        errors
-        log
-        bind ${tplIpPrefix}.254
+        # firewall: allow LAN/VPN, block everyone else
+        acl {
+          allow net 10.42.0.0/16   # your network
+          block net *              # all other sources → REFUSED
+        }
 
         acl {
           allow type AXFR net 10.42.0.0/16
@@ -96,6 +116,10 @@ in {
         transfer {
           to *
         }
+
+        errors
+        log
+        bind ${tplIpPrefix}.254
       }
 
       ${tplIpPrefixReverse}.in-addr.arpa {
