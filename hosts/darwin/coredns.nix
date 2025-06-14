@@ -64,7 +64,7 @@ in {
     config = ''
       # sudo ifconfig vlan0 alias ${tplIpPrefix}.254 up
       . {
-        forward . 10.42.254.51 10.42.254.52
+        forward . 10.42.254.51 10.42.254.52 1.1.1.1 8.8.8.8 8.8.4.4
         errors
         log
         bind 0.0.0.0 ${tplIpPrefix}.254
