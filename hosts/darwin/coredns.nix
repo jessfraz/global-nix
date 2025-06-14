@@ -62,9 +62,13 @@ in {
     enable = true;
 
     config = ''
-      # sudo ifconfig vlan0 alias ${tplIpPrefix}.254 up
       . {
-        forward . 10.42.254.51 10.42.254.52 1.1.1.1 8.8.8.8 8.8.4.4
+        forward . 1.1.1.1 8.8.8.8 8.8.4.4 {
+          policy sequential # ask 1.1.1.1 → if it times-out, try the next …
+          max_fails 2
+          expire     10s
+        }
+
         errors
         log
         bind 0.0.0.0 ${tplIpPrefix}.254
@@ -73,9 +77,16 @@ in {
       ${githubUsername}.tpl {
         file /etc/coredns/${githubUsername}.tpl
 
+        # Optional recursion for “random.subdomain.jessfraz.tpl”
+        # *only* to the 10.42 pair – never external
+        forward . 10.42.254.51 10.42.254.52 {
+          policy sequential
+        }
+
         errors
         log
         bind ${tplIpPrefix}.254
+
         acl {
           allow type AXFR net 10.42.0.0/16
           allow type IXFR net 10.42.0.0/16
@@ -89,7 +100,6 @@ in {
 
       ${tplIpPrefixReverse}.in-addr.arpa {
         file /etc/coredns/${tplIpPrefixReverse}.in-addr.arpa
-
         errors
         log
         bind ${tplIpPrefix}.254
