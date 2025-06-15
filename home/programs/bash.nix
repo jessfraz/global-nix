@@ -82,6 +82,10 @@ in {
           export GROK_API_KEY=$(op --account my.1password.com item get "grok x.ai" --fields credential --reveal)
       }
 
+      function fetch-hf-key() {
+          export HF_TOKEN=$(op --account my.1password.com item get "huggingface.co" --fields apikey --reveal)
+      }
+
       function fetch-kc-token() {
           export KITTYCAD_API_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Token" --fields credential --reveal)
           export ZOO_TOKEN=$KITTYCAD_API_TOKEN
