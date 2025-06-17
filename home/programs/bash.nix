@@ -100,7 +100,7 @@ in {
       }
 
       function fetch-hoops-license() {
-          export HOOPS_LICENSE=$(op --account kittycadinc.1password.com item get "Hoops Licence" --fields "new license key" --reveal)
+          export HOOPS_LICENSE=$(op --account kittycadinc.1password.com item get "Hoops Licence" --fields "license key" --reveal)
       }
 
       function fetch-kio-license() {
