@@ -1,5 +1,12 @@
-{tplResolverFile, ...}: let
-  myNameserver = "192.168.1.24";
+{
+  pkgs,
+  username,
+  githubUsername,
+  tplIpPrefix,
+  tplResolverFile,
+  ...
+}: let
+  myNameserver = "${tplIpPrefix}.6";
 in {
   environment.etc.${tplResolverFile} = {
     text = ''
