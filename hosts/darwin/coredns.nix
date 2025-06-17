@@ -90,7 +90,7 @@ in {
 
         errors
         log
-        bind 10.42.9.254
+        bind 0.0.0.0 10.42.9.254
       }
 
       ${githubUsername}.tpl {
@@ -112,6 +112,8 @@ in {
         acl {
           allow type AXFR net 10.42.0.0/16
           allow type IXFR net 10.42.0.0/16
+          allow type AXFR net 192.168.0.0/16
+          allow type IXFR net 192.168.0.0/16
           block type AXFR net *
           block type IXFR net *
         }
@@ -121,14 +123,14 @@ in {
 
         errors
         log
-        bind ${tplIpPrefix}.254
+        bind 0.0.0.0 ${tplIpPrefix}.254
       }
 
       ${tplIpPrefixReverse}.in-addr.arpa {
         file /etc/coredns/${tplIpPrefixReverse}.in-addr.arpa
         errors
         log
-        bind ${tplIpPrefix}.254
+        bind 0.0.0.0 ${tplIpPrefix}.254
       }
     '';
   };
