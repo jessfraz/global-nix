@@ -84,6 +84,7 @@ in {
         # firewall: allow LAN/VPN, block everyone else
         acl {
           allow net 10.42.0.0/16   # your network
+          allow net 192.168.0.0/16 # your home network
           block net *              # all other sources → REFUSED
         }
 
