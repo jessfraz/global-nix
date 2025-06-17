@@ -112,8 +112,6 @@ in {
         acl {
           allow type AXFR net 10.42.0.0/16
           allow type IXFR net 10.42.0.0/16
-          allow type AXFR net 192.168.0.0/16
-          allow type IXFR net 192.168.0.0/16
           block type AXFR net *
           block type IXFR net *
         }
