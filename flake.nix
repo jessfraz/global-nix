@@ -95,6 +95,7 @@
         bash
         bash-completion
         claude-code
+        codex
         coreutils
         curl
         (fenixPkgs.complete.withComponents [
