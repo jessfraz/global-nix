@@ -15,10 +15,6 @@
   virtualisation = {
     docker = {
       enable = true;
-      rootless = {
-        enable = true; # per-user `docker.service --user`
-        setSocketVariable = true; # auto-exports DOCKER_HOST
-      };
     };
   };
 
