@@ -12,6 +12,14 @@
     nvidia.acceptLicense = true;
   };
 
+  virtualisation = {
+    docker.enable = true;
+    rootless = {
+      enable = true; # per-user `docker.service --user`
+      setSocketVariable = true; # auto-exports DOCKER_HOST
+    };
+  };
+
   networking = {
     networkmanager = {
       enable = true;
@@ -33,6 +41,8 @@
   users.users.${username} = {
     isNormalUser = true;
     extraGroups = ["audio" "docker" "networkmanager" "wheel" "libvirtd" "plugdev" "onepassword-cli" "onepassword"];
+    packages = [pkgs.docker]; # docker CLI in PATH for rootless mode
+    linger = true; # keep user services running after logout
   };
 
   boot = {
