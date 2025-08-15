@@ -5,6 +5,20 @@
   gitEmail,
   ...
 }: {
+  jujutsu = {
+    enable = true;
+    settings = {
+      user = {
+        email = gitEmail;
+        name = gitName;
+      };
+      ui = {
+        default-command = ["log" "--reversed" "--limit" "20"];
+        paginate = "never";
+      };
+    };
+  };
+
   programs.git = {
     enable = true;
 
