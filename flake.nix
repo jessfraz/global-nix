@@ -38,6 +38,11 @@
       url = "github:kittycad/cli";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    codex = {
+      url = "github:jessfraz/codex/add-github-action-for-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -50,6 +55,7 @@
     dotfiles,
     dotvim,
     zoo-cli,
+    codex,
   } @ inputs: let
     # Global variables
     username = "jessfraz";
@@ -88,6 +94,7 @@
       };
       fenixPkgs = fenix.packages.${system};
       zooCli = zoo-cli.packages.${pkgs.system}.zoo;
+      codexCli = codex.packages.${pkgs.system}.codex-rs;
 
       # Common packages for all systems
       commonPackages = with pkgs; [
@@ -95,7 +102,7 @@
         bash
         bash-completion
         claude-code
-        codex
+        codexCli
         coreutils
         curl
         (fenixPkgs.complete.withComponents [
