@@ -44,7 +44,13 @@ in {
 
     ssh = {
       enable = true;
-      addKeysToAgent = "yes";
+      # Home Manager is deprecating implicit defaults; be explicit.
+      enableDefaultConfig = false;
+      matchBlocks = {
+        "*" = {
+          addKeysToAgent = "yes";
+        };
+      };
     };
 
     ghostty = {
