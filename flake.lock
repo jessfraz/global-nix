@@ -33,11 +33,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1756340000,
-        "narHash": "sha256-dFz5INDalZzJf72SSydi/lh8wgGQ2yMvjRmUj8ZGKpA=",
+        "lastModified": 1756485104,
+        "narHash": "sha256-pC7AZyshd8dVaY6LzosIba8YQ3iXfQDltDXwBIRX464=",
         "owner": "jessfraz",
         "repo": "codex",
-        "rev": "33274343739c534ee9f53fc69d6bd9056edbd17d",
+        "rev": "3a5e77416b93cd2c0eeb7b60a694f77b98c69725",
         "type": "github"
       },
       "original": {
@@ -55,11 +55,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1756342000,
-        "narHash": "sha256-HLBZ2YYd5u0EBIQWh7h4ynfEvgTj/gOxY8sNNgmvuaQ=",
+        "lastModified": 1756488975,
+        "narHash": "sha256-pv6rtLABoRRNhJTsS56dpqBgE2d6/4tFr/8hZenuUJM=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "86a15feea8796183a63802a91c9cd871516ff8a4",
+        "rev": "1cff2dfffd1f06317f1fa3bc899086cbe4f5fb25",
         "type": "github"
       },
       "original": {
@@ -336,11 +336,11 @@
         "zon2nix": "zon2nix"
       },
       "locked": {
-        "lastModified": 1756329375,
-        "narHash": "sha256-OKeY9b+enmrLNKV9J2OCWYWNDC6MZuBbObknFCK8Qfs=",
+        "lastModified": 1756476506,
+        "narHash": "sha256-RMPUnaCPUTnUPa1KJ4t7MVm0T3OYofrW0x69j7ziXQo=",
         "owner": "ghostty-org",
         "repo": "ghostty",
-        "rev": "d3cadf24952a6088affee9f752f75c3db8287801",
+        "rev": "b0d9b0dee0ed34b2732933a29bfd173290c2577b",
         "type": "github"
       },
       "original": {
@@ -664,11 +664,11 @@
     },
     "nixpkgs_5": {
       "locked": {
-        "lastModified": 1756266583,
-        "narHash": "sha256-cr748nSmpfvnhqSXPiCfUPxRz2FJnvf/RjJGvFfaCsM=",
+        "lastModified": 1756386758,
+        "narHash": "sha256-1wxxznpW2CKvI9VdniaUnTT2Os6rdRJcRUf65ZK9OtE=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "8a6d5427d99ec71c64f0b93d45778c889005d9c2",
+        "rev": "dfb2f12e899db4876308eba6d93455ab7da304cd",
         "type": "github"
       },
       "original": {
@@ -961,11 +961,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1755714758,
-        "narHash": "sha256-QKCOC/GxKVAGFeA4HacxT/aDqtd3ac0YIbTp3UJVetg=",
+        "lastModified": 1756484808,
+        "narHash": "sha256-8g/KenBqec3H0rIsfCPmnnODGC54v+5jEdRB0HwyraA=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "5f0f6bd7fc54c64aa89b57d0afef06164eb47cb4",
+        "rev": "40372b38f16e0031f71eae292f0fd0a396dce79b",
         "type": "github"
       },
       "original": {
