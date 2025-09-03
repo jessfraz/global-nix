@@ -45,7 +45,7 @@
         trustctime = false;
         editor = "nvim";
         # Use a global hooks directory so we can install a single
-        # prepare-commit-msg hook that invokes gptcommit for all repos.
+        # prepare-commit-msg hook for all repos.
         hooksPath = "~/.config/git/hooks";
       };
 
@@ -209,44 +209,10 @@
     };
   };
 
-  # Install a global prepare-commit-msg hook that delegates to gptcommit.
+  # Install a global prepare-commit-msg hook that generates messages via OpenAI.
   # This works with the hooksPath above and avoids per-repo installation.
   home.file.".config/git/hooks/prepare-commit-msg" = {
-    text = ''
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      # Ensure Nix and Home Manager bins are available in PATH for hooks.
-      export PATH="/etc/profiles/per-user/${username}/bin:${homeDir}/.nix-profile/bin:$PATH"
-
-      # Pull OpenAI key from 1Password if not already set.
-      if [ -z "''${OPENAI_API_KEY:-}" ] && [ -z "''${GPTCOMMIT__OPENAI__API_KEY:-}" ]; then
-        if command -v op >/dev/null 2>&1; then
-          OPENAI_API_KEY="$(op --account my.1password.com item get "openai.com" --fields apikey --reveal 2>/dev/null || true)"
-          if [ -n "$OPENAI_API_KEY" ]; then
-            export OPENAI_API_KEY
-            export GPTCOMMIT__OPENAI__API_KEY="$OPENAI_API_KEY"
-          fi
-        fi
-      fi
-
-      # Default model unless already set by user env (safe under `set -u`).
-      # Use a tiktoken-supported model; gpt-4o is widely supported.
-      export GPTCOMMIT__OPENAI__MODEL="''${GPTCOMMIT__OPENAI__MODEL:-gpt-4o}"
-
-      # $2 and $3 may be unset depending on how the hook is invoked.
-      set +u
-      commit_source="''${2-}"
-      commit_sha="''${3-}"
-      set -u
-
-      ### BEGIN GPTCOMMIT HOOK ###
-      # gptcommit requires --commit-source flag even if empty (maps to enum Empty).
-      args=(--commit-msg-file "$1" --commit-source "$commit_source")
-      [ -n "$commit_sha" ] && args+=(--commit-sha "$commit_sha")
-      gptcommit prepare-commit-msg "''${args[@]}"
-      ### END GPTCOMMIT HOOK ###
-    '';
+    source = ../../scripts/prepare-commit-msg.py;
     executable = true;
   };
 }
