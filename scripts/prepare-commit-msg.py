@@ -5,16 +5,50 @@ import subprocess
 import sys
 import urllib.request
 from urllib.error import HTTPError
+from typing import Optional
+
+# Ensure Nix profile bins are on PATH for git hooks (e.g., 1Password `op`).
+_home = os.environ.get("HOME", "")
+_user = os.environ.get("USER", "")
+_prefix = f"/etc/profiles/per-user/{_user}/bin:{_home}/.nix-profile/bin:"
+os.environ["PATH"] = _prefix + os.environ.get("PATH", "")
 
 
 def debug_enabled() -> bool:
-    return bool(os.environ.get("COMMIT_AI_DEBUG"))
+    # Force debug mode on to diagnose hook behavior.
+    # You can revert to the env var check once fixed.
+    return True
+
+
+def _debug_log_path() -> Optional[str]:
+    try:
+        cp = run(["git", "rev-parse", "--git-dir"])
+        if cp.returncode == 0:
+            git_dir = (cp.stdout or "").strip()
+            if git_dir:
+                return os.path.join(git_dir, "commit-ai.debug.log")
+    except Exception:
+        pass
+    return None
 
 
 def dbg(msg: str) -> None:
-    if debug_enabled():
-        sys.stderr.write(f"[DEBUG] {msg}\n")
+    if not debug_enabled():
+        return
+    line = f"[DEBUG] {msg}\n"
+    try:
+        sys.stderr.write(line)
         sys.stderr.flush()
+    except Exception:
+        pass
+    # Mirror debug output to a log file inside .git for post-run inspection.
+    try:
+        log_path = _debug_log_path()
+        if log_path:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(line)
+    except Exception:
+        pass
 
 
 def usage() -> None:
@@ -56,19 +90,50 @@ def shutil_which(cmd: str) -> bool:
     return which(cmd) is not None
 
 
-def run(cmd: str) -> subprocess.CompletedProcess:
+def run(args_or_cmd):
+    """Run a command; accepts a list[str] or str; returns CompletedProcess."""
+    if isinstance(args_or_cmd, str):
+        return subprocess.run(
+            args_or_cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
     return subprocess.run(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        args_or_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
     )
 
 
-def staged_diff() -> str:
-    # If no changes staged, return empty string
-    quiet = run("git diff --staged --quiet")
-    if quiet.returncode == 0:
-        return ""
-    diff = run("git -c core.safecrlf=false diff --staged --no-color")
-    return diff.stdout
+def get_diff(mode: str = "staged") -> str:
+    """Return diff text based on mode: 'staged', 'working', or 'auto'."""
+    mode = mode.lower()
+    if mode not in ("staged", "working", "auto"):
+        mode = "staged"
+
+    def diff_staged() -> str:
+        q = run(["git", "diff", "--staged", "--quiet"])  # 0 means no diff
+        if q.returncode == 0:
+            return ""
+        return run(
+            ["git", "-c", "core.safecrlf=false", "diff", "--staged", "--no-color"]
+        ).stdout
+
+    def diff_working() -> str:
+        q = run(["git", "diff", "--quiet"])  # 0 means no diff
+        if q.returncode == 0:
+            return ""
+        return run(["git", "-c", "core.safecrlf=false", "diff", "--no-color"]).stdout
+
+    if mode == "staged":
+        return diff_staged()
+    if mode == "working":
+        return diff_working()
+    # auto: prefer staged; if empty, fall back to working tree
+    d = diff_staged()
+    if d:
+        return d
+    return diff_working()
 
 
 def first_non_comment_line(path: str) -> str:
@@ -81,6 +146,44 @@ def first_non_comment_line(path: str) -> str:
     except FileNotFoundError:
         return ""
     return ""
+
+
+def has_meaningful_content(path: str) -> bool:
+    """Return True if commit message has real content (ignoring trailers/comments).
+
+    We ignore common trailer lines like Signed-off-by, Co-authored-by, etc., so
+    that using `-s/--signoff` doesn't suppress generation.
+    """
+    trailer_prefixes = (
+        "signed-off-by:",
+        "co-authored-by:",
+        "reviewed-by:",
+        "acked-by:",
+        "acknowledged-by:",
+        "reported-by:",
+        "tested-by:",
+        "cc:",
+        "change-id:",
+        "depends-on:",
+        "cherry-picked-from:",
+        "link:",
+        "see-also:",
+        "fixes:",
+    )
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                s = line.strip()
+                if not s or s.startswith("#"):
+                    continue
+                if any(s.lower().startswith(p) for p in trailer_prefixes):
+                    continue
+                # Found a non-trailer, non-comment line.
+                dbg(f"message_has_content: '{s[:60]}{'…' if len(s) > 60 else ''}'")
+                return True
+    except FileNotFoundError:
+        return False
+    return False
 
 
 def build_prompt(diff_text: str) -> str:
@@ -133,8 +236,6 @@ def call_responses_stream(
         + json.dumps(payload_primary)[:300]
         + (" …" if len(json.dumps(payload_primary)) > 300 else "")
     )
-
-    out_text_parts = []
 
     def do_stream(payload: dict) -> str:
         parts: list[str] = []
@@ -318,7 +419,17 @@ def main() -> int:
         usage()
         return 0
     target = sys.argv[1]
+    source = sys.argv[2] if len(sys.argv) >= 3 else ""
+    sha1 = sys.argv[3] if len(sys.argv) >= 4 else ""
     write_to_file = target != "-"
+    dbg(f"target={target} source={source} sha1={sha1} write_to_file={write_to_file}")
+
+    dbg(f"argv={sys.argv}")
+    dbg(f"cwd={os.getcwd()}")
+    dbg(f"user={_user} home={_home}")
+    dbg(
+        f"PATH={os.environ.get('PATH', '')[:300]}{' …' if len(os.environ.get('PATH', '')) > 300 else ''}"
+    )
 
     # Ensure inside a git repo
     if run("git rev-parse --is-inside-work-tree").returncode != 0:
@@ -327,15 +438,31 @@ def main() -> int:
 
     api_key = ensure_api_key()
     if not api_key:
-        dbg("no OPENAI_API_KEY; exiting")
+        sys.stderr.write("commit-ai: no OPENAI_API_KEY; skipping\n")
+        sys.stderr.flush()
+        dbg("missing OPENAI_API_KEY")
         return 0
 
-    # Skip if commit message already has content (non-comment)
-    if write_to_file and first_non_comment_line(target):
+    # Skip if commit message already has meaningful content.
+    # Ignore trailers like Signed-off-by when using -s.
+    if (
+        write_to_file
+        and has_meaningful_content(target)
+        and not os.environ.get("COMMIT_AI_OVERWRITE")
+    ):
+        sys.stderr.write("commit-ai: message already present; skipping\n")
+        sys.stderr.flush()
+        dbg(
+            "existing commit message detected; not overwriting (set COMMIT_AI_OVERWRITE=1 to force)"
+        )
         return 0
 
-    diff = staged_diff()
+    diff_mode = os.environ.get("COMMIT_AI_DIFF_MODE", "auto").lower()
+    diff = get_diff(diff_mode)
     if not diff:
+        sys.stderr.write(f"commit-ai: no changes for mode '{diff_mode}'; skipping\n")
+        sys.stderr.flush()
+        dbg("no diff returned")
         return 0
     diff_trunc = diff[:40000]
     dbg(f"diff_chars={len(diff_trunc)}")
@@ -362,11 +489,51 @@ def main() -> int:
 
     if output:
         if write_to_file:
+            # Preserve any existing trailers (e.g., Signed-off-by) by appending
+            # them below the generated message.
+            trailers: list[str] = []
+            try:
+                with open(target, "r", encoding="utf-8", errors="ignore") as rf:
+                    for line in rf:
+                        s = line.strip()
+                        if not s or s.startswith("#"):
+                            continue
+                        if any(
+                            s.lower().startswith(p)
+                            for p in (
+                                "signed-off-by:",
+                                "co-authored-by:",
+                                "reviewed-by:",
+                                "acked-by:",
+                                "acknowledged-by:",
+                                "reported-by:",
+                                "tested-by:",
+                                "cc:",
+                                "change-id:",
+                                "depends-on:",
+                                "cherry-picked-from:",
+                                "link:",
+                                "see-also:",
+                                "fixes:",
+                            )
+                        ):
+                            trailers.append(s)
+            except Exception:
+                pass
+
             with open(target, "w", encoding="utf-8") as f:
                 f.write(output.strip() + "\n")
+                if trailers:
+                    f.write("\n" + "\n".join(trailers) + "\n")
+            sys.stderr.write("commit-ai: wrote generated commit message\n")
+            sys.stderr.flush()
+            dbg(f"wrote message to {target}")
         else:
             sys.stdout.write(output.strip() + "\n")
             sys.stdout.flush()
+            dbg("wrote message to stdout (no file)")
+    else:
+        dbg("empty output; nothing written")
 
     return 0
 
