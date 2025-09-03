@@ -95,6 +95,10 @@ in {
       alias fetch-zoo-token="fetch-kc-token"
       alias fetch-kittycad-token="fetch-kc-token"
 
+      function fetch-pyx-token() {
+          export PYX_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "pyx.dev Token" --fields credential --reveal)
+      }
+
       function fetch-stripe-key() {
           export STRIPE_API_KEY=$(op --account kittycadinc.1password.com item get "stripe prod zoo" --fields credential --reveal)
       }
