@@ -106,6 +106,7 @@
         codexCli
         coreutils
         curl
+        gptcommit
         (fenixPkgs.complete.withComponents [
           "cargo"
           "clippy"

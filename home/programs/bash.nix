@@ -64,6 +64,7 @@ in {
 
       function fetch-openai-key() {
           export OPENAI_API_KEY=$(op --account my.1password.com item get "openai.com" --fields apikey --reveal)
+          export GPTCOMMIT__OPENAI__API_KEY=$OPENAI_API_KEY
       }
 
       function fetch-anthropic-key() {
