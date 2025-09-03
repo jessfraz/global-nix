@@ -15,9 +15,8 @@ os.environ["PATH"] = _prefix + os.environ.get("PATH", "")
 
 
 def debug_enabled() -> bool:
-    # Force debug mode on to diagnose hook behavior.
-    # You can revert to the env var check once fixed.
-    return True
+    # Debug is opt-in via COMMIT_AI_DEBUG=1
+    return bool(os.environ.get("COMMIT_AI_DEBUG"))
 
 
 def _debug_log_path() -> Optional[str]:
@@ -240,8 +239,9 @@ def call_responses_stream(
     def do_stream(payload: dict) -> str:
         parts: list[str] = []
         with http_request(url, payload, headers, stream=True) as resp:
-            sys.stderr.write(f"🧠 Reasoning ({model})\n")
-            sys.stderr.flush()
+            if debug_enabled():
+                sys.stderr.write(f"🧠 Reasoning ({model})\n")
+                sys.stderr.flush()
             for raw in resp:
                 try:
                     line = raw.decode("utf-8", errors="ignore").strip()
@@ -287,7 +287,7 @@ def call_responses_stream(
                             reason = delta.get("reasoning", "")
                     if not reason and obj.get("error"):
                         reason = obj["error"].get("message", "")
-                    if reason:
+                    if debug_enabled() and reason:
                         sys.stderr.write(reason)
                         sys.stderr.flush()
                 if etype == "response.completed" and not parts:
