@@ -12,9 +12,6 @@ from contextlib import suppress
 
 # Pretty terminal rendering for Markdown reasoning (always available via flake)
 from rich.console import Console
-from rich.markdown import Markdown
-from rich.live import Live
-from rich.panel import Panel
 
 # Defaults (adjust here rather than via env vars)
 # Switch to GPT-5 model alias (thinking-capable); keep prompt unchanged.
@@ -253,105 +250,84 @@ def call_responses_stream(
         seen_reasoning = False
         newline_count = 0
         need_trailing_newlines = False
-        reason_buf: list[str] = []
         with http_request(url, payload, headers) as resp:
             # Banner
             sys.stderr.write(f"🦖 ({model})\n\n")
             sys.stderr.flush()
             console = Console(file=sys.stderr, force_terminal=True)
-            with Live(
-                Panel(
-                    Markdown(""),
-                    border_style="grey37",
-                    style="dim",
-                    title="reasoning",
-                    title_align="left",
-                ),
-                console=console,
-                refresh_per_second=30,
-            ) as live:
-                for raw in resp:
-                    try:
-                        line = raw.decode("utf-8", errors="ignore").strip()
-                    except Exception:
-                        continue
-                    if not line.startswith("data:"):
-                        continue
-                    data = line[5:].strip()
-                    if not data or data == "[DONE]":
-                        continue
-                    if debug_enabled():
-                        sys.stderr.write(
-                            "[DEBUG] sse="
-                            + data[:200]
-                            + (" …\n" if len(data) > 200 else "\n")
-                        )
-                    try:
-                        obj = json.loads(data)
-                    except Exception:
-                        continue
-                    etype = obj.get("type", "")
-                    if etype == "response.output_text.delta":
-                        delta = obj.get("delta", "")
-                        if delta:
-                            # Collect output text silently; do not echo to stderr.
-                            parts.append(delta)
-                    if etype in (
-                        "response.message.delta",
-                        "response.output.delta",
-                        "response.reasoning.delta",
-                        "response.reasoning_summary.delta",
-                        "response.reasoning_summary_text.delta",
-                    ):
-                        reason = ""
-                        delta = obj.get("delta", {})
-                        if isinstance(delta, dict):
-                            content = delta.get("content")
-                            if isinstance(content, list):
-                                texts = [
-                                    c.get("text", "")
-                                    for c in content
-                                    if c.get("type") == "reasoning"
-                                ]
-                                reason = "".join(texts)
-                            if not reason:
-                                # Some events include a field named "reasoning" directly.
-                                reason = delta.get("reasoning", "")
-                        elif isinstance(delta, str):
-                            # (e.g., response.reasoning_summary_text.delta)
-                            reason = delta
-                        if not reason and obj.get("error"):
-                            reason = obj["error"].get("message", "")
-                        if reason:
-                            reason_buf.append(reason)
-                            live.update(
-                                Panel(
-                                    Markdown("".join(reason_buf)),
-                                    border_style="grey37",
-                                    style="dim",
-                                    title="reasoning",
-                                    title_align="left",
-                                )
-                            )
-                            seen_reasoning = True
-                    # Mark that we want two blank lines after reasoning output.
-                    if (
-                        etype == "response.reasoning_summary_part.done"
-                        and seen_reasoning
-                    ):
-                        need_trailing_newlines = True
+            for raw in resp:
+                try:
+                    line = raw.decode("utf-8", errors="ignore").strip()
+                except Exception:
+                    continue
+                if not line.startswith("data:"):
+                    continue
+                data = line[5:].strip()
+                if not data or data == "[DONE]":
+                    continue
+                if debug_enabled():
+                    sys.stderr.write(
+                        "[DEBUG] sse="
+                        + data[:200]
+                        + (" …\n" if len(data) > 200 else "\n")
+                    )
+                try:
+                    obj = json.loads(data)
+                except Exception:
+                    continue
+                etype = obj.get("type", "")
+                if etype == "response.output_text.delta":
+                    delta = obj.get("delta", "")
+                    if delta:
+                        # Collect output text silently; do not echo to stderr.
+                        parts.append(delta)
+                if etype in (
+                    "response.message.delta",
+                    "response.output.delta",
+                    "response.reasoning.delta",
+                    "response.reasoning_summary.delta",
+                    "response.reasoning_summary_text.delta",
+                ):
+                    reason = ""
+                    delta = obj.get("delta", {})
+                    if isinstance(delta, dict):
+                        content = delta.get("content")
+                        if isinstance(content, list):
+                            texts = [
+                                c.get("text", "")
+                                for c in content
+                                if c.get("type") == "reasoning"
+                            ]
+                            reason = "".join(texts)
+                        if not reason:
+                            # Some events include a field named "reasoning" directly.
+                            reason = delta.get("reasoning", "")
+                    elif isinstance(delta, str):
+                        # (e.g., response.reasoning_summary_text.delta)
+                        reason = delta
+                    if not reason and obj.get("error"):
+                        reason = obj["error"].get("message", "")
+                    if reason:
+                        # Print incremental reasoning as dimmed text so it scrolls naturally.
+                        console.print(reason, style="dim", end="", markup=False)
+                        seen_reasoning = True
+                # Mark that we want two blank lines after reasoning output.
+                if (
+                    etype == "response.reasoning_summary_part.done" and seen_reasoning
+                ):
+                    need_trailing_newlines = True
 
-                    if (
-                        etype in ("response.completed", "response.error")
-                        and seen_reasoning
-                        and (need_trailing_newlines or newline_count < 2)
-                    ):
-                        missing = 2 - newline_count
-                        if missing < 2:
-                            missing = 2
-                        sys.stderr.write("\n" * missing)
-                        sys.stderr.flush()
-                        newline_count = 2
+                if (
+                    etype in ("response.completed", "response.error")
+                    and seen_reasoning
+                    and (need_trailing_newlines or newline_count < 2)
+                ):
+                    missing = 2 - newline_count
+                    if missing < 2:
+                        missing = 2
+                    sys.stderr.write("\n" * missing)
+                    sys.stderr.flush()
+                    newline_count = 2
             # Ensure exactly two trailing newlines after reasoning.
             if seen_reasoning and newline_count < 2:
                 missing = 2 - newline_count
