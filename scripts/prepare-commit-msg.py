@@ -11,8 +11,14 @@ from pathlib import Path
 from contextlib import suppress
 
 # Defaults (adjust here rather than via env vars)
-MODEL = "o3"
-REASONING_EFFORT = "medium"  # one of: low, medium, high
+# Switch to GPT-5 model alias (thinking-capable); keep prompt unchanged.
+MODEL = "gpt-5"
+REASONING_EFFORT = "high"  # one of: low, medium, high
+# Control final answer verbosity (orthogonal to reasoning).
+TEXT_VERBOSITY = "low"  # one of: low, medium, high
+# Control reasoning summary verbosity shown during streaming.
+# Options: "auto", "concise", "detailed".
+REASONING_SUMMARY = "detailed"
 API_BASE = "https://api.openai.com"
 
 # Shared constants
@@ -218,13 +224,16 @@ def call_responses_stream(
     url = base.rstrip("/") + "/v1/responses"
     payload_primary = {
         "model": model,
-        "reasoning": {"effort": effort},
+        # Ask the API to generate a reasoning summary we can stream.
+        "reasoning": {"effort": effort, "summary": REASONING_SUMMARY},
+        "text": {"verbosity": TEXT_VERBOSITY},
         "input": prompt,
         "stream": True,
     }
     payload_alt = {
         "model": model,
-        "reasoning": {"effort": effort},
+        "reasoning": {"effort": effort, "summary": REASONING_SUMMARY},
+        "text": {"verbosity": TEXT_VERBOSITY},
         "input": [
             {
                 "role": "user",
@@ -250,7 +259,7 @@ def call_responses_stream(
         with http_request(url, payload, headers) as resp:
             # Banner: always show a simple banner when streaming text, even if not in debug.
             try:
-                sys.stderr.write(f"🦖 Generating commit message ({model})\n\n")
+                sys.stderr.write(f"🦖 ({model})\n\n")
                 sys.stderr.flush()
             except Exception:
                 pass
@@ -288,6 +297,8 @@ def call_responses_stream(
                     "response.message.delta",
                     "response.output.delta",
                     "response.reasoning.delta",
+                    "response.reasoning_summary.delta",
+                    "response.reasoning_summary_text.delta",
                 ):
                     reason = ""
                     delta = obj.get("delta", {})
@@ -301,12 +312,20 @@ def call_responses_stream(
                             ]
                             reason = "".join(texts)
                         if not reason:
+                            # Some events include a field named "reasoning" directly.
                             reason = delta.get("reasoning", "")
+                    elif isinstance(delta, str):
+                        # Some events carry the text directly in the string delta
+                        # (e.g., response.reasoning_summary_text.delta)
+                        reason = delta
                     if not reason and obj.get("error"):
                         reason = obj["error"].get("message", "")
-                    if debug_enabled() and reason:
-                        sys.stderr.write(reason)
-                        sys.stderr.flush()
+                    if reason:
+                        try:
+                            sys.stderr.write(reason)
+                            sys.stderr.flush()
+                        except Exception:
+                            pass
                 if etype == "response.completed" and not parts:
                     response_obj = obj.get("response", {})
                     final_text = (
@@ -347,12 +366,14 @@ def call_responses_nostream(
     url = base.rstrip("/") + "/v1/responses"
     payload_primary = {
         "model": model,
-        "reasoning": {"effort": effort},
+        "reasoning": {"effort": effort, "summary": REASONING_SUMMARY},
+        "text": {"verbosity": TEXT_VERBOSITY},
         "input": prompt,
     }
     payload_alt = {
         "model": model,
-        "reasoning": {"effort": effort},
+        "reasoning": {"effort": effort, "summary": REASONING_SUMMARY},
+        "text": {"verbosity": TEXT_VERBOSITY},
         "input": [
             {
                 "role": "user",
