@@ -18,7 +18,7 @@ REASONING_EFFORT = "high"  # one of: low, medium, high
 TEXT_VERBOSITY = "low"  # one of: low, medium, high
 # Control reasoning summary verbosity shown during streaming.
 # Options: "auto", "concise", "detailed".
-REASONING_SUMMARY = "detailed"
+REASONING_SUMMARY = "auto"
 API_BASE = "https://api.openai.com"
 
 # Shared constants
@@ -287,12 +287,8 @@ def call_responses_stream(
                 if etype == "response.output_text.delta":
                     delta = obj.get("delta", "")
                     if delta:
+                        # Always collect output text silently; do not echo to stderr.
                         parts.append(delta)
-                        try:
-                            sys.stderr.write(delta)
-                            sys.stderr.flush()
-                        except Exception:
-                            pass
                 if etype in (
                     "response.message.delta",
                     "response.output.delta",
@@ -320,6 +316,7 @@ def call_responses_stream(
                         reason = delta
                     if not reason and obj.get("error"):
                         reason = obj["error"].get("message", "")
+                    # Always echo reasoning to stderr to provide progress.
                     if reason:
                         try:
                             sys.stderr.write(reason)
@@ -476,7 +473,14 @@ def main() -> int:
     if effort not in ("low", "medium", "high"):
         effort = "medium"
 
-    output = call_responses_stream(API_BASE, MODEL, prompt, api_key, effort)
+    # Stream only reasoning to stderr; do not echo the final commit text.
+    output = call_responses_stream(
+        API_BASE,
+        MODEL,
+        prompt,
+        api_key,
+        effort,
+    )
     dbg(f"stream_bytes={len(output)}")
     if not output:
         output = call_responses_nostream(API_BASE, MODEL, prompt, api_key, effort)
