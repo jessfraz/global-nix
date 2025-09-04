@@ -194,6 +194,7 @@ def build_prompt(diff_text: str) -> str:
         - Okay also don't be soooooo Rick, that it's cringe, sprinkle that shit sparingly.
         - Don't be afraid to sprinkle a little Summer in there too, we love canon, but within reason.
         - The more concise but effective the message, the better, we are not here to read, we are here to code.
+        - Avoid using em dashes in responses. Use commas, parentheses, or semicolons instead.
 
         Diff:
         """
