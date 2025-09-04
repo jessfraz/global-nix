@@ -14,6 +14,7 @@ from contextlib import suppress
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
+from rich.panel import Panel
 
 # Defaults (adjust here rather than via env vars)
 # Switch to GPT-5 model alias (thinking-capable); keep prompt unchanged.
@@ -251,13 +252,24 @@ def call_responses_stream(
         parts: list[str] = []
         seen_reasoning = False
         newline_count = 0
+        need_trailing_newlines = False
         reason_buf: list[str] = []
         with http_request(url, payload, headers) as resp:
             # Banner
             sys.stderr.write(f"🦖 ({model})\n\n")
             sys.stderr.flush()
             console = Console(file=sys.stderr, force_terminal=True)
-            with Live(Markdown(""), console=console, refresh_per_second=30) as live:
+            with Live(
+                Panel(
+                    Markdown(""),
+                    border_style="grey37",
+                    style="dim",
+                    title="reasoning",
+                    title_align="left",
+                ),
+                console=console,
+                refresh_per_second=30,
+            ) as live:
                 for raw in resp:
                     try:
                         line = raw.decode("utf-8", errors="ignore").strip()
@@ -312,23 +324,31 @@ def call_responses_stream(
                             reason = obj["error"].get("message", "")
                         if reason:
                             reason_buf.append(reason)
-                            live.update(Markdown("".join(reason_buf)))
+                            live.update(
+                                Panel(
+                                    Markdown("".join(reason_buf)),
+                                    border_style="grey37",
+                                    style="dim",
+                                    title="reasoning",
+                                    title_align="left",
+                                )
+                            )
                             seen_reasoning = True
-                    # Insert two newlines at the end of each reasoning-summary part.
+                    # Mark that we want two blank lines after reasoning output.
                     if (
                         etype == "response.reasoning_summary_part.done"
                         and seen_reasoning
                     ):
-                        reason_buf.append("\n\n")
-                        live.update(Markdown("".join(reason_buf)))
-                        newline_count = 2
+                        need_trailing_newlines = True
 
                     if (
                         etype in ("response.completed", "response.error")
                         and seen_reasoning
-                        and newline_count < 2
+                        and (need_trailing_newlines or newline_count < 2)
                     ):
                         missing = 2 - newline_count
+                        if missing < 2:
+                            missing = 2
                         sys.stderr.write("\n" * missing)
                         sys.stderr.flush()
                         newline_count = 2
@@ -439,7 +459,6 @@ def main() -> int:
             if trailers:
                 msg += "\n" + "\n".join(trailers) + "\n"
             Path(target).write_text(msg, encoding="utf-8")
-            sys.stderr.write("commit-ai: wrote generated commit message\n")
             sys.stderr.flush()
             dbg(f"wrote message to {target}")
         else:
