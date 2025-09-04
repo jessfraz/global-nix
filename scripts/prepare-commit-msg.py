@@ -230,18 +230,6 @@ def call_responses_stream(
         "input": prompt,
         "stream": True,
     }
-    payload_alt = {
-        "model": model,
-        "reasoning": {"effort": effort, "summary": REASONING_SUMMARY},
-        "text": {"verbosity": TEXT_VERBOSITY},
-        "input": [
-            {
-                "role": "user",
-                "content": [{"type": "input_text", "text": prompt}],
-            }
-        ],
-        "stream": True,
-    }
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -256,6 +244,8 @@ def call_responses_stream(
 
     def do_stream(payload: dict) -> str:
         parts: list[str] = []
+        seen_reasoning = False
+        newline_count = 0
         with http_request(url, payload, headers) as resp:
             # Banner: always show a simple banner when streaming text, even if not in debug.
             try:
@@ -323,17 +313,26 @@ def call_responses_stream(
                             sys.stderr.flush()
                         except Exception:
                             pass
-                if etype == "response.completed" and not parts:
-                    response_obj = obj.get("response", {})
-                    final_text = (
-                        response_obj.get("output_text") or obj.get("output_text") or ""
-                    )
-                    if final_text:
-                        parts.append(final_text)
+                        seen_reasoning = True
+                if (
+                    etype in ("response.completed", "response.error")
+                    and seen_reasoning
+                    and newline_count < 2
+                ):
+                    try:
+                        missing = 2 - newline_count
+                        sys.stderr.write("\n" * missing)
+                        sys.stderr.flush()
+                        newline_count = 2
+                    except Exception:
+                        pass
             try:
-                # Ensure a clean break after streaming text finishes.
-                sys.stderr.write("\n")
-                sys.stderr.flush()
+                # Ensure exactly two trailing newlines after reasoning.
+                if seen_reasoning and newline_count < 2:
+                    missing = 2 - newline_count
+                    sys.stderr.write("\n" * missing)
+                    sys.stderr.flush()
+                    newline_count = 2
             except Exception:
                 pass
         return "".join(parts).strip()
@@ -343,80 +342,12 @@ def call_responses_stream(
     except HTTPError as e:
         body = e.read().decode("utf-8", errors="ignore") if hasattr(e, "read") else ""
         dbg(f"stream error {e.code}: {body[:200]}{' …' if len(body) > 200 else ''}")
-        # Try alternate payload shape
-        try:
-            dbg("retrying stream with alternate input shape")
-            return do_stream(payload_alt)
-        except Exception as e2:
-            dbg(f"stream alt error: {e2}")
-            return ""
+        return ""
     except Exception as e:
         dbg(f"stream error: {e}")
         return ""
     # Unreachable
     # return "".join(out_text_parts).strip()
-
-
-def call_responses_nostream(
-    base: str, model: str, prompt: str, api_key: str, effort: str = "medium"
-) -> str:
-    url = base.rstrip("/") + "/v1/responses"
-    payload_primary = {
-        "model": model,
-        "reasoning": {"effort": effort, "summary": REASONING_SUMMARY},
-        "text": {"verbosity": TEXT_VERBOSITY},
-        "input": prompt,
-    }
-    payload_alt = {
-        "model": model,
-        "reasoning": {"effort": effort, "summary": REASONING_SUMMARY},
-        "text": {"verbosity": TEXT_VERBOSITY},
-        "input": [
-            {
-                "role": "user",
-                "content": [{"type": "input_text", "text": prompt}],
-            }
-        ],
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-
-    def do_call(payload: dict) -> str:
-        resp = http_request(url, payload, headers)
-        body = resp.read().decode("utf-8", errors="ignore")
-        if debug_enabled():
-            try:
-                err = json.loads(body).get("error", {}).get("message")
-                if err:
-                    sys.stderr.write(f"OpenAI error: {err}\n")
-            except Exception:
-                pass
-        try:
-            obj = json.loads(body)
-        except Exception:
-            return ""
-        return (
-            obj.get("output_text")
-            or (obj.get("output", [{}])[0].get("content", [{}])[0].get("text"))
-            or ""
-        ).strip()
-
-    try:
-        return do_call(payload_primary)
-    except HTTPError as e:
-        body = e.read().decode("utf-8", errors="ignore") if hasattr(e, "read") else ""
-        dbg(f"nostream error {e.code}: {body[:200]}{' …' if len(body) > 200 else ''}")
-        try:
-            dbg("retrying nostream with alternate input shape")
-            return do_call(payload_alt)
-        except Exception as e2:
-            dbg(f"nostream alt error: {e2}")
-            return ""
-    except Exception as e:
-        dbg(f"nostream error: {e}")
-        return ""
 
 
 def main() -> int:
@@ -482,9 +413,6 @@ def main() -> int:
         effort,
     )
     dbg(f"stream_bytes={len(output)}")
-    if not output:
-        output = call_responses_nostream(API_BASE, MODEL, prompt, api_key, effort)
-        dbg(f"fallback_bytes={len(output)}")
 
     if output:
         if write_to_file:
