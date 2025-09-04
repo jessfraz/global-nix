@@ -1,6 +1,5 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-
 # Default target: run formatting check and lint.
 default: ci
 
