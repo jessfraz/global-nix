@@ -274,7 +274,7 @@ def call_responses_stream(
 
                 def _panel(md: str):
                     return Panel(
-                        Markdown(md),
+                        Markdown(md, code_theme="github-dark"),
                         border_style="grey37",
                         title="reasoning",
                         title_align="left",
