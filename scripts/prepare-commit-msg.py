@@ -11,10 +11,17 @@ from pathlib import Path
 from contextlib import suppress
 
 # Pretty terminal rendering for Markdown reasoning (always available via flake)
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.live import Live
+# Pretty terminal rendering for Markdown reasoning (if available). Fallback to
+# simple stderr output when Rich isn't installed so we still show all reasoning.
+try:
+    from rich.console import Console  # type: ignore
+    from rich.markdown import Markdown  # type: ignore
+    from rich.panel import Panel  # type: ignore
+    from rich.live import Live  # type: ignore
+
+    HAVE_RICH = True
+except Exception:  # ImportError or anything weird in user envs
+    HAVE_RICH = False
 from shutil import which
 
 # Defaults (adjust here rather than via env vars)
@@ -267,12 +274,19 @@ def call_responses_stream(
         reason_buffer: str = ""
 
         with http_request(url, payload, headers) as resp:
-            console = Console(file=sys.stderr, force_terminal=True)
-            console.print(f"🦖 {model}", style="grey37", justify="center")
-            console.print()
+            if HAVE_RICH:
+                console = Console(file=sys.stderr, force_terminal=True)
+                console.print(f"🦖 {model}", style="grey37", justify="center")
+                console.print()
+            else:
+                # Plain stderr header when Rich isn't available
+                sys.stderr.write(f"🦖 {model}\n\n")
+                sys.stderr.flush()
             try:
 
                 def _panel(md: str):
+                    if not HAVE_RICH:
+                        return md  # unused without Rich
                     return Panel(
                         Markdown(md, code_theme="github-dark"),
                         border_style="grey37",
@@ -281,12 +295,26 @@ def call_responses_stream(
                         style="dim",
                     )
 
-                with Live(
-                    _panel(""),
-                    console=console,
-                    auto_refresh=False,
-                    vertical_overflow="visible",
-                ) as live:
+                # Build a context manager that works whether or not Rich is present
+                if HAVE_RICH:
+                    live_ctx = Live(
+                        _panel(""),
+                        console=console,
+                        auto_refresh=False,
+                        vertical_overflow="visible",
+                    )
+                else:
+
+                    class _NullLive:
+                        def __enter__(self):
+                            return None
+
+                        def __exit__(self, *exc):
+                            return False
+
+                    live_ctx = _NullLive()
+
+                with live_ctx as live:
                     for raw in resp:
                         try:
                             line = raw.decode("utf-8", errors="ignore").strip()
@@ -336,20 +364,32 @@ def call_responses_stream(
                             if (not reason_text) and obj.get("error"):
                                 reason_text = obj["error"].get("message", "")
                             if reason_text:
-                                # Feed tokens directly into a dim Panel-wrapped Markdown render.
                                 reason_buffer += reason_text
-                                live.update(_panel(reason_buffer), refresh=True)
+                                if HAVE_RICH:
+                                    live.update(_panel(reason_buffer), refresh=True)
+                                else:
+                                    # Stream plain text to stderr as it arrives
+                                    sys.stderr.write(reason_text)
+                                    sys.stderr.flush()
                                 seen_reasoning = True
                         # Mark that we want two blank lines after reasoning output.
                         if etype == REASONING_DONE_EVENT and seen_reasoning:
                             reason_buffer += "\n\n"
-                            live.update(_panel(reason_buffer), refresh=True)
+                            if HAVE_RICH:
+                                live.update(_panel(reason_buffer), refresh=True)
+                            else:
+                                sys.stderr.write("\n\n")
+                                sys.stderr.flush()
 
                         if etype in TERMINAL_EVENT_TYPES and seen_reasoning:
                             # Ensure we end on a blank line.
                             if not reason_buffer.endswith("\n\n"):
                                 reason_buffer += "\n\n"
-                                live.update(_panel(reason_buffer), refresh=True)
+                                if HAVE_RICH:
+                                    live.update(_panel(reason_buffer), refresh=True)
+                                else:
+                                    sys.stderr.write("\n\n")
+                                    sys.stderr.flush()
             finally:
                 pass
         return "".join(parts).strip()
