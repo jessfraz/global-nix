@@ -68,7 +68,7 @@ REASONING_EVENT_TYPES = {
     "response.reasoning_summary_text.delta",
 }
 REASONING_DONE_EVENT = "response.reasoning_summary_part.done"
-TERMINAL_EVENT_TYPES = {"response.completed", "response.error"}
+TERMINAL_EVENT_TYPES = {"response.completed", "response.error", "response.failed"}
 
 # Ensure Nix profile bins are on PATH for git hooks (e.g., 1Password `op`).
 _home = os.environ.get("HOME", "")
@@ -372,6 +372,23 @@ def call_responses_stream(
                                     sys.stderr.write(reason_text)
                                     sys.stderr.flush()
                                 seen_reasoning = True
+                        elif etype in {"error", "response.error", "response.failed"}:
+                            # Surface API errors explicitly so the user sees them.
+                            emsg = ""
+                            if obj.get("error"):
+                                eobj = obj["error"]
+                                code = eobj.get("code") or eobj.get("type")
+                                msg = eobj.get("message", "")
+                                emsg = f"{code}: {msg}" if code else msg
+                            else:
+                                emsg = obj.get("message", "") or "unknown error"
+                            line = f"commit-ai: API error: {emsg}\n"
+                            if HAVE_RICH:
+                                reason_buffer += line
+                                live.update(_panel(reason_buffer), refresh=True)
+                            else:
+                                sys.stderr.write(line)
+                                sys.stderr.flush()
                         # Mark that we want two blank lines after reasoning output.
                         if etype == REASONING_DONE_EVENT and seen_reasoning:
                             reason_buffer += "\n\n"
