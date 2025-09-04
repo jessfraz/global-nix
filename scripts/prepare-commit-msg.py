@@ -104,6 +104,17 @@ def run(args_or_cmd):
     )
 
 
+def stream_text_enabled() -> bool:
+    """Whether to stream readable output text to stderr during generation.
+
+    Defaults to True. Set COMMIT_AI_STREAM_TEXT=0 to disable.
+    """
+    v = os.environ.get("COMMIT_AI_STREAM_TEXT")
+    if v is None:
+        return True
+    return str(v).strip().lower() not in ("0", "false", "no", "off", "none", "")
+
+
 def get_diff(mode: str = "staged") -> str:
     """Return diff text based on mode: 'staged', 'working', or 'auto'."""
     mode = mode.lower()
@@ -204,7 +215,12 @@ def http_request(url: str, payload: dict, headers: dict, stream: bool = False):
 
 
 def call_responses_stream(
-    base: str, model: str, prompt: str, api_key: str, effort: str = "medium"
+    base: str,
+    model: str,
+    prompt: str,
+    api_key: str,
+    effort: str = "medium",
+    stream_text: Optional[bool] = None,
 ):
     url = base.rstrip("/") + "/v1/responses"
     payload_primary = {
@@ -236,10 +252,20 @@ def call_responses_stream(
         + (" …" if len(json.dumps(payload_primary)) > 300 else "")
     )
 
+    if stream_text is None:
+        stream_text = stream_text_enabled()
+
     def do_stream(payload: dict) -> str:
         parts: list[str] = []
         with http_request(url, payload, headers, stream=True) as resp:
-            if debug_enabled():
+            # Banner: always show a simple banner when streaming text, even if not in debug.
+            if stream_text:
+                try:
+                    sys.stderr.write(f"✍️ Generating commit message ({model})\n\n")
+                    sys.stderr.flush()
+                except Exception:
+                    pass
+            elif debug_enabled():
                 sys.stderr.write(f"🧠 Reasoning ({model})\n")
                 sys.stderr.flush()
             for raw in resp:
@@ -267,6 +293,12 @@ def call_responses_stream(
                     delta = obj.get("delta", "")
                     if delta:
                         parts.append(delta)
+                        if stream_text:
+                            try:
+                                sys.stderr.write(delta)
+                                sys.stderr.flush()
+                            except Exception:
+                                pass
                 if etype in (
                     "response.message.delta",
                     "response.output.delta",
@@ -297,6 +329,13 @@ def call_responses_stream(
                     )
                     if final_text:
                         parts.append(final_text)
+            if stream_text:
+                try:
+                    # Ensure a clean break after streaming text finishes.
+                    sys.stderr.write("\n")
+                    sys.stderr.flush()
+                except Exception:
+                    pass
         return "".join(parts).strip()
 
     try:
