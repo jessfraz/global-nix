@@ -5,20 +5,28 @@ import subprocess
 import sys
 import urllib.request
 from urllib.error import HTTPError
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Union, Literal
 import textwrap
 from pathlib import Path
 from contextlib import suppress
+import time
 
 # Pretty terminal rendering for Markdown reasoning (always available via flake)
 from rich.console import Console
+from rich.markdown import Markdown
+from rich.styled import Styled
+from shutil import which
 
 # Defaults (adjust here rather than via env vars)
 # Switch to GPT-5 model alias (thinking-capable); keep prompt unchanged.
 MODEL = "gpt-5"
-REASONING_EFFORT = "high"  # one of: low, medium, high
+# Narrow string types for clarity.
+Effort = Literal["low", "medium", "high"]
+Verbosity = Literal["low", "medium", "high"]
+
+REASONING_EFFORT: Effort = "high"
 # Control final answer verbosity (orthogonal to reasoning).
-TEXT_VERBOSITY = "low"  # one of: low, medium, high
+TEXT_VERBOSITY: Verbosity = "low"
 # Control reasoning summary verbosity shown during streaming.
 # Options: "auto", "concise", "detailed".
 REASONING_SUMMARY = "auto"
@@ -42,6 +50,17 @@ TRAILER_PREFIXES = (
     "fixes:",
 )
 DIFF_MAX_CHARS = 40_000
+
+# Event type groups for clarity/readability.
+REASONING_EVENT_TYPES = {
+    "response.message.delta",
+    "response.output.delta",
+    "response.reasoning.delta",
+    "response.reasoning_summary.delta",
+    "response.reasoning_summary_text.delta",
+}
+REASONING_DONE_EVENT = "response.reasoning_summary_part.done"
+TERMINAL_EVENT_TYPES = {"response.completed", "response.error"}
 
 # Ensure Nix profile bins are on PATH for git hooks (e.g., 1Password `op`).
 _home = os.environ.get("HOME", "")
@@ -96,7 +115,7 @@ def ensure_api_key() -> str:
     if key:
         return key
     # Try 1Password CLI if available
-    if shutil_which("op"):
+    if which("op") is not None:
         cmd = [
             "op",
             "--account",
@@ -116,12 +135,6 @@ def ensure_api_key() -> str:
                 os.environ["OPENAI_API_KEY"] = key
                 return key
     return ""
-
-
-def shutil_which(cmd: str) -> bool:
-    from shutil import which
-
-    return which(cmd) is not None
 
 
 def run(args_or_cmd: Union[str, Sequence[str]]) -> subprocess.CompletedProcess[str]:
@@ -222,7 +235,7 @@ def call_responses_stream(
     model: str,
     prompt: str,
     api_key: str,
-    effort: str = "medium",
+    effort: Effort = "medium",
 ):
     url = base.rstrip("/") + "/v1/responses"
     payload_primary = {
@@ -250,88 +263,111 @@ def call_responses_stream(
         seen_reasoning = False
         newline_count = 0
         need_trailing_newlines = False
+        reason_chunks: list[str] = []
+        last_update = 0.0
+        update_interval = 0.05  # 50ms throttling to reduce flicker
+
+        def ensure_two_trailing_newlines() -> None:
+            nonlocal newline_count
+            if newline_count < 2:
+                sys.stderr.write("\n" * (2 - newline_count))
+                sys.stderr.flush()
+                newline_count = 2
+
         with http_request(url, payload, headers) as resp:
             # Banner
             sys.stderr.write(f"🦖 ({model})\n\n")
             sys.stderr.flush()
             console = Console(file=sys.stderr, force_terminal=True)
-            for raw in resp:
-                try:
-                    line = raw.decode("utf-8", errors="ignore").strip()
-                except Exception:
-                    continue
-                if not line.startswith("data:"):
-                    continue
-                data = line[5:].strip()
-                if not data or data == "[DONE]":
-                    continue
-                if debug_enabled():
-                    sys.stderr.write(
-                        "[DEBUG] sse="
-                        + data[:200]
-                        + (" …\n" if len(data) > 200 else "\n")
-                    )
-                try:
-                    obj = json.loads(data)
-                except Exception:
-                    continue
-                etype = obj.get("type", "")
-                if etype == "response.output_text.delta":
-                    delta = obj.get("delta", "")
-                    if delta:
-                        # Collect output text silently; do not echo to stderr.
-                        parts.append(delta)
-                if etype in (
-                    "response.message.delta",
-                    "response.output.delta",
-                    "response.reasoning.delta",
-                    "response.reasoning_summary.delta",
-                    "response.reasoning_summary_text.delta",
-                ):
-                    reason = ""
-                    delta = obj.get("delta", {})
-                    if isinstance(delta, dict):
-                        content = delta.get("content")
-                        if isinstance(content, list):
-                            texts = [
-                                c.get("text", "")
-                                for c in content
-                                if c.get("type") == "reasoning"
-                            ]
-                            reason = "".join(texts)
-                        if not reason:
-                            # Some events include a field named "reasoning" directly.
-                            reason = delta.get("reasoning", "")
-                    elif isinstance(delta, str):
-                        # (e.g., response.reasoning_summary_text.delta)
-                        reason = delta
-                    if not reason and obj.get("error"):
-                        reason = obj["error"].get("message", "")
-                    if reason:
-                        # Print incremental reasoning as dimmed text with Rich markup enabled.
-                        console.print(reason, style="dim", end="", markup=True)
-                        seen_reasoning = True
-                # Mark that we want two blank lines after reasoning output.
-                if etype == "response.reasoning_summary_part.done" and seen_reasoning:
-                    need_trailing_newlines = True
+            from rich.live import Live
 
-                if (
-                    etype in ("response.completed", "response.error")
-                    and seen_reasoning
-                    and (need_trailing_newlines or newline_count < 2)
-                ):
-                    missing = 2 - newline_count
-                    if missing < 2:
-                        missing = 2
-                    sys.stderr.write("\n" * missing)
-                    sys.stderr.flush()
-                    newline_count = 2
+            live = Live(
+                Styled(Markdown(""), "dim"), console=console, refresh_per_second=30
+            )
+            live.start()
+            reasoning_live_active = True
+            try:
+                for raw in resp:
+                    try:
+                        line = raw.decode("utf-8", errors="ignore").strip()
+                    except Exception:
+                        continue
+                    if not line.startswith("data:"):
+                        continue
+                    data = line[5:].strip()
+                    if not data or data == "[DONE]":
+                        continue
+                    if debug_enabled():
+                        sys.stderr.write(
+                            "[DEBUG] sse="
+                            + data[:200]
+                            + (" …\n" if len(data) > 200 else "\n")
+                        )
+                    try:
+                        obj = json.loads(data)
+                    except Exception:
+                        continue
+                    etype = obj.get("type", "")
+                    if debug_enabled():
+                        dbg(f"sse.type={etype}")
+                    if etype == "response.output_text.delta":
+                        delta = obj.get("delta", "")
+                        if delta:
+                            # Collect output text silently; do not echo to stderr.
+                            parts.append(delta)
+                    if etype in REASONING_EVENT_TYPES:
+                        reason_text = ""
+                        delta = obj.get("delta", {})
+                        if isinstance(delta, dict):
+                            content = delta.get("content")
+                            if isinstance(content, list):
+                                texts = [
+                                    c.get("text", "")
+                                    for c in content
+                                    if c.get("type") == "reasoning"
+                                ]
+                                reason_text = "".join(texts)
+                            if not reason_text:
+                                # Some events include a field named "reasoning" directly.
+                                reason_text = delta.get("reasoning", "")
+                        elif isinstance(delta, str):
+                            # (e.g., response.reasoning_summary_text.delta)
+                            reason_text = delta
+                        if (not reason_text) and obj.get("error"):
+                            reason_text = obj["error"].get("message", "")
+                        if reason_text:
+                            # Accumulate, then refresh a single live region (no panel, dimmed).
+                            reason_chunks.append(reason_text)
+                            now = time.monotonic()
+                            if (now - last_update) >= update_interval:
+                                live.update(
+                                    Styled(Markdown("".join(reason_chunks)), "dim")
+                                )
+                                last_update = now
+                            seen_reasoning = True
+                    # Mark that we want two blank lines after reasoning output.
+                    if etype == REASONING_DONE_EVENT and seen_reasoning:
+                        # Insert two newlines inside the live region (keep it running).
+                        reason_chunks.append("\n\n")
+                        live.update(Styled(Markdown("".join(reason_chunks)), "dim"))
+                        last_update = time.monotonic()
+                        need_trailing_newlines = False
+                        newline_count = 2
+
+                    if etype in TERMINAL_EVENT_TYPES and seen_reasoning:
+                        # Final flush to ensure latest content is visible.
+                        if reasoning_live_active:
+                            live.update(Styled(Markdown("".join(reason_chunks)), "dim"))
+                            live.stop()
+                            reasoning_live_active = False
+                        if need_trailing_newlines or newline_count < 2:
+                            ensure_two_trailing_newlines()
+            finally:
+                if reasoning_live_active:
+                    live.stop()
             # Ensure exactly two trailing newlines after reasoning.
             if seen_reasoning and newline_count < 2:
-                missing = 2 - newline_count
-                sys.stderr.write("\n" * missing)
-                sys.stderr.flush()
-                newline_count = 2
+                ensure_two_trailing_newlines()
         return "".join(parts).strip()
 
     try:
