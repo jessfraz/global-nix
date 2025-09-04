@@ -268,7 +268,7 @@ def call_responses_stream(
 
         with http_request(url, payload, headers) as resp:
             console = Console(file=sys.stderr, force_terminal=True)
-            console.print(f"🦖 {model} reasoning", style="grey37", justify="center")
+            console.print(f"🦖 {model}", style="grey37", justify="center")
             console.print()
             try:
 
