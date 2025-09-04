@@ -308,13 +308,11 @@ def call_responses_stream(
                     if not reason and obj.get("error"):
                         reason = obj["error"].get("message", "")
                     if reason:
-                        # Print incremental reasoning as dimmed text so it scrolls naturally.
-                        console.print(reason, style="dim", end="", markup=False)
+                        # Print incremental reasoning as dimmed text with Rich markup enabled.
+                        console.print(reason, style="dim", end="", markup=True)
                         seen_reasoning = True
                 # Mark that we want two blank lines after reasoning output.
-                if (
-                    etype == "response.reasoning_summary_part.done" and seen_reasoning
-                ):
+                if etype == "response.reasoning_summary_part.done" and seen_reasoning:
                     need_trailing_newlines = True
 
                 if (
