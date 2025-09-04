@@ -268,7 +268,8 @@ def call_responses_stream(
 
         with http_request(url, payload, headers) as resp:
             console = Console(file=sys.stderr, force_terminal=True)
-            console.rule(f"🦖 {model} reasoning", style="grey37")
+            console.print(f"🦖 {model} reasoning", style="grey37", justify="center")
+            console.print()
             try:
 
                 def _panel(md: str):
