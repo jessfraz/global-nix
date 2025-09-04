@@ -96,7 +96,7 @@ in {
       alias fetch-kittycad-token="fetch-kc-token"
 
       function fetch-pyx-token() {
-          export PYX_API_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "pyx.dev Token" --fields credential --reveal)
+          export PYX_API_KEY=$(op --account kittycadinc.1password.com item get --vault Employee "pyx.dev Token" --fields credential --reveal)
       }
 
       function fetch-stripe-key() {

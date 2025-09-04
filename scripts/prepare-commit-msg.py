@@ -210,6 +210,7 @@ def build_prompt(diff_text: str) -> str:
         "- You get what I'm going for here buddy, just land the jokes and don't be cringe.\n"
         "- Okay also don't be soooooo Rick, that it's cringe, sprinkle that shit sparingly.\n"
         "- Don't be afraid to sprinkle a little Summer in there too, we love canon, but within reason.\n"
+        "- The more concise but effective the message, the better, we are not here to read, we are here to code.\n"
         "Diff:\n"
     )
     return header + diff_text
