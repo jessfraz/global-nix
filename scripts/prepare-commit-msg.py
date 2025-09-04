@@ -261,7 +261,7 @@ def call_responses_stream(
             # Banner: always show a simple banner when streaming text, even if not in debug.
             if stream_text:
                 try:
-                    sys.stderr.write(f"✍️ Generating commit message ({model})\n\n")
+                    sys.stderr.write(f"🦖 Generating commit message ({model})\n\n")
                     sys.stderr.flush()
                 except Exception:
                     pass
