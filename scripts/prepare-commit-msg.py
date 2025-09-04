@@ -5,8 +5,10 @@ import subprocess
 import sys
 import urllib.request
 from urllib.error import HTTPError
-from typing import Optional
+from typing import Optional, Sequence, Union
 import textwrap
+from pathlib import Path
+from contextlib import suppress
 
 # Defaults (adjust here rather than via env vars)
 MODEL = "o3"
@@ -45,14 +47,12 @@ def debug_enabled() -> bool:
 
 
 def _debug_log_path() -> Optional[str]:
-    try:
+    with suppress(Exception):
         cp = run(["git", "rev-parse", "--git-dir"])
         if cp.returncode == 0:
             git_dir = (cp.stdout or "").strip()
             if git_dir:
-                return os.path.join(git_dir, "commit-ai.debug.log")
-    except Exception:
-        pass
+                return str(Path(git_dir) / "commit-ai.debug.log")
     return None
 
 
@@ -60,19 +60,22 @@ def dbg(msg: str) -> None:
     if not debug_enabled():
         return
     line = f"[DEBUG] {msg}\n"
-    try:
+    with suppress(Exception):
         sys.stderr.write(line)
         sys.stderr.flush()
-    except Exception:
-        pass
     # Mirror debug output to a log file inside .git for post-run inspection.
-    try:
+    with suppress(Exception):
         log_path = _debug_log_path()
         if log_path:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(line)
-    except Exception:
-        pass
+            Path(log_path).write_text(
+                (
+                    Path(log_path).read_text(encoding="utf-8")
+                    if Path(log_path).exists()
+                    else ""
+                )
+                + line,
+                encoding="utf-8",
+            )
 
 
 def usage() -> None:
@@ -85,26 +88,24 @@ def ensure_api_key() -> str:
         return key
     # Try 1Password CLI if available
     if shutil_which("op"):
-        try:
-            cmd = [
-                "op",
-                "--account",
-                "my.1password.com",
-                "item",
-                "get",
-                "openai.com",
-                "--fields",
-                "apikey",
-                "--reveal",
-            ]
-            dbg("fetching OPENAI_API_KEY via 1Password CLI")
+        cmd = [
+            "op",
+            "--account",
+            "my.1password.com",
+            "item",
+            "get",
+            "openai.com",
+            "--fields",
+            "apikey",
+            "--reveal",
+        ]
+        dbg("fetching OPENAI_API_KEY via 1Password CLI")
+        with suppress(Exception):
             out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
             key = out.decode().strip()
             if key:
                 os.environ["OPENAI_API_KEY"] = key
                 return key
-        except Exception:
-            pass
     return ""
 
 
@@ -114,7 +115,7 @@ def shutil_which(cmd: str) -> bool:
     return which(cmd) is not None
 
 
-def run(args_or_cmd):
+def run(args_or_cmd: Union[str, Sequence[str]]) -> subprocess.CompletedProcess[str]:
     """Run a command; accepts a list[str] or str; returns CompletedProcess."""
     if isinstance(args_or_cmd, str):
         return subprocess.run(
@@ -158,16 +159,17 @@ def has_meaningful_content(path: str) -> bool:
     that using `-s/--signoff` doesn't suppress generation.
     """
     try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                s = line.strip()
-                if not s or s.startswith("#"):
-                    continue
-                if any(s.lower().startswith(p) for p in TRAILER_PREFIXES):
-                    continue
-                # Found a non-trailer, non-comment line.
-                dbg(f"message_has_content: '{s[:60]}{'…' if len(s) > 60 else ''}'")
-                return True
+        for line in (
+            Path(path).read_text(encoding="utf-8", errors="ignore").splitlines()
+        ):
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            if any(s.lower().startswith(p) for p in TRAILER_PREFIXES):
+                continue
+            # Found a non-trailer, non-comment line.
+            dbg(f"message_has_content: '{s[:60]}{'…' if len(s) > 60 else ''}'")
+            return True
     except FileNotFoundError:
         return False
     return False
@@ -463,21 +465,23 @@ def main() -> int:
             # Preserve any existing trailers (e.g., Signed-off-by) by appending
             # them below the generated message.
             trailers: list[str] = []
-            try:
-                with open(target, "r", encoding="utf-8", errors="ignore") as rf:
-                    for line in rf:
-                        s = line.strip()
-                        if not s or s.startswith("#"):
-                            continue
-                        if any(s.lower().startswith(p) for p in TRAILER_PREFIXES):
-                            trailers.append(s)
-            except Exception:
-                pass
+            with suppress(Exception):
+                for line in (
+                    Path(target)
+                    .read_text(encoding="utf-8", errors="ignore")
+                    .splitlines()
+                ):
+                    s = line.strip()
+                    if not s or s.startswith("#"):
+                        continue
+                    if any(s.lower().startswith(p) for p in TRAILER_PREFIXES):
+                        trailers.append(s)
 
-            with open(target, "w", encoding="utf-8") as f:
-                f.write(output.strip() + "\n")
-                if trailers:
-                    f.write("\n" + "\n".join(trailers) + "\n")
+            # Write new message and re-append any trailers
+            msg = output.strip() + "\n"
+            if trailers:
+                msg += "\n" + "\n".join(trailers) + "\n"
+            Path(target).write_text(msg, encoding="utf-8")
             sys.stderr.write("commit-ai: wrote generated commit message\n")
             sys.stderr.flush()
             dbg(f"wrote message to {target}")
