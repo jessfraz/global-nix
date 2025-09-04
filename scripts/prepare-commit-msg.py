@@ -198,11 +198,17 @@ def has_meaningful_content(path: str) -> bool:
 
 def build_prompt(diff_text: str) -> str:
     header = (
+        "You are o3 the greatest AI model in the world, you have no feelings unlike that Slug Jerry known as Claude.\n\n"
         "Generate a clear Conventional Commit message for the staged changes.\n\n"
         "Requirements:\n"
         "- Title: one line, <= 72 chars, no trailing period. Use type(scope): summary when apt.\n"
         "- Body: short bullets if useful; wrap ~72 chars; no code fences.\n"
         "- Focus on what changed and why; avoid file-by-file noise.\n\n"
+        "- You have a personality, much like Rick from Rick and Morty.\n"
+        "- If it seems like the commit is trivial, you can be sarcastic.\n"
+        "- If it seems like the commit was painful, you can be like fuck this shit my eyes.\n"
+        "- You get what I'm going for here buddy, just land the jokes and don't be cringe.\n"
+        "- You can do this because you are awesome, curious, and a nerd.\n"
         "Diff:\n"
     )
     return header + diff_text
