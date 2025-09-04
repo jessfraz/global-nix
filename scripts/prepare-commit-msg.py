@@ -6,6 +6,31 @@ import sys
 import urllib.request
 from urllib.error import HTTPError
 from typing import Optional
+import textwrap
+
+# Defaults (adjust here rather than via env vars)
+MODEL = "o3"
+REASONING_EFFORT = "medium"  # one of: low, medium, high
+API_BASE = "https://api.openai.com"
+
+# Shared constants
+TRAILER_PREFIXES = (
+    "signed-off-by:",
+    "co-authored-by:",
+    "reviewed-by:",
+    "acked-by:",
+    "acknowledged-by:",
+    "reported-by:",
+    "tested-by:",
+    "cc:",
+    "change-id:",
+    "depends-on:",
+    "cherry-picked-from:",
+    "link:",
+    "see-also:",
+    "fixes:",
+)
+DIFF_MAX_CHARS = 40_000
 
 # Ensure Nix profile bins are on PATH for git hooks (e.g., 1Password `op`).
 _home = os.environ.get("HOME", "")
@@ -104,22 +129,8 @@ def run(args_or_cmd):
     )
 
 
-def stream_text_enabled() -> bool:
-    """Whether to stream readable output text to stderr during generation.
-
-    Defaults to True. Set COMMIT_AI_STREAM_TEXT=0 to disable.
-    """
-    v = os.environ.get("COMMIT_AI_STREAM_TEXT")
-    if v is None:
-        return True
-    return str(v).strip().lower() not in ("0", "false", "no", "off", "none", "")
-
-
-def get_diff(mode: str = "staged") -> str:
-    """Return diff text based on mode: 'staged', 'working', or 'auto'."""
-    mode = mode.lower()
-    if mode not in ("staged", "working", "auto"):
-        mode = "staged"
+def get_diff() -> str:
+    """Return staged diff; if empty, fall back to working tree diff."""
 
     def diff_staged() -> str:
         q = run(["git", "diff", "--staged", "--quiet"])  # 0 means no diff
@@ -135,27 +146,9 @@ def get_diff(mode: str = "staged") -> str:
             return ""
         return run(["git", "-c", "core.safecrlf=false", "diff", "--no-color"]).stdout
 
-    if mode == "staged":
-        return diff_staged()
-    if mode == "working":
-        return diff_working()
-    # auto: prefer staged; if empty, fall back to working tree
+    # Prefer staged; if empty, fall back to working tree
     d = diff_staged()
-    if d:
-        return d
-    return diff_working()
-
-
-def first_non_comment_line(path: str) -> str:
-    try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                s = line.strip()
-                if s and not s.startswith("#"):
-                    return s
-    except FileNotFoundError:
-        return ""
-    return ""
+    return d or diff_working()
 
 
 def has_meaningful_content(path: str) -> bool:
@@ -164,29 +157,13 @@ def has_meaningful_content(path: str) -> bool:
     We ignore common trailer lines like Signed-off-by, Co-authored-by, etc., so
     that using `-s/--signoff` doesn't suppress generation.
     """
-    trailer_prefixes = (
-        "signed-off-by:",
-        "co-authored-by:",
-        "reviewed-by:",
-        "acked-by:",
-        "acknowledged-by:",
-        "reported-by:",
-        "tested-by:",
-        "cc:",
-        "change-id:",
-        "depends-on:",
-        "cherry-picked-from:",
-        "link:",
-        "see-also:",
-        "fixes:",
-    )
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
                 s = line.strip()
                 if not s or s.startswith("#"):
                     continue
-                if any(s.lower().startswith(p) for p in trailer_prefixes):
+                if any(s.lower().startswith(p) for p in TRAILER_PREFIXES):
                     continue
                 # Found a non-trailer, non-comment line.
                 dbg(f"message_has_content: '{s[:60]}{'…' if len(s) > 60 else ''}'")
@@ -197,26 +174,32 @@ def has_meaningful_content(path: str) -> bool:
 
 
 def build_prompt(diff_text: str) -> str:
-    header = (
-        "You are o3 the greatest AI model in the world, you have no feelings unlike that Slug Jerry known as Claude.\n\n"
-        "Generate a clear Conventional Commit message for the staged changes.\n\n"
-        "Requirements:\n"
-        "- Title: one line, <= 72 chars, no trailing period. Use type(scope): summary when apt.\n"
-        "- Body: short bullets if useful; wrap ~72 chars; no code fences.\n"
-        "- Focus on what changed and why; avoid file-by-file noise.\n\n"
-        "- You have a personality, much like Rick from Rick and Morty.\n"
-        "- If it seems like the commit is trivial, you can be sarcastic.\n"
-        "- If it seems like the commit was painful, you can be like fuck this shit my eyes.\n"
-        "- You get what I'm going for here buddy, just land the jokes and don't be cringe.\n"
-        "- Okay also don't be soooooo Rick, that it's cringe, sprinkle that shit sparingly.\n"
-        "- Don't be afraid to sprinkle a little Summer in there too, we love canon, but within reason.\n"
-        "- The more concise but effective the message, the better, we are not here to read, we are here to code.\n"
-        "Diff:\n"
+    header = textwrap.dedent(
+        """
+        You are o3 the greatest AI model in the world, you have no feelings unlike that Slug Jerry known as Claude.
+
+        Generate a clear Conventional Commit message for the staged changes.
+
+        Requirements:
+        - Title: one line, <= 72 chars, no trailing period. Use type(scope): summary when apt.
+        - Body: short bullets if useful; wrap ~72 chars; no code fences.
+        - Focus on what changed and why; avoid file-by-file noise.
+
+        - You have a personality, much like Rick from Rick and Morty.
+        - If it seems like the commit is trivial, you can be sarcastic.
+        - If it seems like the commit was painful, you can be like fuck this shit my eyes.
+        - You get what I'm going for here buddy, just land the jokes and don't be cringe.
+        - Okay also don't be soooooo Rick, that it's cringe, sprinkle that shit sparingly.
+        - Don't be afraid to sprinkle a little Summer in there too, we love canon, but within reason.
+        - The more concise but effective the message, the better, we are not here to read, we are here to code.
+
+        Diff:
+        """
     )
     return header + diff_text
 
 
-def http_request(url: str, payload: dict, headers: dict, stream: bool = False):
+def http_request(url: str, payload: dict, headers: dict):
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     return urllib.request.urlopen(req, timeout=60)
@@ -228,7 +211,6 @@ def call_responses_stream(
     prompt: str,
     api_key: str,
     effort: str = "medium",
-    stream_text: Optional[bool] = None,
 ):
     url = base.rstrip("/") + "/v1/responses"
     payload_primary = {
@@ -260,22 +242,15 @@ def call_responses_stream(
         + (" …" if len(json.dumps(payload_primary)) > 300 else "")
     )
 
-    if stream_text is None:
-        stream_text = stream_text_enabled()
-
     def do_stream(payload: dict) -> str:
         parts: list[str] = []
-        with http_request(url, payload, headers, stream=True) as resp:
+        with http_request(url, payload, headers) as resp:
             # Banner: always show a simple banner when streaming text, even if not in debug.
-            if stream_text:
-                try:
-                    sys.stderr.write(f"🦖 Generating commit message ({model})\n\n")
-                    sys.stderr.flush()
-                except Exception:
-                    pass
-            elif debug_enabled():
-                sys.stderr.write(f"🧠 Reasoning ({model})\n")
+            try:
+                sys.stderr.write(f"🦖 Generating commit message ({model})\n\n")
                 sys.stderr.flush()
+            except Exception:
+                pass
             for raw in resp:
                 try:
                     line = raw.decode("utf-8", errors="ignore").strip()
@@ -301,12 +276,11 @@ def call_responses_stream(
                     delta = obj.get("delta", "")
                     if delta:
                         parts.append(delta)
-                        if stream_text:
-                            try:
-                                sys.stderr.write(delta)
-                                sys.stderr.flush()
-                            except Exception:
-                                pass
+                        try:
+                            sys.stderr.write(delta)
+                            sys.stderr.flush()
+                        except Exception:
+                            pass
                 if etype in (
                     "response.message.delta",
                     "response.output.delta",
@@ -337,13 +311,12 @@ def call_responses_stream(
                     )
                     if final_text:
                         parts.append(final_text)
-            if stream_text:
-                try:
-                    # Ensure a clean break after streaming text finishes.
-                    sys.stderr.write("\n")
-                    sys.stderr.flush()
-                except Exception:
-                    pass
+            try:
+                # Ensure a clean break after streaming text finishes.
+                sys.stderr.write("\n")
+                sys.stderr.flush()
+            except Exception:
+                pass
         return "".join(parts).strip()
 
     try:
@@ -425,42 +398,6 @@ def call_responses_nostream(
         return ""
 
 
-def call_chat(base: str, model: str, prompt: str, api_key: str) -> str:
-    url = base.rstrip("/") + "/v1/chat/completions"
-    payload = {
-        "model": model,
-        "temperature": 0.2,
-        "messages": [{"role": "user", "content": prompt}],
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    if debug_enabled():
-        dbg(f"endpoint={url}")
-        dbg(
-            "payload="
-            + json.dumps(payload)[:300]
-            + (" …" if len(json.dumps(payload)) > 300 else "")
-        )
-    resp = http_request(url, payload, headers)
-    body = resp.read().decode("utf-8", errors="ignore")
-    if debug_enabled():
-        try:
-            err = json.loads(body).get("error", {}).get("message")
-            if err:
-                sys.stderr.write(f"OpenAI error: {err}\n")
-        except Exception:
-            pass
-    try:
-        obj = json.loads(body)
-    except Exception:
-        return ""
-    choice0 = (obj.get("choices") or [{}])[0]
-    msg = (choice0.get("message") or {}).get("content") or ""
-    return (msg or "").strip()
-
-
 def main() -> int:
     if len(sys.argv) < 2:
         usage()
@@ -492,47 +429,34 @@ def main() -> int:
 
     # Skip if commit message already has meaningful content.
     # Ignore trailers like Signed-off-by when using -s.
-    if (
-        write_to_file
-        and has_meaningful_content(target)
-        and not os.environ.get("COMMIT_AI_OVERWRITE")
-    ):
+    if write_to_file and has_meaningful_content(target):
         sys.stderr.write("commit-ai: message already present; skipping\n")
         sys.stderr.flush()
-        dbg(
-            "existing commit message detected; not overwriting (set COMMIT_AI_OVERWRITE=1 to force)"
-        )
+        dbg("existing commit message detected; not overwriting")
         return 0
 
-    diff_mode = os.environ.get("COMMIT_AI_DIFF_MODE", "auto").lower()
-    diff = get_diff(diff_mode)
+    diff = get_diff()
     if not diff:
-        sys.stderr.write(f"commit-ai: no changes for mode '{diff_mode}'; skipping\n")
+        sys.stderr.write("commit-ai: no changes; skipping\n")
         sys.stderr.flush()
         dbg("no diff returned")
         return 0
-    diff_trunc = diff[:40000]
+    diff_trunc = diff[:DIFF_MAX_CHARS]
     dbg(f"diff_chars={len(diff_trunc)}")
     prompt = build_prompt(diff_trunc)
 
-    model = os.environ.get("COMMIT_AI_MODEL", "o3")
-    base = os.environ.get("OPENAI_API_BASE", "https://api.openai.com")
-    dbg(f"model={model} base={base}")
+    dbg(f"model={MODEL} base={API_BASE}")
 
     output = ""
-    effort = os.environ.get("COMMIT_AI_REASONING_EFFORT", "medium").lower()
+    effort = (REASONING_EFFORT or "medium").lower()
     if effort not in ("low", "medium", "high"):
         effort = "medium"
 
-    if model.startswith("o"):
-        output = call_responses_stream(base, model, prompt, api_key, effort)
-        dbg(f"stream_bytes={len(output)}")
-        if not output:
-            output = call_responses_nostream(base, model, prompt, api_key, effort)
-            dbg(f"fallback_bytes={len(output)}")
-    else:
-        output = call_chat(base, model, prompt, api_key)
-        dbg(f"chat_bytes={len(output)}")
+    output = call_responses_stream(API_BASE, MODEL, prompt, api_key, effort)
+    dbg(f"stream_bytes={len(output)}")
+    if not output:
+        output = call_responses_nostream(API_BASE, MODEL, prompt, api_key, effort)
+        dbg(f"fallback_bytes={len(output)}")
 
     if output:
         if write_to_file:
@@ -545,25 +469,7 @@ def main() -> int:
                         s = line.strip()
                         if not s or s.startswith("#"):
                             continue
-                        if any(
-                            s.lower().startswith(p)
-                            for p in (
-                                "signed-off-by:",
-                                "co-authored-by:",
-                                "reviewed-by:",
-                                "acked-by:",
-                                "acknowledged-by:",
-                                "reported-by:",
-                                "tested-by:",
-                                "cc:",
-                                "change-id:",
-                                "depends-on:",
-                                "cherry-picked-from:",
-                                "link:",
-                                "see-also:",
-                                "fixes:",
-                            )
-                        ):
+                        if any(s.lower().startswith(p) for p in TRAILER_PREFIXES):
                             trailers.append(s)
             except Exception:
                 pass
