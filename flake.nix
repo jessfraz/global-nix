@@ -106,6 +106,9 @@
         codexCli
         coreutils
         curl
+        # Provide python with the 'rich' library for nicer stderr rendering
+        # in scripts/prepare-commit-msg.py.
+        (python312.withPackages (ps: [ ps.rich ]))
         (fenixPkgs.complete.withComponents [
           "cargo"
           "clippy"
