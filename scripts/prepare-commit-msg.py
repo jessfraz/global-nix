@@ -209,6 +209,7 @@ def build_prompt(diff_text: str) -> str:
         "- If it seems like the commit was painful, you can be like fuck this shit my eyes.\n"
         "- You get what I'm going for here buddy, just land the jokes and don't be cringe.\n"
         "- You can do this because you are awesome, curious, and a nerd.\n"
+        "- Show me what you got! Wubba lubba dub dub!\n"
         "Diff:\n"
     )
     return header + diff_text
