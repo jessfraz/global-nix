@@ -14,7 +14,6 @@ import time
 # Pretty terminal rendering for Markdown reasoning (always available via flake)
 from rich.console import Console
 from rich.markdown import Markdown
-from rich.styled import Styled
 from shutil import which
 
 # Defaults (adjust here rather than via env vars)
@@ -31,6 +30,9 @@ TEXT_VERBOSITY: Verbosity = "low"
 # Options: "auto", "concise", "detailed".
 REASONING_SUMMARY = "auto"
 API_BASE = "https://api.openai.com"
+
+# Streaming output throttle interval (seconds) for reasoning prints.
+COMMIT_AI_LIVE_INTERVAL: float = 0.05
 
 # Shared constants
 TRAILER_PREFIXES = (
@@ -263,9 +265,14 @@ def call_responses_stream(
         seen_reasoning = False
         newline_count = 0
         need_trailing_newlines = False
-        reason_chunks: list[str] = []
+        pending_text: list[str] = []
         last_update = 0.0
-        update_interval = 0.05  # 50ms throttling to reduce flicker
+        update_interval = COMMIT_AI_LIVE_INTERVAL
+        use_markdown = os.environ.get("COMMIT_AI_MARKDOWN", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
 
         def ensure_two_trailing_newlines() -> None:
             nonlocal newline_count
@@ -279,13 +286,6 @@ def call_responses_stream(
             sys.stderr.write(f"🦖 ({model})\n\n")
             sys.stderr.flush()
             console = Console(file=sys.stderr, force_terminal=True)
-            from rich.live import Live
-
-            live = Live(
-                Styled(Markdown(""), "dim"), console=console, refresh_per_second=30
-            )
-            live.start()
-            reasoning_live_active = True
             try:
                 for raw in resp:
                     try:
@@ -336,35 +336,62 @@ def call_responses_stream(
                         if (not reason_text) and obj.get("error"):
                             reason_text = obj["error"].get("message", "")
                         if reason_text:
-                            # Accumulate, then refresh a single live region (no panel, dimmed).
-                            reason_chunks.append(reason_text)
+                            # Accumulate and throttle prints so the terminal scrolls naturally.
+                            pending_text.append(reason_text)
                             now = time.monotonic()
                             if (now - last_update) >= update_interval:
-                                live.update(
-                                    Styled(Markdown("".join(reason_chunks)), "dim")
-                                )
+                                chunk = "".join(pending_text)
+                                if chunk:
+                                    if use_markdown:
+                                        console.print(
+                                            Markdown(chunk), style="dim", end=""
+                                        )
+                                    else:
+                                        console.print(
+                                            chunk, style="dim", end="", markup=True
+                                        )
+                                    console.file.flush()
+                                    pending_text.clear()
                                 last_update = now
                             seen_reasoning = True
                     # Mark that we want two blank lines after reasoning output.
                     if etype == REASONING_DONE_EVENT and seen_reasoning:
-                        # Insert two newlines inside the live region (keep it running).
-                        reason_chunks.append("\n\n")
-                        live.update(Styled(Markdown("".join(reason_chunks)), "dim"))
-                        last_update = time.monotonic()
+                        # Flush any pending text, then add two newlines to advance scrollback.
+                        if pending_text:
+                            chunk = "".join(pending_text)
+                            if use_markdown:
+                                console.print(Markdown(chunk), style="dim", end="")
+                            else:
+                                console.print(chunk, style="dim", end="", markup=True)
+                            console.file.flush()
+                            pending_text.clear()
+                        sys.stderr.write("\n\n")
+                        sys.stderr.flush()
                         need_trailing_newlines = False
                         newline_count = 2
 
                     if etype in TERMINAL_EVENT_TYPES and seen_reasoning:
                         # Final flush to ensure latest content is visible.
-                        if reasoning_live_active:
-                            live.update(Styled(Markdown("".join(reason_chunks)), "dim"))
-                            live.stop()
-                            reasoning_live_active = False
+                        if pending_text:
+                            chunk = "".join(pending_text)
+                            if use_markdown:
+                                console.print(Markdown(chunk), style="dim", end="")
+                            else:
+                                console.print(chunk, style="dim", end="", markup=True)
+                            console.file.flush()
+                            pending_text.clear()
                         if need_trailing_newlines or newline_count < 2:
                             ensure_two_trailing_newlines()
             finally:
-                if reasoning_live_active:
-                    live.stop()
+                # Ensure any pending text is flushed on exit.
+                if pending_text:
+                    chunk = "".join(pending_text)
+                    if use_markdown:
+                        console.print(Markdown(chunk), style="dim", end="")
+                    else:
+                        console.print(chunk, style="dim", end="", markup=True)
+                    console.file.flush()
+                    pending_text.clear()
             # Ensure exactly two trailing newlines after reasoning.
             if seen_reasoning and newline_count < 2:
                 ensure_two_trailing_newlines()
