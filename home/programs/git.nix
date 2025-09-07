@@ -206,6 +206,13 @@
       # from myles borins - github workflow helpers
       patchit = "!f() { echo $1.patch | sed s_pull/[0-9]*/commits_commit_ | xargs curl -L | git am --whitespace=fix; }; f";
       patchit-please = "!f() { echo $1.patch | sed s_pull/[0-9]*/commits_commit_ | xargs curl -L | git am -3 --whitespace=fix; }; f";
+
+      # Clean up local branch after it is merged upstream.
+      # Usage: git cleanup [-f|--force] [-r|--remote <name>] [-b|--base <branch>] [--no-gc]
+      # - Detects default branch from remote HEAD (e.g. origin/HEAD), falling back to main/master.
+      # - Switches to the base branch, deletes the previous branch (safe by default, force with -f),
+      # - Fetches, prunes, updates base, prunes worktrees, and runs a light GC.
+      cleanup = "!f() { remote=origin; force=0; base=\"\"; nogc=0; while [ $# -gt 0 ]; do case \"$1\" in -f|--force) force=1; shift;; -r|--remote) shift; [ -n \"$1\" ] && remote=\"$1\"; shift;; -b|--base) shift; [ -n \"$1\" ] && base=\"$1\"; shift;; --no-gc) nogc=1; shift;; *) echo \"Unknown option: $1\"; return 2;; esac; done; if ! git rev-parse --git-dir >/dev/null 2>&1; then echo \"Not a git repo\"; return 1; fi; if [ -z \"$base\" ]; then tmp=$(git symbolic-ref --short \"refs/remotes/$remote/HEAD\" 2>/dev/null); if [ -n \"$tmp\" ]; then base=$(printf \"%s\" \"$tmp\" | sed \"s@^$remote/@@\"); fi; fi; if [ -z \"$base\" ]; then if git show-ref --verify --quiet refs/heads/main; then base=main; elif git show-ref --verify --quiet refs/heads/master; then base=master; else echo \"Cannot determine default branch. Use -b <name>.\"; return 1; fi; fi; if ! git diff --quiet || ! git diff --cached --quiet; then echo \"Working tree not clean; commit/stash first.\"; return 1; fi; cur=$(git symbolic-ref --quiet --short HEAD || echo HEAD); if [ \"$cur\" != \"HEAD\" ] && [ \"$cur\" != \"$base\" ]; then git switch \"$base\"; if [ \"$force\" -eq 1 ]; then git branch -D \"$cur\" || true; else git branch -d \"$cur\" || { echo \"Branch '$cur' not merged. Re-run with -f to force.\"; }; fi; else echo \"Already on $base or detached HEAD; skipping delete.\"; fi; git fetch \"$remote\" --prune --tags; git pull --ff-only \"$remote\" \"$base\"; git remote prune \"$remote\" || true; git worktree prune || true; if [ \"$nogc\" -ne 1 ]; then git gc --prune=now; fi; echo \"Cleanup complete: base=$base remote=$remote\"; }; f";
     };
   };
 
