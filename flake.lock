@@ -957,11 +957,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1757124947,
-        "narHash": "sha256-gjnJTP2oIObQCm4f4PXVkGkgb2zvXcCeRffzxCk8J54=",
+        "lastModified": 1757273353,
+        "narHash": "sha256-SG7pGvAfZdC7SWVdIf6TeeVFxmQQQqja/JaP6XY+8vw=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "c9566ec9a3a05c45f166d56b2b6fb2897c04bd48",
+        "rev": "ea1284eedf1735a802a3b4fc6366e23b743b3dcc",
         "type": "github"
       },
       "original": {
