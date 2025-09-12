@@ -1,24 +1,6 @@
 {
   description = "Desktop and laptop configuration for NixOS and macOS";
 
-  nixConfig = {
-    extra-substituters = [
-      "https://cache.flakehub.com"
-      "https://nix-community.cachix.org"
-    ];
-    extra-trusted-public-keys = [
-      "cache.flakehub.com-3:hJuILl5sVK4iKm86JzgdXW12Y2Hwd5G07qKtHTOcDCM="
-      "cache.flakehub.com-4:Asi8qIv291s0aYLyH6IOnr5Kf6+OF14WVjkE6t3xMio="
-      "cache.flakehub.com-5:zB96CRlL7tiPtzA9/WKyPkp3A2vqxqgdgyTVNGShPDU="
-      "cache.flakehub.com-6:W4EGFwAGgBj3he7c5fNh9NkOXw0PUVaxygCVKeuvaqU="
-      "cache.flakehub.com-7:mvxJ2DZVHn/kRxlIaxYNMuDG1OvMckZu32um1TadOR8="
-      "cache.flakehub.com-8:moO+OVS0mnTjBTcOUh2kYLQEd59ExzyoW1QgQ8XAARQ="
-      "cache.flakehub.com-9:wChaSeTI6TeCuV/Sg2513ZIM9i0qJaYsF+lZCXg0J6o="
-      "cache.flakehub.com-10:2GqeNlIp6AKp4EF2MVbE1kBOp9iBSyo0UPR9KoR0o1Y="
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-    ];
-  };
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -92,8 +74,8 @@
 
     # Avoid flaky Node.js test phases on Darwin by disabling checks.
     overlaySkipNodeChecks = final: prev: {
-      nodejs_20 = prev.nodejs_20.overrideAttrs (_: { doCheck = false; });
-      nodejs_22 = prev.nodejs_22.overrideAttrs (_: { doCheck = false; });
+      nodejs_20 = prev.nodejs_20.overrideAttrs (_: {doCheck = false;});
+      nodejs_22 = prev.nodejs_22.overrideAttrs (_: {doCheck = false;});
     };
 
     # Define the systems we want to support
