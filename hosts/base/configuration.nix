@@ -12,10 +12,6 @@
   };
 
   nix = {
-    enable = true;
-    optimise = {
-      automatic = true;
-    };
     settings = {
       experimental-features = ["nix-command" "flakes"];
       trusted-users = [username];

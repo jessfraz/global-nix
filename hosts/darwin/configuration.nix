@@ -3,13 +3,8 @@
   hostname,
   ...
 }: {
-  nix.gc = {
-    automatic = true;
-    interval = {
-      Day = 5;
-    };
-    options = "--delete-older-than 1w";
-  };
+  # Let Determinate Nix handle Nix configuration
+  nix.enable = false;
 
   networking = {
     hostName = hostname;

@@ -8,12 +8,12 @@ These are just mine. They are imperfect in so many ways, but they work. I tried 
 
 > **NOTE:** Don't actually install these configs on your machine. My username is hard coded places!!
 
-Refer to the instructions in [github.com/DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer). Do the vanilla install on MacOS so that we can use the `darwin-rebuild` command.
+Refer to the instructions in [github.com/DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer).
 
 ## MacOS
 
 1. `nix build .#darwinConfigurations.macinator.system`
-2. `./result/sw/bin/darwin-rebuild switch --flake .#macinator`
+1. `./result/sw/bin/darwin-rebuild switch --flake .#macinator`
 
 **OR**
 
@@ -25,11 +25,9 @@ If nix is already installed, you can just do:
 
 `nixos-rebuild switch --flake .#system76`
 
-
 ## Shared
 
 To cleanup the world run `nix store gc`
-
 
 # My personal opinon on how to get started.
 

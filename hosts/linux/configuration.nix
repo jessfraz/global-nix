@@ -7,6 +7,13 @@
     ./disable-sleep-on-ssh.nix
   ];
 
+  nix = {
+    enable = true;
+    optimise = {
+      automatic = true;
+    };
+  };
+
   nixpkgs.config = {
     allowUnfree = true;
     nvidia.acceptLicense = true;
