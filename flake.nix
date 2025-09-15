@@ -43,6 +43,11 @@
       url = "github:jessfraz/codex/add-github-action-for-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # FlakeHub CLI (fh)
+    fh = {
+      url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
+    };
   };
 
   outputs = {
@@ -56,6 +61,7 @@
     dotvim,
     zoo-cli,
     codex,
+    fh,
   } @ inputs: let
     # Global variables
     username = "jessfraz";
@@ -102,6 +108,7 @@
       fenixPkgs = fenix.packages.${system};
       zooCli = zoo-cli.packages.${pkgs.system}.zoo;
       codexCli = codex.packages.${pkgs.system}.codex-rs;
+      flakehubCli = fh.packages.${pkgs.system}.default;
 
       # Common packages for all systems
       commonPackages = with pkgs; [
@@ -113,6 +120,7 @@
         codexCli
         coreutils
         curl
+        flakehubCli
         # Provide python with the 'rich' library for nicer stderr rendering
         # in scripts/prepare-commit-msg.py.
         (python312.withPackages (ps: [ps.rich]))
