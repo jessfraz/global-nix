@@ -65,6 +65,7 @@ in {
         macos-titlebar-style = "tabs";
         background-opacity = 0.9;
         background-blur-radius = 20;
+        shell-integration-features = "title";
       };
 
       enableBashIntegration = true;
