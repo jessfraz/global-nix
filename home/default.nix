@@ -65,7 +65,7 @@ in {
         macos-titlebar-style = "tabs";
         background-opacity = 0.9;
         background-blur-radius = 20;
-        shell-integration-features = "title";
+        shell-integration-features = "title,cursor,jump_to_prompt,sudo,ssh-env,ssh-terminfo";
       };
 
       enableBashIntegration = true;
