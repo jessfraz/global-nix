@@ -33,11 +33,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1758840880,
-        "narHash": "sha256-9k2m0+Mcesc3AnISYIwLqXvX3XAI3QUQqvkFkXieGAM=",
+        "lastModified": 1758933588,
+        "narHash": "sha256-xD7V9kymzY28NYDmQ7hjwaO3tt8NvFMcedYhc1/zG2E=",
         "owner": "jessfraz",
         "repo": "codex",
-        "rev": "18aabb14194d904b967cd059da719334dd2d79f4",
+        "rev": "6bba56ce4d1edce99e1e67eced64272e29f2cec8",
         "type": "github"
       },
       "original": {
@@ -69,11 +69,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1758931769,
-        "narHash": "sha256-2MvgYXlxIrCrMgIJpzf0ESTTgwcFuKCJVtxLotjtYF0=",
+        "lastModified": 1758933543,
+        "narHash": "sha256-JvvpPSdPchQ/OjY2nlcnX9DZrUaBHqiCSyB5PpXfvhk=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "cb70da7d2f346a80159e34fbf3c4a9b2812e61d7",
+        "rev": "62868a0457246310d95c1dd238f4e1f63d845bcc",
         "type": "github"
       },
       "original": {
