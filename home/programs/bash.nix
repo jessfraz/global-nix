@@ -89,6 +89,7 @@ in {
       function fetch-kc-token() {
           export KITTYCAD_API_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Token" --fields credential --reveal)
           export ZOO_TOKEN=$KITTYCAD_API_TOKEN
+          export ZOO_API_TOKEN=$KITTYCAD_API_TOKEN
           export ZOO_TEST_TOKEN=$KITTYCAD_API_TOKEN
           export KITTYCAD_DEV_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Dev Token" --fields credential --reveal)
       }
