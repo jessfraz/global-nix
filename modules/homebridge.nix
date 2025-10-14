@@ -59,7 +59,20 @@ in {
       ];
     }
 
-    (lib.mkIf pkgs.stdenv.isDarwin {
+    (lib.mkIf pkgs.stdenv.isDarwin (let
+      defaultPath =
+        lib.concatStringsSep ":"
+        ([
+            (lib.makeBinPath [pkgs.nodejs_20 config.services.homebridge.package])
+          ]
+          ++ [
+            "/usr/local/bin"
+            "/usr/bin"
+            "/bin"
+            "/usr/sbin"
+            "/sbin"
+          ]);
+    in {
       system.activationScripts.homebridge-mkdir = ''
         install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.storagePath}
       '';
@@ -78,12 +91,13 @@ in {
             ]
             ++ config.services.homebridge.extraArgs;
 
-          UserName = config.services.homebridge.user;
-
           EnvironmentVariables =
-            {
-              HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
-            }
+            ({
+                HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
+              }
+              // lib.optionalAttrs (!(config.services.homebridge.environment ? PATH)) {
+                PATH = defaultPath;
+              })
             // config.services.homebridge.environment;
 
           StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
@@ -95,7 +109,7 @@ in {
 
         managedBy = "services.homebridge.enable";
       };
-    })
+    }))
 
     /*
       (lib.mkIf pkgs.stdenv.isLinux {

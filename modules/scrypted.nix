@@ -111,8 +111,6 @@ in {
             HOME = config.services.scrypted.storagePath;
           };
 
-          UserName = config.services.scrypted.user;
-
           StandardOutPath = "${config.services.scrypted.storagePath}/scrypted.log";
           StandardErrorPath = "${config.services.scrypted.storagePath}/scrypted.log";
 
