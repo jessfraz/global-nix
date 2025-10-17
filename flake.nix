@@ -40,7 +40,7 @@
     };
 
     codex = {
-      url = "github:jessfraz/codex/add-github-action-for-nix";
+      url = "github:openai/codex";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
