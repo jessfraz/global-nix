@@ -139,6 +139,7 @@
         gnused
         jq
         just
+        ncurses
         nodejs_22
         pinentry-tty
         silver-searcher
