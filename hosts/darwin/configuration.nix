@@ -6,6 +6,11 @@
   # Let Determinate Nix handle Nix configuration
   nix.enable = false;
 
+  launchd.daemons.nix-daemon.serviceConfig = {
+    SoftResourceLimits = { NumberOfFiles = 65536; };
+    HardResourceLimits = { NumberOfFiles = 200000; };
+  };
+
   networking = {
     hostName = hostname;
     computerName = hostname;
