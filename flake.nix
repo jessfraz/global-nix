@@ -40,7 +40,7 @@
     };
 
     codex = {
-      url = "github:openai/codex?ref=rust-v0.50.0";
+      url = "github:openai/codex?ref=rust-v0.53.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -106,8 +106,13 @@
         overlays = [overlay overlaySkipNodeChecks];
       };
       fenixPkgs = fenix.packages.${system};
+      fenixRustPlatform = pkgs.makeRustPlatform {
+        inherit (fenixPkgs.complete) cargo rustc;
+      };
       zooCli = zoo-cli.packages.${pkgs.system}.zoo;
-      codexCli = codex.packages.${pkgs.system}.codex-rs;
+      codexCli = codex.packages.${pkgs.system}.codex-rs.override {
+        rustPlatform = fenixRustPlatform;
+      };
       flakehubCli = fh.packages.${pkgs.system}.default;
 
       # Common packages for all systems
