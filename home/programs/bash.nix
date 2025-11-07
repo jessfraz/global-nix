@@ -109,7 +109,7 @@ in {
       }
 
       function fetch-kio-license() {
-          export KERNEL_IO_LICENSE=$(op --account kittycadinc.1password.com item get "3D_KERNEL_IO_LICENSE" --fields "license key" --reveal)
+          export KERNEL_IO_LICENSE=$(op --account kittycadinc.1password.com item get "3D_KERNEL_IO_LICENSE" --fields "2025" --reveal)
       }
 
       function fetch-cockroach-license() {
