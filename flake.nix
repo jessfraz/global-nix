@@ -14,9 +14,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # rust, see https://github.com/nix-community/fenix#usage
-    fenix = {
-      url = "github:nix-community/fenix";
+    # rust toolchains, see https://github.com/oxalica/rust-overlay
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -40,7 +40,7 @@
     };
 
     codex = {
-      url = "github:openai/codex?ref=rust-v0.53.0";
+      url = "git+https://github.com/openai/codex?submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -55,7 +55,7 @@
     nixpkgs,
     home-manager,
     nix-darwin,
-    fenix,
+    rust-overlay,
     ghostty,
     dotfiles,
     dotvim,
@@ -103,15 +103,33 @@
         config = {
           allowUnfree = true;
         };
-        overlays = [overlay overlaySkipNodeChecks];
+        overlays = [overlay overlaySkipNodeChecks rust-overlay.overlays.default];
       };
-      fenixPkgs = fenix.packages.${system};
-      fenixRustPlatform = pkgs.makeRustPlatform {
-        inherit (fenixPkgs.complete) cargo rustc;
+      inherit (pkgs) lib;
+      rustBin = pkgs.rust-bin.stable.latest;
+      rustToolchain = rustBin.default.override {
+        extensions = [
+          "rust-src"
+          "clippy"
+          "rustfmt"
+        ];
+      };
+      rustcForPlatform = rustBin.rustc.overrideAttrs (old: {
+        targetPlatforms = lib.platforms.all;
+        badTargetPlatforms = [];
+        meta =
+          (old.meta or {})
+          // {
+            platforms = lib.platforms.all;
+          };
+      });
+      rustPlatform = pkgs.makeRustPlatform {
+        cargo = rustBin.cargo;
+        rustc = rustcForPlatform;
       };
       zooCli = zoo-cli.packages.${pkgs.system}.zoo;
       codexCli = codex.packages.${pkgs.system}.codex-rs.override {
-        rustPlatform = fenixRustPlatform;
+        rustPlatform = rustPlatform;
       };
       flakehubCli = fh.packages.${pkgs.system}.default;
 
@@ -129,13 +147,7 @@
         # Provide python with the 'rich' library for nicer stderr rendering
         # in scripts/prepare-commit-msg.py.
         (python312.withPackages (ps: [ps.rich]))
-        (fenixPkgs.complete.withComponents [
-          "cargo"
-          "clippy"
-          "rust-src"
-          "rustc"
-          "rustfmt"
-        ])
+        rustToolchain
         findutils
         git
         git-lfs
@@ -268,7 +280,7 @@
 
           pkgs = import nixpkgs {
             system = system;
-            overlays = [overlay overlaySkipNodeChecks];
+            overlays = [overlay overlaySkipNodeChecks rust-overlay.overlays.default];
           };
 
           specialArgs = {
