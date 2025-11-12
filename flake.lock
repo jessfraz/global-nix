@@ -31,16 +31,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1762972010,
-        "narHash": "sha256-Pg7KPfOet906i1HY6nZGQNItGNWCnNGQw92WeUn6Elk=",
-        "ref": "refs/heads/main",
-        "rev": "ad09c138b9c913a89a1f63f45ace15f2a01a698b",
-        "revCount": 1922,
+        "lastModified": 1762726065,
+        "narHash": "sha256-Mjn2SesclOTBLiE7hQRtdyI/TpIM5lw2uswYyCMhyGY=",
+        "ref": "refs/tags/rust-v0.57.0",
+        "rev": "7fbae94b619b8be706566bec072eb2784972cbaf",
+        "revCount": 1878,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/openai/codex"
       },
       "original": {
+        "ref": "refs/tags/rust-v0.57.0",
         "submodules": true,
         "type": "git",
         "url": "https://github.com/openai/codex"
@@ -572,22 +573,6 @@
         "type": "github"
       }
     },
-    "nixpkgs_8": {
-      "locked": {
-        "lastModified": 1744536153,
-        "narHash": "sha256-awS2zRgF4uTwrOKwwiJcByDzDOdo3Q1rPZbiHQg/N38=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "18dd725c29603f582cf1900e0d25f9f1063dbf11",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "codex": "codex",
@@ -712,24 +697,6 @@
         "type": "github"
       }
     },
-    "rust-overlay_4": {
-      "inputs": {
-        "nixpkgs": "nixpkgs_8"
-      },
-      "locked": {
-        "lastModified": 1751251399,
-        "narHash": "sha256-y+viCuy/eKKpkX1K2gDvXIJI/yzvy6zA3HObapz9XZ0=",
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "rev": "b22d5ee8c60ed1291521f2dde48784edd6bf695b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "type": "github"
-      }
-    },
     "systems": {
       "locked": {
         "lastModified": 1681028828,
@@ -799,7 +766,9 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "rust-overlay": "rust-overlay_4"
+        "rust-overlay": [
+          "rust-overlay"
+        ]
       },
       "locked": {
         "lastModified": 1762814143,
