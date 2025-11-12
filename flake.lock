@@ -31,12 +31,13 @@
         ]
       },
       "locked": {
-        "lastModified": 1761872188,
-        "narHash": "sha256-sDL7gpq73RyyTgi97sxWDq6mhqQiYLyvSN76H8Pp3Uk=",
-        "owner": "openai",
-        "repo": "codex",
-        "rev": "ca80bc4902b7ca49112907152e8ed0879eaa0b78",
-        "type": "github"
+        "lastModified": 1762726065,
+        "narHash": "sha256-Mjn2SesclOTBLiE7hQRtdyI/TpIM5lw2uswYyCMhyGY=",
+        "ref": "refs/heads/main",
+        "rev": "7fbae94b619b8be706566bec072eb2784972cbaf",
+        "revCount": 1878,
+        "type": "git",
+        "url": "https://github.com/openai/codex.git"
       },
       "original": {
         "owner": "openai",
