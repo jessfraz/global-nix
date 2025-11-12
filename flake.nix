@@ -85,6 +85,30 @@
       nodejs_22 = prev.nodejs_22.overrideAttrs (_: {doCheck = false;});
     };
 
+    # Older overlays occasionally pass an empty name to fetchurl which makes
+    # Nix 2.24 unable to guess the archive type. Restore the historical
+    # behaviour of deriving the name from the URL when it is missing.
+    overlayFetchurlNameFix = final: prev: let
+      inherit (prev.lib) last splitString;
+      deriveName = args:
+        if args ? name && args.name != ""
+        then args
+        else if args ? url
+        then args // {name = last (splitString "/" args.url);}
+        else if args ? urls
+        then let
+          urlsList =
+            if builtins.isList args.urls
+            then args.urls
+            else [args.urls];
+          firstUrl = builtins.head urlsList;
+        in
+          args // {name = last (splitString "/" firstUrl);}
+        else args;
+    in {
+      fetchurl = args: prev.fetchurl (deriveName args);
+    };
+
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
@@ -104,7 +128,12 @@
         config = {
           allowUnfree = true;
         };
-        overlays = [overlay overlaySkipNodeChecks rust-overlay.overlays.default];
+        overlays = [
+          overlay
+          overlaySkipNodeChecks
+          overlayFetchurlNameFix
+          rust-overlay.overlays.default
+        ];
       };
       inherit (pkgs) lib;
       rustBin = pkgs.rust-bin.stable.latest;
@@ -115,18 +144,9 @@
           "rustfmt"
         ];
       };
-      rustcForPlatform = rustBin.rustc.overrideAttrs (old: {
-        targetPlatforms = lib.platforms.all;
-        badTargetPlatforms = [];
-        meta =
-          (old.meta or {})
-          // {
-            platforms = lib.platforms.all;
-          };
-      });
       rustPlatform = pkgs.makeRustPlatform {
-        cargo = rustBin.cargo;
-        rustc = rustcForPlatform;
+        cargo = rustToolchain;
+        rustc = rustToolchain;
       };
       zooCli = zoo-cli.packages.${pkgs.system}.zoo;
       codexCli = codex.packages.${pkgs.system}.codex-rs.override {
