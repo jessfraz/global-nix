@@ -85,29 +85,11 @@
       nodejs_22 = prev.nodejs_22.overrideAttrs (_: {doCheck = false;});
     };
 
-    # Older overlays occasionally pass an empty name to fetchurl which makes
-    # Nix 2.24 unable to guess the archive type. Restore the historical
-    # behaviour of deriving the name from the URL when it is missing.
-    overlayFetchurlNameFix = final: prev: let
-      inherit (prev.lib) last splitString;
-      deriveName = args:
-        if args ? name && args.name != ""
-        then args
-        else if args ? url
-        then args // {name = last (splitString "/" args.url);}
-        else if args ? urls
-        then let
-          urlsList =
-            if builtins.isList args.urls
-            then args.urls
-            else [args.urls];
-          firstUrl = builtins.head urlsList;
-        in
-          args // {name = last (splitString "/" firstUrl);}
-        else args;
-    in {
-      fetchurl = args: prev.fetchurl (deriveName args);
-    };
+    commonOverlays = [
+      overlay
+      overlaySkipNodeChecks
+      rust-overlay.overlays.default
+    ];
 
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
@@ -128,12 +110,7 @@
         config = {
           allowUnfree = true;
         };
-        overlays = [
-          overlay
-          overlaySkipNodeChecks
-          overlayFetchurlNameFix
-          rust-overlay.overlays.default
-        ];
+        overlays = commonOverlays;
       };
       inherit (pkgs) lib;
       rustBin = pkgs.rust-bin.stable.latest;
@@ -266,6 +243,12 @@
         };
         system = "aarch64-darwin";
         modules = [
+          {
+            nixpkgs = {
+              overlays = commonOverlays;
+              config.allowUnfree = true;
+            };
+          }
           ./hosts/base/configuration.nix
           ./hosts/darwin/configuration.nix
           ./hosts/darwin/resolver-tpl.nix
@@ -299,15 +282,16 @@
         nix-darwin.lib.darwinSystem {
           system = system;
 
-          pkgs = import nixpkgs {
-            system = system;
-            overlays = [overlay overlaySkipNodeChecks rust-overlay.overlays.default];
-          };
-
           specialArgs = {
             inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath tplIpPrefix tplResolverFile;
           };
           modules = [
+            {
+              nixpkgs = {
+                overlays = commonOverlays;
+                config.allowUnfree = true;
+              };
+            }
             self.darwinModules.coredns
             self.darwinModules.homebridge
             self.darwinModules.scrypted
