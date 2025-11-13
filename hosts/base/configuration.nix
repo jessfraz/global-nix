@@ -20,7 +20,7 @@
   };
 
   environment = {
-    systemPackages = [inputs.self.packages.${pkgs.system}.default];
+    systemPackages = [inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.default];
   };
 
   fonts.packages = with pkgs; [

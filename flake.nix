@@ -125,11 +125,11 @@
         cargo = rustToolchain;
         rustc = rustToolchain;
       };
-      zooCli = zoo-cli.packages.${pkgs.system}.zoo;
-      codexCli = codex.packages.${pkgs.system}.codex-rs.override {
+      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      codexCli = codex.packages.${pkgs.stdenv.hostPlatform.system}.codex-rs.override {
         rustPlatform = rustPlatform;
       };
-      flakehubCli = fh.packages.${pkgs.system}.default;
+      flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
       # Common packages for all systems
       commonPackages = with pkgs; [
