@@ -1,14 +1,35 @@
 {
   username,
   hostname,
+  homeDir,
   ...
-}: {
+}: let
+  maxFilesSoft = 65536;
+  maxFilesHard = 200000;
+  launchctlPath = "/bin/launchctl";
+in {
   # Let Determinate Nix handle Nix configuration
   nix.enable = false;
 
-  launchd.daemons.nix-daemon.serviceConfig = {
-    SoftResourceLimits = { NumberOfFiles = 65536; };
-    HardResourceLimits = { NumberOfFiles = 200000; };
+  launchd = {
+    # Raise file descriptor limits for both the system and the user domains.
+    daemons."limit.maxfiles" = {
+      serviceConfig = {
+        ProgramArguments = [launchctlPath "limit" "maxfiles" (toString maxFilesSoft) (toString maxFilesHard)];
+        RunAtLoad = true;
+        StandardErrorPath = "/var/log/limit.maxfiles.err";
+        StandardOutPath = "/var/log/limit.maxfiles.out";
+      };
+    };
+
+    user.agents."${hostname}.limit.maxfiles" = {
+      serviceConfig = {
+        ProgramArguments = [launchctlPath "limit" "maxfiles" (toString maxFilesSoft) (toString maxFilesHard)];
+        RunAtLoad = true;
+        StandardErrorPath = "${homeDir}/Library/Logs/limit.maxfiles.err";
+        StandardOutPath = "${homeDir}/Library/Logs/limit.maxfiles.out";
+      };
+    };
   };
 
   networking = {
