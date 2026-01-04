@@ -38,27 +38,20 @@ if ! git rev-parse --git-dir >/dev/null 2>&1; then
     exit 1
 fi
 
-top=$(git rev-parse --show-toplevel)
-git_dir=$(git rev-parse --git-dir)
-case "$git_dir" in
-    /*) git_dir_abs="$git_dir" ;;
-    *) git_dir_abs="$top/$git_dir" ;;
-esac
+cur_wt=$(git rev-parse --show-toplevel)
+main_wt=""
+while read -r key value; do
+    if [ "$key" = "worktree" ]; then
+        if [ -d "$value/.git" ]; then
+            main_wt="$value"
+            break
+        fi
+    fi
+done < <(git worktree list --porcelain)
 
-common=$(git rev-parse --git-common-dir)
-if [ "$common" = "$git_dir" ] || [ "$common" = ".git" ] || [ "$common" = "." ]; then
-    common_abs="$git_dir_abs"
-else
-    case "$common" in
-        /*) common_abs="$common" ;;
-        *) common_abs="$git_dir_abs/$common" ;;
-    esac
+if [ -z "$main_wt" ]; then
+    main_wt="$cur_wt"
 fi
-common_abs=$(cd "$common_abs" && pwd -P)
-
-main_wt=$(cd "$common_abs/.." && pwd -P)
-[ -n "$main_wt" ] || main_wt="$top"
-cur_wt="$top"
 
 if [ -z "$base" ]; then
     tmp=$(git symbolic-ref --short "refs/remotes/$remote/HEAD" 2>/dev/null)
