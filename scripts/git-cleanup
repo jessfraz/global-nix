@@ -94,6 +94,15 @@ del_branch() {
         return 0
     fi
 
+    upstream=$(gitc for-each-ref --format='%(upstream:short)' "refs/heads/$cur")
+    if [ -n "$upstream" ] && [ "$upstream" = "$remote/$cur" ]; then
+        if ! gitc show-ref --verify --quiet "refs/remotes/$remote/$cur"; then
+            echo "Remote branch $remote/$cur gone; deleting local branch."
+            gitc branch -D "$cur" || true
+            return 0
+        fi
+    fi
+
     if gitc merge-base --is-ancestor "$cur" "$base" 2>/dev/null; then
         gitc branch -d "$cur" || true
         return 0
