@@ -48,6 +48,22 @@ in {
     bashrcExtra = ''
       source ${config.home.homeDirectory}/.nixbash
 
+      function wknew() {
+          local b="$1"
+          if [ -z "$b" ]; then
+              echo "usage: wknew <branch>"
+              return 1
+          fi
+          local repo wt
+          repo=$(basename "$(git rev-parse --show-toplevel)") || return $?
+          wt="../$repo-$b"
+          git worktree add -b "$b" "$wt" origin/main || return $?
+          git -C "$wt" submodule update --init --recursive || return $?
+          git -C "$wt" config branch.$b.remote origin || return $?
+          git -C "$wt" config branch.$b.merge refs/heads/$b || return $?
+          cd "$wt" || return $?
+      }
+
       function fetch-github-token() {
           export GITHUB_TOKEN=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
 

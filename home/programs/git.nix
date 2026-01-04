@@ -145,9 +145,6 @@
         # Commit all changes
         ca = "!git add -A && git commit -av";
 
-        # Create a new worktree for a branch: git wtnew <branch>
-        wtnew = "!f() { b=\"$1\"; if [ -z \"$b\" ]; then echo \"usage: git wtnew <branch>\"; return 1; fi; repo=$(basename \"$(git rev-parse --show-toplevel)\"); wt=\"../$repo-$b\"; git worktree add -b \"$b\" \"$wt\" origin/main || return $?; git -C \"$wt\" submodule update --init --recursive || return $?; git -C \"$wt\" config branch.$b.remote origin || return $?; git -C \"$wt\" config branch.$b.merge refs/heads/$b || return $?; cd \"$wt\"; }; f";
-
         # Switch to a branch, creating it if necessary
         go = "!f() { git checkout -b \"$1\" 2> /dev/null || git checkout \"$1\"; }; f";
 
@@ -219,15 +216,21 @@
         # - Fetches, prunes, updates base, prunes worktrees, and runs a light GC.
         # - If run inside a linked worktree, removes it (and its branch), then prints
         #   the main worktree path to return to.
-        cleanup = "!f() { remote=origin; force=0; base=\"\"; nogc=0; while [ $# -gt 0 ]; do case \"$1\" in -f|--force) force=1; shift;; -r|--remote) shift; [ -n \"$1\" ] && remote=\"$1\"; shift;; -b|--base) shift; [ -n \"$1\" ] && base=\"$1\"; shift;; --no-gc) nogc=1; shift;; *) echo \"Unknown option: $1\"; return 2;; esac; done; if ! git rev-parse --git-dir >/dev/null 2>&1; then echo \"Not a git repo\"; return 1; fi; top=$(git rev-parse --show-toplevel); git_dir=$(git rev-parse --git-dir); case \"$git_dir\" in /*) git_dir_abs=\"$git_dir\";; *) git_dir_abs=\"$top/$git_dir\";; esac; common=$(git rev-parse --git-common-dir); case \"$common\" in /*) common_abs=\"$common\";; *) common_abs=\"$git_dir_abs/$common\";; esac; common_abs=$(cd \"$common_abs\" && pwd -P); main_wt=$(cd \"$common_abs/..\" && pwd -P); [ -n \"$main_wt\" ] || main_wt=\"$top\"; cur_wt=\"$top\"; if [ -z \"$base\" ]; then tmp=$(git symbolic-ref --short \"refs/remotes/$remote/HEAD\" 2>/dev/null); if [ -n \"$tmp\" ]; then base=$(printf \"%s\" \"$tmp\" | sed \"s@^$remote/@@\"); fi; fi; if [ -z \"$base\" ]; then if git show-ref --verify --quiet refs/heads/main; then base=main; elif git show-ref --verify --quiet refs/heads/master; then base=master; else echo \"Cannot determine default branch. Use -b <name>.\"; return 1; fi; fi; if ! git diff --quiet || ! git diff --cached --quiet; then echo \"Working tree not clean; commit/stash first.\"; return 1; fi; cur=$(git symbolic-ref --quiet --short HEAD || echo HEAD); gitc() { git -C \"$main_wt\" \"$@\"; }; if [ \"$cur_wt\" != \"$main_wt\" ]; then if [ \"$force\" -eq 1 ]; then gitc worktree remove --force \"$cur_wt\" || return $?; else gitc worktree remove \"$cur_wt\" || return $?; fi; if [ \"$cur\" != \"HEAD\" ] && [ \"$cur\" != \"$base\" ]; then if [ \"$force\" -eq 1 ]; then gitc branch -D \"$cur\" || true; else gitc branch -d \"$cur\" || { echo \"Branch '$cur' not merged. Re-run with -f to force.\"; }; fi; else echo \"Already on $base or detached HEAD; skipping delete.\"; fi; gitc fetch \"$remote\" --prune --tags; if ! gitc diff --quiet || ! gitc diff --cached --quiet; then echo \"Main worktree not clean; skipping base update.\"; else main_cur=$(gitc symbolic-ref --quiet --short HEAD || echo HEAD); if [ \"$main_cur\" != \"$base\" ]; then gitc switch \"$base\"; fi; gitc pull --ff-only \"$remote\" \"$base\"; fi; gitc remote prune \"$remote\" || true; gitc worktree prune || true; if [ \"$nogc\" -ne 1 ]; then gitc gc --prune=now; fi; echo \"Cleanup complete: base=$base remote=$remote\"; echo \"Worktree removed: $cur_wt\"; echo \"Run: cd $main_wt\"; return 0; fi; if [ \"$cur\" != \"HEAD\" ] && [ \"$cur\" != \"$base\" ]; then git switch \"$base\"; if [ \"$force\" -eq 1 ]; then git branch -D \"$cur\" || true; else git branch -d \"$cur\" || { echo \"Branch '$cur' not merged. Re-run with -f to force.\"; }; fi; else echo \"Already on $base or detached HEAD; skipping delete.\"; fi; git fetch \"$remote\" --prune --tags; git pull --ff-only \"$remote\" \"$base\"; git remote prune \"$remote\" || true; git worktree prune || true; if [ \"$nogc\" -ne 1 ]; then git gc --prune=now; fi; echo \"Cleanup complete: base=$base remote=$remote\"; }; f";
+        cleanup = "!f() { bash \"$HOME/.config/git/scripts/git-cleanup\" \"$@\"; }; f";
       };
     };
   };
 
   # Install a global prepare-commit-msg hook that generates messages via OpenAI.
   # This works with the hooksPath above and avoids per-repo installation.
-  home.file.".config/git/hooks/prepare-commit-msg" = {
-    source = ../../scripts/prepare-commit-msg.py;
-    executable = true;
+  home.file = {
+    ".config/git/hooks/prepare-commit-msg" = {
+      source = ../../scripts/prepare-commit-msg.py;
+      executable = true;
+    };
+    ".config/git/scripts/git-cleanup" = {
+      source = ../../scripts/git-cleanup;
+      executable = true;
+    };
   };
 }

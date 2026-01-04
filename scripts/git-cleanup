@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -o pipefail
+
+remote=origin
+force=0
+base=""
+nogc=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -f|--force)
+            force=1
+            shift
+            ;;
+        -r|--remote)
+            shift
+            [ -n "$1" ] && remote="$1"
+            shift
+            ;;
+        -b|--base)
+            shift
+            [ -n "$1" ] && base="$1"
+            shift
+            ;;
+        --no-gc)
+            nogc=1
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 2
+            ;;
+    esac
+done
+
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "Not a git repo"
+    exit 1
+fi
+
+top=$(git rev-parse --show-toplevel)
+git_dir=$(git rev-parse --git-dir)
+case "$git_dir" in
+    /*) git_dir_abs="$git_dir" ;;
+    *) git_dir_abs="$top/$git_dir" ;;
+esac
+
+common=$(git rev-parse --git-common-dir)
+if [ "$common" = "$git_dir" ] || [ "$common" = ".git" ] || [ "$common" = "." ]; then
+    common_abs="$git_dir_abs"
+else
+    case "$common" in
+        /*) common_abs="$common" ;;
+        *) common_abs="$git_dir_abs/$common" ;;
+    esac
+fi
+common_abs=$(cd "$common_abs" && pwd -P)
+
+main_wt=$(cd "$common_abs/.." && pwd -P)
+[ -n "$main_wt" ] || main_wt="$top"
+cur_wt="$top"
+
+if [ -z "$base" ]; then
+    tmp=$(git symbolic-ref --short "refs/remotes/$remote/HEAD" 2>/dev/null)
+    if [ -n "$tmp" ]; then
+        base=$(printf "%s" "$tmp" | sed "s@^$remote/@@")
+    fi
+fi
+if [ -z "$base" ]; then
+    if git show-ref --verify --quiet refs/heads/main; then
+        base=main
+    elif git show-ref --verify --quiet refs/heads/master; then
+        base=master
+    else
+        echo "Cannot determine default branch. Use -b <name>."
+        exit 1
+    fi
+fi
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Working tree not clean; commit/stash first."
+    exit 1
+fi
+
+cur=$(git symbolic-ref --quiet --short HEAD || echo HEAD)
+
+gitc() {
+    git -C "$main_wt" "$@"
+}
+
+del_branch() {
+    if [ "$force" -eq 1 ]; then
+        gitc branch -D "$cur" || true
+        return 0
+    fi
+
+    if gitc merge-base --is-ancestor "$cur" "$base" 2>/dev/null; then
+        gitc branch -d "$cur" || true
+        return 0
+    fi
+
+    if gitc show-ref --verify --quiet "refs/remotes/$remote/$base" \
+        && gitc merge-base --is-ancestor "$cur" "$remote/$base" 2>/dev/null; then
+        gitc branch -D "$cur" || true
+        return 0
+    fi
+
+    echo "Branch '$cur' not merged. Re-run with -f to force."
+}
+
+if [ "$cur_wt" != "$main_wt" ]; then
+    if [ "$force" -eq 1 ]; then
+        gitc worktree remove --force "$cur_wt" || exit $?
+    else
+        gitc worktree remove "$cur_wt" || exit $?
+    fi
+
+    gitc fetch "$remote" --prune --tags
+
+    if [ "$cur" != "HEAD" ] && [ "$cur" != "$base" ]; then
+        del_branch
+    else
+        echo "Already on $base or detached HEAD; skipping delete."
+    fi
+
+    if ! gitc diff --quiet || ! gitc diff --cached --quiet; then
+        echo "Main worktree not clean; skipping base update."
+    else
+        main_cur=$(gitc symbolic-ref --quiet --short HEAD || echo HEAD)
+        if [ "$main_cur" != "$base" ]; then
+            gitc switch "$base"
+        fi
+        gitc pull --ff-only "$remote" "$base"
+    fi
+
+    gitc remote prune "$remote" || true
+    gitc worktree prune || true
+    if [ "$nogc" -ne 1 ]; then
+        gitc gc --prune=now
+    fi
+    echo "Cleanup complete: base=$base remote=$remote"
+    echo "Worktree removed: $cur_wt"
+    echo "Run: cd $main_wt"
+    exit 0
+fi
+
+gitc fetch "$remote" --prune --tags
+if [ "$cur" != "HEAD" ] && [ "$cur" != "$base" ]; then
+    gitc switch "$base"
+    del_branch
+else
+    echo "Already on $base or detached HEAD; skipping delete."
+fi
+gitc pull --ff-only "$remote" "$base"
+gitc remote prune "$remote" || true
+gitc worktree prune || true
+if [ "$nogc" -ne 1 ]; then
+    gitc gc --prune=now
+fi
+echo "Cleanup complete: base=$base remote=$remote"
