@@ -64,6 +64,22 @@ in {
           cd "$wt" || return $?
       }
 
+      function gcleanup() {
+          local main
+          main=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+          if [ -n "$main" ]; then
+              main=$(cd "$main/.." && pwd -P)
+          else
+              main=$(git worktree list --porcelain | awk '$1=="worktree"{print $2; exit}')
+          fi
+
+          git cleanup || return $?
+
+          if [ -n "$main" ]; then
+              cd "$main" || return $?
+          fi
+      }
+
       function fetch-github-token() {
           export GITHUB_TOKEN=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
 
