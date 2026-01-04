@@ -39,18 +39,22 @@ if ! git rev-parse --git-dir >/dev/null 2>&1; then
 fi
 
 cur_wt=$(git rev-parse --show-toplevel)
+common_abs=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
 main_wt=""
-while read -r key value; do
-    if [ "$key" = "worktree" ]; then
-        if [ -d "$value/.git" ]; then
+if [ -n "$common_abs" ]; then
+    main_wt=$(cd "$common_abs/.." && pwd -P)
+else
+    while read -r key value; do
+        if [ "$key" = "worktree" ]; then
             main_wt="$value"
             break
         fi
-    fi
-done < <(git worktree list --porcelain)
+    done < <(git worktree list --porcelain)
+fi
 
-if [ -z "$main_wt" ]; then
-    main_wt="$cur_wt"
+if [ -z "$main_wt" ] || [ ! -d "$main_wt/.git" ]; then
+    echo "Cannot determine main worktree."
+    exit 1
 fi
 
 if [ -z "$base" ]; then
