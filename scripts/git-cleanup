@@ -117,12 +117,6 @@ if [ "$cur_wt" != "$main_wt" ]; then
 
     gitc fetch "$remote" --prune --tags
 
-    if [ "$cur" != "HEAD" ] && [ "$cur" != "$base" ]; then
-        del_branch
-    else
-        echo "Already on $base or detached HEAD; skipping delete."
-    fi
-
     if ! gitc diff --quiet || ! gitc diff --cached --quiet; then
         echo "Main worktree not clean; skipping base update."
     else
@@ -131,6 +125,12 @@ if [ "$cur_wt" != "$main_wt" ]; then
             gitc switch "$base"
         fi
         gitc pull --ff-only "$remote" "$base"
+    fi
+
+    if [ "$cur" != "HEAD" ] && [ "$cur" != "$base" ]; then
+        del_branch
+    else
+        echo "Already on $base or detached HEAD; skipping delete."
     fi
 
     gitc remote prune "$remote" || true
@@ -147,11 +147,12 @@ fi
 gitc fetch "$remote" --prune --tags
 if [ "$cur" != "HEAD" ] && [ "$cur" != "$base" ]; then
     gitc switch "$base"
+    gitc pull --ff-only "$remote" "$base"
     del_branch
 else
+    gitc pull --ff-only "$remote" "$base"
     echo "Already on $base or detached HEAD; skipping delete."
 fi
-gitc pull --ff-only "$remote" "$base"
 gitc remote prune "$remote" || true
 gitc worktree prune || true
 if [ "$nogc" -ne 1 ]; then
