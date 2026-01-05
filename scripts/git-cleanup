@@ -89,6 +89,47 @@ gitc() {
     git -C "$main_wt" "$@"
 }
 
+warn() {
+    printf '%s\n' "$*" >&2
+}
+
+submodule_paths() {
+    git -C "$1" config -f .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null \
+        | awk '{print $2}'
+}
+
+cleanup_worktree_submodules() {
+    local wt="$1"
+
+    [ -f "$wt/.gitmodules" ] || return 0
+
+    git -C "$wt" submodule deinit -f --all || true
+    while read -r path; do
+        [ -n "$path" ] || continue
+        rm -rf "$wt/$path" || true
+    done < <(submodule_paths "$wt")
+}
+
+remove_worktree() {
+    local wt="$1"
+    local args=()
+
+    if [ "$force" -eq 1 ]; then
+        args+=(--force)
+    fi
+
+    cleanup_worktree_submodules "$wt"
+
+    if gitc worktree remove "${args[@]}" "$wt"; then
+        return 0
+    fi
+
+    warn "git worktree remove failed for $wt, removing directory and pruning metadata."
+    rm -rf "$wt" || true
+    gitc worktree prune || true
+    return 0
+}
+
 del_branch() {
     if [ "$force" -eq 1 ]; then
         gitc branch -D "$cur" || true
@@ -119,14 +160,7 @@ del_branch() {
 }
 
 if [ "$cur_wt" != "$main_wt" ]; then
-    if [ -f "$cur_wt/.gitmodules" ]; then
-        git -C "$cur_wt" submodule deinit -f --all || true
-    fi
-    if [ "$force" -eq 1 ]; then
-        gitc worktree remove --force "$cur_wt" || exit $?
-    else
-        gitc worktree remove "$cur_wt" || exit $?
-    fi
+    remove_worktree "$cur_wt"
 
     gitc fetch "$remote" --prune --tags
 
