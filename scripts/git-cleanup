@@ -119,6 +119,9 @@ del_branch() {
 }
 
 if [ "$cur_wt" != "$main_wt" ]; then
+    if [ -f "$cur_wt/.gitmodules" ]; then
+        git -C "$cur_wt" submodule deinit -f --all || true
+    fi
     if [ "$force" -eq 1 ]; then
         gitc worktree remove --force "$cur_wt" || exit $?
     else
