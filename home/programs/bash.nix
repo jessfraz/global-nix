@@ -82,6 +82,7 @@ in {
 
       function fetch-github-token() {
           export GITHUB_TOKEN=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
+          export GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_TOKEN
 
           # Add the token to our .netrc file
           ${netRcContents}
