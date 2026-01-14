@@ -79,6 +79,13 @@
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
     };
 
+    # Provide a compatibility alias for removed attributes in recent nixpkgs.
+    # Some inputs (e.g., editor configs) still reference `rust-analyzer-nightly`.
+    # Alias it to the stable `rust-analyzer` when missing.
+    overlayCompatRust = final: prev: {
+      rust-analyzer-nightly = if prev ? rust-analyzer-nightly then prev.rust-analyzer-nightly else prev.rust-analyzer;
+    };
+
     # Avoid flaky Node.js test phases on Darwin by disabling checks.
     overlaySkipNodeChecks = final: prev: {
       nodejs_20 = prev.nodejs_20.overrideAttrs (_: {doCheck = false;});
@@ -88,6 +95,7 @@
     commonOverlays = [
       overlay
       overlaySkipNodeChecks
+      overlayCompatRust
       rust-overlay.overlays.default
     ];
 
@@ -205,6 +213,12 @@
         };
         system = "x86_64-linux"; # or aarch64-linux if you're on ARM
         modules = [
+          {
+            nixpkgs = {
+              overlays = commonOverlays;
+              config.allowUnfree = true;
+            };
+          }
           ./hosts/base/configuration.nix
           ./hosts/linux/configuration.nix
           ./hosts/linux/system76/configuration.nix
