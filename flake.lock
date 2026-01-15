@@ -31,17 +31,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1768412575,
-        "narHash": "sha256-Ugr65VKHTERfg68dr23uZIRlxNk8AoN9ZeQ2hBso+1E=",
-        "ref": "refs/tags/rust-v0.81.0",
-        "rev": "7e7f828e2ce5d31a61d577bcabb517cca342f8ad",
-        "revCount": 2832,
+        "lastModified": 1768500282,
+        "narHash": "sha256-YqSZzIp81XkxdL40eyxVm9g3u/LkiYPUV7tsgeVZ9T8=",
+        "ref": "refs/tags/rust-v0.85.0",
+        "rev": "4607330eff53e3ae39126afef76882042e14a03c",
+        "revCount": 2860,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/openai/codex"
       },
       "original": {
-        "ref": "refs/tags/rust-v0.81.0",
+        "ref": "refs/tags/rust-v0.85.0",
         "submodules": true,
         "type": "git",
         "url": "https://github.com/openai/codex"

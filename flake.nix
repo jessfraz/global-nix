@@ -41,7 +41,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.81.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.85.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -83,7 +83,10 @@
     # Some inputs (e.g., editor configs) still reference `rust-analyzer-nightly`.
     # Alias it to the stable `rust-analyzer` when missing.
     overlayCompatRust = final: prev: {
-      rust-analyzer-nightly = if prev ? rust-analyzer-nightly then prev.rust-analyzer-nightly else prev.rust-analyzer;
+      rust-analyzer-nightly =
+        if prev ? rust-analyzer-nightly
+        then prev.rust-analyzer-nightly
+        else prev.rust-analyzer;
     };
 
     # Avoid flaky Node.js test phases on Darwin by disabling checks.
