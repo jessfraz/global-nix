@@ -46,6 +46,9 @@ in {
       enable = true;
       # Home Manager is deprecating implicit defaults; be explicit.
       enableDefaultConfig = false;
+      extraConfig = lib.optionalString pkgs.stdenv.isLinux ''
+        Match host * exec "gpg-connect-agent updatestartuptty /bye"
+      '';
       matchBlocks = {
         "*" = {
           addKeysToAgent = "yes";

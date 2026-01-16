@@ -48,6 +48,11 @@ in {
     bashrcExtra = ''
       source ${config.home.homeDirectory}/.nixbash
 
+      # Keep GPG_TTY aligned in interactive terminals (Linux only).
+      if [ "$(uname -s)" = "Linux" ] && [ -t 1 ]; then
+          export GPG_TTY="$(tty)"
+      fi
+
       # Avoid GUI prompts for 1Password CLI in SSH sessions.
       if [ -n "${SSH_CONNECTION-}" ] || [ -n "${SSH_TTY-}" ]; then
           if [ -z "${OP_BIOMETRIC_UNLOCK_ENABLED-}" ]; then
