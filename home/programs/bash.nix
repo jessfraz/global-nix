@@ -48,8 +48,8 @@ in {
     bashrcExtra = ''
       source ${config.home.homeDirectory}/.nixbash
 
-      # Keep GPG_TTY aligned in interactive terminals (Linux only).
-      if [ "$(uname -s)" = "Linux" ] && [ -t 1 ]; then
+      # Keep GPG_TTY aligned in interactive terminals.
+      if [ -t 1 ]; then
           export GPG_TTY="$(tty)"
       fi
 

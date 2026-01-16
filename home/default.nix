@@ -46,7 +46,8 @@ in {
       enable = true;
       # Home Manager is deprecating implicit defaults; be explicit.
       enableDefaultConfig = false;
-      extraConfig = lib.optionalString pkgs.stdenv.isLinux ''
+      extraConfig = ''
+        # Ensure gpg-agent's TTY is updated before SSH auth prompts.
         Match host * exec "gpg-connect-agent updatestartuptty /bye"
       '';
       matchBlocks = {

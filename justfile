@@ -3,12 +3,14 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 # Default target: run formatting check and lint.
 default: ci
 
-# Format Python files in the repo.
+# Format Nix and Python files in the repo.
 fmt:
+    alejandra .
     ruff format .
 
 # Check formatting without changing files (CI-friendly).
 fmt-check:
+    alejandra --check .
     ruff format --check .
 
 # Lint Python files.
@@ -23,4 +25,3 @@ lint-fix:
 ci:
     just fmt-check
     just lint
-
