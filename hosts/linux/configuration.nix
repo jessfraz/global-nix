@@ -14,6 +14,24 @@
     };
   };
 
+  # Keep nix builds from hitting low FD limits.
+  systemd.services.nix-daemon.serviceConfig.LimitNOFILE = 1048576;
+
+  security.pam.loginLimits = [
+    {
+      domain = "*";
+      type = "soft";
+      item = "nofile";
+      value = "1048576";
+    }
+    {
+      domain = "*";
+      type = "hard";
+      item = "nofile";
+      value = "1048576";
+    }
+  ];
+
   nixpkgs.config = {
     allowUnfree = true;
     nvidia.acceptLicense = true;

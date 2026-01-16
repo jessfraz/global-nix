@@ -21,6 +21,7 @@
     '';
     #blacklistedKernelModules = ["i915"];
     loader.systemd-boot.enable = true;
+    loader.systemd-boot.configurationLimit = 5;
   };
 
   networking = {
