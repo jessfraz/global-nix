@@ -54,8 +54,8 @@ in {
       fi
 
       # Avoid GUI prompts for 1Password CLI in SSH sessions.
-      if [ -n "${SSH_CONNECTION-}" ] || [ -n "${SSH_TTY-}" ]; then
-          if [ -z "${OP_BIOMETRIC_UNLOCK_ENABLED-}" ]; then
+      if [ -n "''${SSH_CONNECTION-}" ] || [ -n "''${SSH_TTY-}" ]; then
+          if [ -z "''${OP_BIOMETRIC_UNLOCK_ENABLED-}" ]; then
               export OP_BIOMETRIC_UNLOCK_ENABLED=false
           fi
       fi
