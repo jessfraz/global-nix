@@ -93,6 +93,7 @@ in {
       }
 
       function fetch-github-token() {
+          op-ensure-session my.1password.com || return $?
           export GITHUB_TOKEN=$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal)
           export GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_TOKEN
 
@@ -107,31 +108,51 @@ in {
       }
       alias fetch-gh-token="fetch-github-token"
 
+      function op-ensure-session() {
+          local account="$1"
+          if [ -z "$account" ]; then
+              echo "op-ensure-session: missing account" >&2
+              return 1
+          fi
+          if [ "''${OP_BIOMETRIC_UNLOCK_ENABLED-}" = "false" ]; then
+              if ! op whoami --account "$account" >/dev/null 2>&1; then
+                  eval "$(op signin --account "$account")" || return $?
+              fi
+          fi
+      }
+
       function fetch-openai-key() {
+          op-ensure-session my.1password.com || return $?
           export OPENAI_API_KEY=$(op --account my.1password.com item get "openai.com" --fields apikey --reveal)
       }
 
       function fetch-anthropic-key() {
+          op-ensure-session my.1password.com || return $?
           export ANTHROPIC_API_KEY=$(op --account my.1password.com item get "claude.ai" --fields apikey --reveal)
       }
 
       function fetch-google-ai-key() {
+          op-ensure-session my.1password.com || return $?
           export GOOGLE_API_KEY=$(op --account my.1password.com item get "Google AI Studio" --fields credential --reveal)
       }
 
       function fetch-deepseek-key() {
+          op-ensure-session my.1password.com || return $?
           export DEEPSEEK_API_KEY=$(op --account my.1password.com item get "deepseek.com" --fields apikey --reveal)
       }
 
       function fetch-grok-key() {
+          op-ensure-session my.1password.com || return $?
           export GROK_API_KEY=$(op --account my.1password.com item get "grok x.ai" --fields credential --reveal)
       }
 
       function fetch-hf-key() {
+          op-ensure-session my.1password.com || return $?
           export HF_TOKEN=$(op --account my.1password.com item get "huggingface.co" --fields apikey --reveal)
       }
 
       function fetch-kc-token() {
+          op-ensure-session kittycadinc.1password.com || return $?
           export KITTYCAD_API_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Token" --fields credential --reveal)
           export ZOO_TOKEN=$KITTYCAD_API_TOKEN
           export ZOO_API_TOKEN=$KITTYCAD_API_TOKEN
@@ -142,22 +163,27 @@ in {
       alias fetch-kittycad-token="fetch-kc-token"
 
       function fetch-pyx-token() {
+          op-ensure-session kittycadinc.1password.com || return $?
           export PYX_API_KEY=$(op --account kittycadinc.1password.com item get --vault Employee "pyx.dev Token" --fields credential --reveal)
       }
 
       function fetch-stripe-key() {
+          op-ensure-session kittycadinc.1password.com || return $?
           export STRIPE_API_KEY=$(op --account kittycadinc.1password.com item get "stripe prod zoo" --fields credential --reveal)
       }
 
       function fetch-hoops-license() {
+          op-ensure-session kittycadinc.1password.com || return $?
           export HOOPS_LICENSE=$(op --account kittycadinc.1password.com item get "Hoops Licence" --fields "license key" --reveal)
       }
 
       function fetch-kio-license() {
+          op-ensure-session kittycadinc.1password.com || return $?
           export KERNEL_IO_LICENSE=$(op --account kittycadinc.1password.com item get "3D_KERNEL_IO_LICENSE" --fields "2025" --reveal)
       }
 
       function fetch-cockroach-license() {
+          op-ensure-session kittycadinc.1password.com || return $?
           export COCKROACHDB_ENTERPRISE_LICENSE=$(op --account kittycadinc.1password.com item get "CockroachDB Dev License" --fields "license key" --reveal)
           mkdir -p "${config.home.homeDirectory}/.cockroach"
           echo "$(op --account kittycadinc.1password.com item get "CockroachDB Dev License" --fields "certificate" --reveal)" > "${config.home.homeDirectory}/.cockroach/ca.crt"
@@ -167,6 +193,7 @@ in {
       }
 
       function vault-login() {
+          op-ensure-session kittycadinc.1password.com || return $?
           export VAULT_ADDR="http://vault.hawk-dinosaur.ts.net"
           export GITHUB_VAULT_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "GitHub Token Vault" --fields credential --reveal)
           echo $GITHUB_VAULT_TOKEN | vault login -method=github token=-

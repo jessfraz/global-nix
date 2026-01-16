@@ -124,6 +124,7 @@ def ensure_api_key() -> str:
         return key
     # Try 1Password CLI if available
     if which("op") is not None:
+        ensure_op_session("my.1password.com")
         cmd = [
             "op",
             "--account",
@@ -143,6 +144,32 @@ def ensure_api_key() -> str:
                 os.environ["OPENAI_API_KEY"] = key
                 return key
     return ""
+
+
+def ensure_op_session(account: str) -> None:
+    if os.environ.get("OP_BIOMETRIC_UNLOCK_ENABLED") != "false":
+        return
+    if not sys.stdin.isatty():
+        dbg("no TTY available; skipping op signin")
+        return
+    if which("op") is None:
+        return
+    if run(["op", "whoami", "--account", account]).returncode == 0:
+        return
+    dbg("op whoami failed; attempting op signin")
+    cp = subprocess.run(
+        ["op", "signin", "--account", account, "--raw"],
+        stdin=None,
+        stdout=subprocess.PIPE,
+        stderr=None,
+        text=True,
+    )
+    if cp.returncode != 0:
+        dbg("op signin failed")
+        return
+    token = (cp.stdout or "").strip()
+    if token:
+        os.environ["OP_SESSION"] = token
 
 
 def run(args_or_cmd: Union[str, Sequence[str]]) -> subprocess.CompletedProcess[str]:
