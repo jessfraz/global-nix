@@ -48,6 +48,13 @@ in {
     bashrcExtra = ''
       source ${config.home.homeDirectory}/.nixbash
 
+      # Avoid GUI prompts for 1Password CLI in SSH sessions.
+      if [ -n "${SSH_CONNECTION-}" ] || [ -n "${SSH_TTY-}" ]; then
+          if [ -z "${OP_BIOMETRIC_UNLOCK_ENABLED-}" ]; then
+              export OP_BIOMETRIC_UNLOCK_ENABLED=false
+          fi
+      fi
+
       function wknew() {
           local b="$1"
           if [ -z "$b" ]; then
