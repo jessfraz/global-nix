@@ -151,6 +151,12 @@ in {
           export HF_TOKEN=$(op --account my.1password.com item get "huggingface.co" --fields apikey --reveal)
       }
 
+      function fetch-kalshi-keys() {
+          op-ensure-session my.1password.com || return $?
+          export KALSHI_API_KEY_ID=$(op --account my.1password.com item get "kalshi.com" --fields "api-key-id" --reveal)
+          export KALSHI_PRIVATE_KEY=$(op --account my.1password.com item get "kalshi.com" --fields "private-key" --reveal)
+      }
+
       function fetch-kc-token() {
           op-ensure-session kittycadinc.1password.com || return $?
           export KITTYCAD_API_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Token" --fields credential --reveal)
