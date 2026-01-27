@@ -41,7 +41,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.91.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.92.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -178,6 +178,8 @@
         };
         doCheck = false;
         nativeBuildInputs = with pkgs; [
+          cmake
+          git
           pkg-config
           openssl
         ];
