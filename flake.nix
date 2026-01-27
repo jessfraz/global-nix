@@ -41,7 +41,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.87.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.91.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -95,10 +95,30 @@
       nodejs_22 = prev.nodejs_22.overrideAttrs (_: {doCheck = false;});
     };
 
+    # mdformat 0.7.22 doesn't accept markdown-it-py 4.x; pin mdformat to 1.0.0.
+    # TODO(jessfraz): Drop this override once nixpkgs bumps mdformat to 1.0.0+.
+    overlayMdformat = final: prev: let
+      mdformatOverrides = pself: psuper: {
+        mdformat = psuper.mdformat.overridePythonAttrs (_: {
+          version = "1.0.0";
+          src = prev.fetchFromGitHub {
+            owner = "executablebooks";
+            repo = "mdformat";
+            tag = "1.0.0";
+            hash = "sha256-fo4xO4Y89qPAggEjwuf6dnTyu1JzhZVdJyUqGNpti7g=";
+          };
+        });
+      };
+    in {
+      python3 = prev.python3.override {packageOverrides = mdformatOverrides;};
+      python3Packages = final.python3.pkgs;
+    };
+
     commonOverlays = [
       overlay
       overlaySkipNodeChecks
       overlayCompatRust
+      overlayMdformat
       rust-overlay.overlays.default
     ];
 
@@ -136,10 +156,38 @@
         cargo = rustToolchain;
         rustc = rustToolchain;
       };
+      codexSrc = "${codex}/codex-rs";
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
-      codexCli = codex.packages.${pkgs.stdenv.hostPlatform.system}.codex-rs.override {
-        rustPlatform = rustPlatform;
-      };
+      # TODO(jessfraz): Drop this local build and hash overrides once codex-rs
+      # stops pinning git deps in Cargo.lock or exports hashes upstream.
+      codexCli = rustPlatform.buildRustPackage (_: {
+        env = {
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig:$PKG_CONFIG_PATH";
+        };
+        pname = "codex-rs";
+        version = "0.1.0";
+        src = codexSrc;
+        cargoLock = {
+          lockFile = "${codexSrc}/Cargo.lock";
+          outputHashes = {
+            "ratatui-0.29.0" = "sha256-HBvT5c8GsiCxMffNjJGLmHnvG77A6cqEL+1ARurBXho=";
+            "crossterm-0.28.1" = "sha256-6qCtfSMuXACKFb9ATID39XyFDIEMFDmbx6SSmNe+728=";
+            "tokio-tungstenite-0.28.0" = "sha256-vJZ3S41gHtRt4UAODsjAoSCaTksgzCALiBmbWgyDCi8=";
+            "tungstenite-0.28.0" = "sha256-CyXZp58zGlUhEor7WItjQoS499IoSP55uWqr++ia+0A=";
+          };
+        };
+        doCheck = false;
+        nativeBuildInputs = with pkgs; [
+          pkg-config
+          openssl
+        ];
+
+        meta = with lib; {
+          description = "OpenAI Codex command-line interface rust implementation";
+          license = licenses.asl20;
+          homepage = "https://github.com/openai/codex";
+        };
+      });
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
       # Common packages for all systems
