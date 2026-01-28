@@ -69,6 +69,8 @@ in {
         macos-titlebar-style = "tabs";
         background-opacity = 0.9;
         background-blur-radius = 20;
+        window-width = 180;
+        window-height = 50;
         shell-integration-features = "no-title,cursor,sudo,ssh-env,ssh-terminfo";
       };
 
