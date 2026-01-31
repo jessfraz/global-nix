@@ -55,7 +55,7 @@ in {
     {
       environment.systemPackages = [
         config.services.homebridge.package
-        pkgs.nodejs_20
+        pkgs.nodejs_22
       ];
     }
 
@@ -63,7 +63,7 @@ in {
       defaultPath =
         lib.concatStringsSep ":"
         ([
-            (lib.makeBinPath [pkgs.nodejs_20 config.services.homebridge.package])
+            (lib.makeBinPath [pkgs.nodejs_22 config.services.homebridge.package])
           ]
           ++ [
             "/usr/local/bin"

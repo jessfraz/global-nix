@@ -4,6 +4,7 @@ in
   buildNpmPackage rec {
     pname = "homebridge";
     version = "1.11.1";
+    nodejs = pkgs.nodejs_22;
     gihubSha256 = "sha256-E21HowCRD78MZW3+um6vN5/NLncF/bt9v/Tw+RYe5xM=";
 
     src = fetchFromGitHub {
