@@ -139,7 +139,11 @@ in {
             StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
             StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
 
-            KeepAlive = true;
+            KeepAlive = {
+              PathState = {
+                "/nix/store" = true;
+              };
+            };
             RunAtLoad = true;
           };
         }
@@ -170,7 +174,11 @@ in {
             StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
             StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
 
-            KeepAlive = true;
+            KeepAlive = {
+              PathState = {
+                "/nix/store" = true;
+              };
+            };
             RunAtLoad = true;
           };
         };
