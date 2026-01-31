@@ -77,6 +77,23 @@
 
     overlay = final: prev: {
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
+      coredns = prev.coredns.overrideAttrs (old: let
+        postPatchScript =
+          if old ? postPatch
+          then old.postPatch
+          else "";
+        guardSubstitution =
+          builtins.replaceStrings
+          ["substituteInPlace test/corefile_test.go \\"]
+          ["if [ -f test/corefile_test.go ] && grep -q \"TestCorefile1\" test/corefile_test.go; then\n    substituteInPlace test/corefile_test.go \\"]
+          postPatchScript;
+      in {
+        postPatch =
+          builtins.replaceStrings
+          ["--replace-fail \"TestCorefile1\" \"SkipCorefile1\""]
+          ["--replace \"TestCorefile1\" \"SkipCorefile1\"\n    fi"]
+          guardSubstitution;
+      });
     };
 
     # Provide a compatibility alias for removed attributes in recent nixpkgs.

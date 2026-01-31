@@ -77,8 +77,9 @@ in {
         install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.storagePath}
       '';
 
-      launchd.user.agents.homebridge = {
+      launchd.daemons.homebridge = {
         serviceConfig = {
+          UserName = config.services.homebridge.user;
           ProgramArguments =
             [
               "${config.services.homebridge.package}/bin/homebridge"
@@ -106,8 +107,6 @@ in {
           KeepAlive = true;
           RunAtLoad = true;
         };
-
-        managedBy = "services.homebridge.enable";
       };
     }))
 

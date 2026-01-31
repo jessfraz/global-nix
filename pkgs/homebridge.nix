@@ -3,8 +3,8 @@
 in
   buildNpmPackage rec {
     pname = "homebridge";
-    version = "1.10.0";
-    gihubSha256 = "sha256-Eau8DR2c+2/Nuop2nmkwHPHEUWvzRzm2fTUxuXhgBmM=";
+    version = "1.11.1";
+    gihubSha256 = "sha256-E21HowCRD78MZW3+um6vN5/NLncF/bt9v/Tw+RYe5xM=";
 
     src = fetchFromGitHub {
       owner = "homebridge";
@@ -26,7 +26,7 @@ in
     production = false;
 
     # vendor the dependency tree
-    npmDepsHash = "sha256-Wvyoyq+myUgyGZkK+90H5YSVStL23SyxIJLWFcamQ7w=";
+    npmDepsHash = "sha256-Da64zHwvX0W1viNhy4afr60onlWqbizaVox9Un6c65Y=";
     dontNpmBuild = true; # skip `npm run build`
 
     nativeBuildInputs = [pkgs.nodePackages.typescript];

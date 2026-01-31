@@ -79,8 +79,9 @@ in {
         install -d -m0755 -o ${config.services.scrypted.user} -g staff ${config.services.scrypted.storagePath}
       '';
 
-      launchd.user.agents.scrypted = {
+      launchd.daemons.scrypted = {
         serviceConfig = {
+          UserName = config.services.scrypted.user;
           ProgramArguments =
             [
               "${config.services.scrypted.nodePackage}/bin/npx"
@@ -117,8 +118,6 @@ in {
           KeepAlive = true;
           RunAtLoad = true;
         };
-
-        managedBy = "services.scrypted.enable";
       };
     })
 
