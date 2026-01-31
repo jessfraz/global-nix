@@ -36,5 +36,6 @@
 
     user = username;
     #storagePath = "${volumesPath}/homebridge";
+    ui.enable = true;
   };
 }

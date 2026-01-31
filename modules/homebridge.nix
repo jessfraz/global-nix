@@ -48,6 +48,34 @@ in {
         default = {};
         description = "Additional env vars.";
       };
+
+      ui = {
+        enable = lib.mkEnableOption "Homebridge UI (service mode)";
+
+        packagePath = lib.mkOption {
+          type = lib.types.str;
+          default = "${config.services.homebridge.storagePath}/node_modules/homebridge-config-ui-x";
+          description = "Path to the homebridge-config-ui-x module directory (contains dist/bin/hb-service.js).";
+        };
+
+        pluginPath = lib.mkOption {
+          type = lib.types.path;
+          default = "${config.services.homebridge.storagePath}/node_modules";
+          description = "Where Homebridge plugins are installed.";
+        };
+
+        nodePackage = lib.mkOption {
+          type = lib.types.package;
+          default = pkgs.nodejs_22;
+          description = "Node runtime used for hb-service.";
+        };
+
+        extraArgs = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [];
+          description = "Extra CLI flags passed to hb-service run.";
+        };
+      };
     };
   };
 
@@ -55,7 +83,7 @@ in {
     {
       environment.systemPackages = [
         config.services.homebridge.package
-        pkgs.nodejs_22
+        config.services.homebridge.ui.nodePackage
       ];
     }
 
@@ -63,7 +91,7 @@ in {
       defaultPath =
         lib.concatStringsSep ":"
         ([
-            (lib.makeBinPath [pkgs.nodejs_22 config.services.homebridge.package])
+            (lib.makeBinPath [config.services.homebridge.ui.nodePackage config.services.homebridge.package])
           ]
           ++ [
             "/usr/local/bin"
@@ -75,39 +103,77 @@ in {
     in {
       system.activationScripts.homebridge-mkdir = ''
         install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.storagePath}
+        install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.ui.pluginPath}
+        if [ ! -e "${config.services.homebridge.ui.pluginPath}/homebridge" ] && [ ! -L "${config.services.homebridge.ui.pluginPath}/homebridge" ]; then
+          ln -s "${config.services.homebridge.package}/lib/node_modules/homebridge" "${config.services.homebridge.ui.pluginPath}/homebridge"
+        fi
       '';
 
-      launchd.daemons.homebridge = {
-        serviceConfig = {
-          UserName = config.services.homebridge.user;
-          ProgramArguments =
-            [
-              "${config.services.homebridge.package}/bin/homebridge"
-              "-U"
-              config.services.homebridge.storagePath
-              "-I"
-              "-P"
-              "${config.services.homebridge.storagePath}/node_modules"
-              "--color"
-            ]
-            ++ config.services.homebridge.extraArgs;
+      launchd.daemons.homebridge =
+        if config.services.homebridge.ui.enable
+        then {
+          serviceConfig = {
+            UserName = config.services.homebridge.user;
+            ProgramArguments =
+              [
+                "${config.services.homebridge.ui.nodePackage}/bin/node"
+                "${config.services.homebridge.ui.packagePath}/dist/bin/hb-service.js"
+                "run"
+                "-U"
+                config.services.homebridge.storagePath
+                "-P"
+                config.services.homebridge.ui.pluginPath
+              ]
+              ++ config.services.homebridge.ui.extraArgs;
 
-          EnvironmentVariables =
-            ({
-                HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
-              }
-              // lib.optionalAttrs (!(config.services.homebridge.environment ? PATH)) {
-                PATH = defaultPath;
-              })
-            // config.services.homebridge.environment;
+            EnvironmentVariables =
+              ({
+                  HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
+                }
+                // lib.optionalAttrs (!(config.services.homebridge.environment ? PATH)) {
+                  PATH = defaultPath;
+                })
+              // config.services.homebridge.environment;
 
-          StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
-          StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
+            WorkingDirectory = config.services.homebridge.storagePath;
+            StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
+            StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
 
-          KeepAlive = true;
-          RunAtLoad = true;
+            KeepAlive = true;
+            RunAtLoad = true;
+          };
+        }
+        else {
+          serviceConfig = {
+            UserName = config.services.homebridge.user;
+            ProgramArguments =
+              [
+                "${config.services.homebridge.package}/bin/homebridge"
+                "-U"
+                config.services.homebridge.storagePath
+                "-I"
+                "-P"
+                config.services.homebridge.ui.pluginPath
+                "--color"
+              ]
+              ++ config.services.homebridge.extraArgs;
+
+            EnvironmentVariables =
+              ({
+                  HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
+                }
+                // lib.optionalAttrs (!(config.services.homebridge.environment ? PATH)) {
+                  PATH = defaultPath;
+                })
+              // config.services.homebridge.environment;
+
+            StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
+            StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
+
+            KeepAlive = true;
+            RunAtLoad = true;
+          };
         };
-      };
     }))
 
     /*
