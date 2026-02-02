@@ -41,7 +41,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.92.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.94.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -160,7 +160,6 @@
         };
         overlays = commonOverlays;
       };
-      inherit (pkgs) lib;
       rustBin = pkgs.rust-bin.stable.latest;
       rustToolchain = rustBin.default.override {
         extensions = [
@@ -169,44 +168,8 @@
           "rustfmt"
         ];
       };
-      rustPlatform = pkgs.makeRustPlatform {
-        cargo = rustToolchain;
-        rustc = rustToolchain;
-      };
-      codexSrc = "${codex}/codex-rs";
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
-      # TODO(jessfraz): Drop this local build and hash overrides once codex-rs
-      # stops pinning git deps in Cargo.lock or exports hashes upstream.
-      codexCli = rustPlatform.buildRustPackage (_: {
-        env = {
-          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig:$PKG_CONFIG_PATH";
-        };
-        pname = "codex-rs";
-        version = "0.1.0";
-        src = codexSrc;
-        cargoLock = {
-          lockFile = "${codexSrc}/Cargo.lock";
-          outputHashes = {
-            "ratatui-0.29.0" = "sha256-HBvT5c8GsiCxMffNjJGLmHnvG77A6cqEL+1ARurBXho=";
-            "crossterm-0.28.1" = "sha256-6qCtfSMuXACKFb9ATID39XyFDIEMFDmbx6SSmNe+728=";
-            "tokio-tungstenite-0.28.0" = "sha256-vJZ3S41gHtRt4UAODsjAoSCaTksgzCALiBmbWgyDCi8=";
-            "tungstenite-0.28.0" = "sha256-CyXZp58zGlUhEor7WItjQoS499IoSP55uWqr++ia+0A=";
-          };
-        };
-        doCheck = false;
-        nativeBuildInputs = with pkgs; [
-          cmake
-          git
-          pkg-config
-          openssl
-        ];
-
-        meta = with lib; {
-          description = "OpenAI Codex command-line interface rust implementation";
-          license = licenses.asl20;
-          homepage = "https://github.com/openai/codex";
-        };
-      });
+      codexCli = codex.packages.${system}.default;
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
       # Common packages for all systems
