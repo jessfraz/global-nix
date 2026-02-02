@@ -25,3 +25,13 @@ lint-fix:
 ci:
     just fmt-check
     just lint
+
+# Update pinned external versions and hashes.
+update-codex:
+    python3 scripts/update-pins.py codex
+
+update-homebridge:
+    python3 scripts/update-pins.py homebridge
+
+update-pins:
+    python3 scripts/update-pins.py all
