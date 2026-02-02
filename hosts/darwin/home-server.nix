@@ -38,4 +38,11 @@
     #storagePath = "${volumesPath}/homebridge";
     ui.enable = true;
   };
+
+  services.matterbridge = {
+    enable = true;
+
+    user = username;
+    #storagePath = "${volumesPath}/matterbridge";
+  };
 }

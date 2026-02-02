@@ -300,6 +300,7 @@
     # macOS configurations
     darwinModules.coredns = import ./modules/coredns.nix;
     darwinModules.homebridge = import ./modules/homebridge.nix;
+    darwinModules.matterbridge = import ./modules/matterbridge.nix;
     darwinModules.scrypted = import ./modules/scrypted.nix;
 
     darwinConfigurations = {
@@ -363,6 +364,7 @@
             }
             self.darwinModules.coredns
             self.darwinModules.homebridge
+            self.darwinModules.matterbridge
             self.darwinModules.scrypted
             ./hosts/base/configuration.nix
             ./hosts/darwin/configuration.nix
