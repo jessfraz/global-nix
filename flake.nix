@@ -169,7 +169,29 @@
         ];
       };
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
-      codexCli = codex.packages.${system}.default;
+      codexCli = codex.packages.${system}.default.overrideAttrs (oa: {
+        nativeBuildInputs =
+          (oa.nativeBuildInputs or [])
+          ++ (with pkgs; [
+            cmake
+            git
+            llvmPackages.clang
+            pkg-config
+          ]);
+        buildInputs =
+          (oa.buildInputs or [])
+          ++ (with pkgs; [
+            openssl
+            llvmPackages.libclang.lib
+          ]);
+        env =
+          (oa.env or {})
+          // {
+            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+            CC = "clang";
+            CXX = "clang++";
+          };
+      });
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
       # Common packages for all systems
