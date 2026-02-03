@@ -321,6 +321,7 @@
           }
           ./hosts/base/configuration.nix
           ./hosts/darwin/configuration.nix
+          ./hosts/darwin/macinator.nix
           ./hosts/darwin/resolver-tpl.nix
           home-manager.darwinModules.home-manager
           {
