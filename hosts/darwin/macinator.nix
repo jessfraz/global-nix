@@ -4,15 +4,15 @@
   hostname,
   ...
 }: let
-  calendarDndScript = pkgs.writeShellScript "calendar-dnd" (builtins.readFile ./calendar-dnd.sh);
+  autoDndScript = pkgs.writeShellScript "auto-dnd" (builtins.readFile ./auto-dnd.sh);
 in {
-  launchd.user.agents."${hostname}.calendar-dnd" = {
+  launchd.user.agents."${hostname}.auto-dnd" = {
     serviceConfig = {
-      ProgramArguments = ["${calendarDndScript}"];
-      StartInterval = 60;
+      ProgramArguments = ["${autoDndScript}"];
+      StartInterval = 900;
       RunAtLoad = true;
-      StandardOutPath = "${homeDir}/Library/Logs/calendar-dnd.log";
-      StandardErrorPath = "${homeDir}/Library/Logs/calendar-dnd.err";
+      StandardOutPath = "${homeDir}/Library/Logs/auto-dnd.log";
+      StandardErrorPath = "${homeDir}/Library/Logs/auto-dnd.err";
     };
   };
 }
