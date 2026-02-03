@@ -11,6 +11,7 @@ from typing import Iterable, Sequence
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
 HOMEBRIDGE_PATH = REPO_ROOT / "pkgs" / "homebridge.nix"
+MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
 
 FAKE_SRI = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
@@ -221,12 +222,75 @@ def update_homebridge() -> None:
     print(f"homebridge -> {latest_version}")
 
 
+def update_mole() -> None:
+    tags = get_tags("https://github.com/tw93/Mole.git")
+    latest_tag = select_latest_tag(tags, preferred_prefixes=("V", "v"))
+    if not latest_tag:
+        raise UpdateError("No Mole tags found.")
+
+    version = latest_tag.lstrip("vV")
+    original_text = MOLE_PATH.read_text(encoding="utf-8")
+
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.M)
+    if not version_match:
+        raise UpdateError("Could not find Mole version in pkgs/mole.nix")
+
+    current_version = version_match.group(1)
+    if current_version == version:
+        print(f"mole already at {version}")
+        return
+
+    src_url = (
+        "https://github.com/tw93/Mole/archive/refs/tags/" f"{latest_tag}.tar.gz"
+    )
+    binaries_arm_url = (
+        "https://github.com/tw93/Mole/releases/download/"
+        f"{latest_tag}/binaries-darwin-arm64.tar.gz"
+    )
+    binaries_amd_url = (
+        "https://github.com/tw93/Mole/releases/download/"
+        f"{latest_tag}/binaries-darwin-amd64.tar.gz"
+    )
+
+    src_hash = prefetch_sri(src_url)
+    binaries_hash_arm = prefetch_sri(binaries_arm_url)
+    binaries_hash_amd = prefetch_sri(binaries_amd_url)
+
+    updated = replace_one(
+        r'^(\s*version = ")[^"]+(";)',
+        rf"\1{version}\2",
+        original_text,
+        "mole version",
+    )
+    updated = replace_one(
+        r'^(\s*srcHash = ")[^"]+(";)',
+        rf"\1{src_hash}\2",
+        updated,
+        "mole srcHash",
+    )
+    updated = replace_one(
+        r'^(\s*binariesHashArm64 = ")[^"]+(";)',
+        rf"\1{binaries_hash_arm}\2",
+        updated,
+        "mole binariesHashArm64",
+    )
+    updated = replace_one(
+        r'^(\s*binariesHashAmd64 = ")[^"]+(";)',
+        rf"\1{binaries_hash_amd}\2",
+        updated,
+        "mole binariesHashAmd64",
+    )
+
+    MOLE_PATH.write_text(updated, encoding="utf-8")
+    print(f"mole -> {version}")
+
+
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Update pinned tags and hashes.")
     parser.add_argument(
         "targets",
         nargs="+",
-        choices=["codex", "homebridge", "all"],
+        choices=["codex", "homebridge", "mole", "all"],
         help="Targets to update.",
     )
     return parser.parse_args(argv)
@@ -236,13 +300,15 @@ def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
     targets = set(args.targets)
     if "all" in targets:
-        targets = {"codex", "homebridge"}
+        targets = {"codex", "homebridge", "mole"}
 
     try:
         if "codex" in targets:
             update_codex()
         if "homebridge" in targets:
             update_homebridge()
+        if "mole" in targets:
+            update_mole()
     except UpdateError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

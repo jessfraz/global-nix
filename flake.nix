@@ -77,6 +77,7 @@
 
     overlay = final: prev: {
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
+      mole = prev.callPackage ./pkgs/mole.nix {};
       coredns = prev.coredns.overrideAttrs (old: let
         postPatchScript =
           if old ? postPatch
@@ -245,6 +246,7 @@
           # macOS-specific packages
           with pkgs; [
             # Add macOS-specific packages here
+            mole
             pinentry_mac
           ];
     in
