@@ -4,8 +4,8 @@
   fetchFromGitHub,
   fetchzip,
   makeWrapper,
-}:
-let
+  bashInteractive,
+}: let
   version = "1.24.0";
   tag = "V${version}";
   srcHash = "sha256-M9FoOQFjk4kYTW56SWwpT8HwtppP7WCUejGmwakD4Co=";
@@ -39,8 +39,9 @@ in
     pname = "mole";
     inherit version src;
 
-    nativeBuildInputs = [makeWrapper];
+    nativeBuildInputs = [makeWrapper bashInteractive];
     dontBuild = true;
+    dontPatchShebangs = true;
 
     installPhase = ''
       runHook preInstall
@@ -63,6 +64,10 @@ in
       install -d "$out/bin"
       makeWrapper "$out/share/mole/mole" "$out/bin/mole"
       makeWrapper "$out/share/mole/mo" "$out/bin/mo"
+
+      # Use bashInteractive so builtins like compgen exist in Mole's scripts.
+      export PATH="${bashInteractive}/bin:$PATH"
+      patchShebangs "$out/share/mole" "$out/bin"
 
       runHook postInstall
     '';

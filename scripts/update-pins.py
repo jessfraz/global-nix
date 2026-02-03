@@ -240,9 +240,7 @@ def update_mole() -> None:
         print(f"mole already at {version}")
         return
 
-    src_url = (
-        "https://github.com/tw93/Mole/archive/refs/tags/" f"{latest_tag}.tar.gz"
-    )
+    src_url = f"https://github.com/tw93/Mole/archive/refs/tags/{latest_tag}.tar.gz"
     binaries_arm_url = (
         "https://github.com/tw93/Mole/releases/download/"
         f"{latest_tag}/binaries-darwin-arm64.tar.gz"
