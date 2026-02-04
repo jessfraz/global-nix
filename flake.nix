@@ -203,6 +203,7 @@
         bash-completion
         claude-code
         codexCli
+        opencode
         coreutils
         curl
         flakehubCli
