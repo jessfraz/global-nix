@@ -113,30 +113,10 @@
       nodejs_22 = prev.nodejs_22.overrideAttrs (_: {doCheck = false;});
     };
 
-    # mdformat 0.7.22 doesn't accept markdown-it-py 4.x; pin mdformat to 1.0.0.
-    # TODO(jessfraz): Drop this override once nixpkgs bumps mdformat to 1.0.0+.
-    overlayMdformat = final: prev: let
-      mdformatOverrides = pself: psuper: {
-        mdformat = psuper.mdformat.overridePythonAttrs (_: {
-          version = "1.0.0";
-          src = prev.fetchFromGitHub {
-            owner = "executablebooks";
-            repo = "mdformat";
-            tag = "1.0.0";
-            hash = "sha256-fo4xO4Y89qPAggEjwuf6dnTyu1JzhZVdJyUqGNpti7g=";
-          };
-        });
-      };
-    in {
-      python3 = prev.python3.override {packageOverrides = mdformatOverrides;};
-      python3Packages = final.python3.pkgs;
-    };
-
     commonOverlays = [
       overlay
       overlaySkipNodeChecks
       overlayCompatRust
-      overlayMdformat
       rust-overlay.overlays.default
     ];
 
