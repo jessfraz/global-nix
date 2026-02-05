@@ -12,8 +12,32 @@
   pluginDir = "${baseDir}/Matterbridge";
   dataDir = "${baseDir}/.matterbridge";
   certDir = "${baseDir}/.mattercert";
+  # Keep npm writes out of /nix/store and stable across upgrades.
   npmGlobalDir = "${dataDir}/npm-global";
+  npmCacheDir = "${dataDir}/npm-cache";
   logPath = "${dataDir}/matterbridge.log";
+  # Wrapper ensures Matterbridge plugins can install and resolve dependencies.
+  launchScript = pkgs.writeShellScript "matterbridge-launch" ''
+    set -euo pipefail
+
+    mkdir -p "${npmGlobalDir}" "${npmCacheDir}"
+
+    if [ ! -d "${npmGlobalDir}/lib/node_modules/matterbridge" ]; then
+      HOME=${baseDir} \
+      NPM_CONFIG_PREFIX=${npmGlobalDir} \
+      NPM_CONFIG_CACHE=${npmCacheDir} \
+      "${config.services.matterbridge.nodePackage}/bin/npm" \
+        install -g matterbridge --omit=dev --prefix "${npmGlobalDir}" --cache "${npmCacheDir}"
+    fi
+
+    mkdir -p "${npmGlobalDir}/lib/node_modules/node_modules"
+    # ESM resolution looks for node_modules in ancestor dirs, so provide one.
+    if [ ! -e "${npmGlobalDir}/lib/node_modules/node_modules/matterbridge" ]; then
+      ln -s "../matterbridge" "${npmGlobalDir}/lib/node_modules/node_modules/matterbridge"
+    fi
+
+    exec "${config.services.matterbridge.nodePackage}/bin/npx" -y matterbridge --nosudo "$@"
+  '';
 in {
   options = {
     services.matterbridge = {
@@ -64,6 +88,7 @@ in {
         install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${dataDir}
         install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${certDir}
         install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${npmGlobalDir}
+        install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${npmCacheDir}
       '';
 
       launchd.daemons.matterbridge = {
@@ -71,10 +96,7 @@ in {
           UserName = config.services.matterbridge.user;
           ProgramArguments =
             [
-              "${config.services.matterbridge.nodePackage}/bin/npx"
-              "-y"
-              "matterbridge"
-              "--nosudo"
+              "${launchScript}"
             ]
             ++ config.services.matterbridge.extraArgs;
 
@@ -92,6 +114,8 @@ in {
               ]);
             HOME = baseDir;
             NPM_CONFIG_PREFIX = npmGlobalDir;
+            NPM_CONFIG_CACHE = npmCacheDir;
+            NODE_PATH = "${npmGlobalDir}/lib/node_modules";
           };
 
           WorkingDirectory = pluginDir;
