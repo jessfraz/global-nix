@@ -41,7 +41,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.94.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.96.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -203,7 +203,6 @@
         bash-completion
         claude-code
         codexCli
-        opencode
         coreutils
         curl
         flakehubCli
