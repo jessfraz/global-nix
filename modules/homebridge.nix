@@ -143,6 +143,7 @@ in {
               PathState = {
                 "/nix/store" = true;
               };
+              SuccessfulExit = false;
             };
             RunAtLoad = true;
           };
@@ -178,6 +179,7 @@ in {
               PathState = {
                 "/nix/store" = true;
               };
+              SuccessfulExit = false;
             };
             RunAtLoad = true;
           };

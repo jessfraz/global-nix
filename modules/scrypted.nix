@@ -115,10 +115,12 @@ in {
           StandardOutPath = "${config.services.scrypted.storagePath}/scrypted.log";
           StandardErrorPath = "${config.services.scrypted.storagePath}/scrypted.log";
 
+          WorkingDirectory = config.services.scrypted.storagePath;
           KeepAlive = {
             PathState = {
               "/nix/store" = true;
             };
+            SuccessfulExit = false;
           };
           RunAtLoad = true;
         };
