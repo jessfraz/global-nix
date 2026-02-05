@@ -12,6 +12,7 @@
   pluginDir = "${baseDir}/Matterbridge";
   dataDir = "${baseDir}/.matterbridge";
   certDir = "${baseDir}/.mattercert";
+  npmGlobalDir = "${dataDir}/npm-global";
   logPath = "${dataDir}/matterbridge.log";
 in {
   options = {
@@ -62,6 +63,7 @@ in {
         install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${pluginDir}
         install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${dataDir}
         install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${certDir}
+        install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${npmGlobalDir}
       '';
 
       launchd.daemons.matterbridge = {
@@ -72,12 +74,14 @@ in {
               "${config.services.matterbridge.nodePackage}/bin/npx"
               "-y"
               "matterbridge"
+              "--nosudo"
             ]
             ++ config.services.matterbridge.extraArgs;
 
           EnvironmentVariables = {
             PATH = lib.concatStringsSep ":" ([
                 "${config.services.matterbridge.nodePackage}/bin"
+                "${npmGlobalDir}/bin"
               ]
               ++ [
                 "/usr/local/bin"
@@ -87,6 +91,7 @@ in {
                 "/sbin"
               ]);
             HOME = baseDir;
+            NPM_CONFIG_PREFIX = npmGlobalDir;
           };
 
           WorkingDirectory = pluginDir;
