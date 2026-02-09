@@ -107,7 +107,7 @@ def update_codex() -> None:
     )
     updated = replace_one(
         pattern,
-        rf"\1{latest_tag}\3",
+        rf"\g<1>{latest_tag}\g<3>",
         flake_text,
         "codex tag",
     )
@@ -185,20 +185,20 @@ def update_homebridge() -> None:
 
     updated = replace_one(
         r'^(\s*version = ")[^"]+(";)',
-        rf"\1{latest_version}\2",
+        rf"\g<1>{latest_version}\g<2>",
         original_text,
         "homebridge version",
     )
     updated = replace_one(
         r'^(\s*gihubSha256 = ")[^"]+(";)',
-        rf"\1{src_hash}\2",
+        rf"\g<1>{src_hash}\g<2>",
         updated,
         "homebridge gihubSha256",
     )
 
     with_fake = replace_one(
         r"^(\s*npmDepsHash = ).*?;",
-        rf'\1"{FAKE_SRI}";',
+        rf'\g<1>"{FAKE_SRI}";',
         updated,
         "homebridge npmDepsHash",
     )
@@ -213,7 +213,7 @@ def update_homebridge() -> None:
 
     final_text = replace_one(
         r"^(\s*npmDepsHash = ).*?;",
-        rf'\1"{npm_hash}";',
+        rf'\g<1>"{npm_hash}";',
         updated,
         "homebridge npmDepsHash",
     )
@@ -256,25 +256,25 @@ def update_mole() -> None:
 
     updated = replace_one(
         r'^(\s*version = ")[^"]+(";)',
-        rf"\1{version}\2",
+        rf"\g<1>{version}\g<2>",
         original_text,
         "mole version",
     )
     updated = replace_one(
         r'^(\s*srcHash = ")[^"]+(";)',
-        rf"\1{src_hash}\2",
+        rf"\g<1>{src_hash}\g<2>",
         updated,
         "mole srcHash",
     )
     updated = replace_one(
         r'^(\s*binariesHashArm64 = ")[^"]+(";)',
-        rf"\1{binaries_hash_arm}\2",
+        rf"\g<1>{binaries_hash_arm}\g<2>",
         updated,
         "mole binariesHashArm64",
     )
     updated = replace_one(
         r'^(\s*binariesHashAmd64 = ")[^"]+(";)',
-        rf"\1{binaries_hash_amd}\2",
+        rf"\g<1>{binaries_hash_amd}\g<2>",
         updated,
         "mole binariesHashAmd64",
     )
