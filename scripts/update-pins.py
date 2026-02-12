@@ -117,8 +117,18 @@ def update_codex() -> None:
 
     if which("nix"):
         subprocess.run(
-            ["nix", "flake", "lock", "--update-input", "codex"],
+            [
+                "nix",
+                "flake",
+                "update",
+                "--update-input",
+                "codex",
+                "--option",
+                "warn-dirty",
+                "false",
+            ],
             check=True,
+            cwd=REPO_ROOT,
         )
     else:
         print("nix not found, skipping flake.lock update")
