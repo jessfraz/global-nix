@@ -28,10 +28,10 @@ from shutil import which
 # Use the Codex-tuned GPT-5.2 model alias; keep prompt unchanged.
 MODEL = "gpt-5.2-codex"
 # Narrow string types for clarity.
-Effort = Literal["low", "medium", "high"]
+Effort = Literal["low", "medium", "high", "xhigh"]
 Verbosity = Literal["low", "medium", "high"]
 
-REASONING_EFFORT: Effort = "high"
+REASONING_EFFORT: Effort = "xhigh"
 # Control final answer verbosity (orthogonal to reasoning).
 TEXT_VERBOSITY: Verbosity = "low"
 # Control reasoning summary verbosity shown during streaming.
@@ -502,7 +502,7 @@ def main() -> int:
 
     output = ""
     effort = (REASONING_EFFORT or "medium").lower()
-    if effort not in ("low", "medium", "high"):
+    if effort not in ("low", "medium", "high", "xhigh"):
         effort = "medium"
 
     # Stream only reasoning to stderr; do not echo the final commit text.
