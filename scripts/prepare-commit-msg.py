@@ -33,7 +33,8 @@ Verbosity = Literal["low", "medium", "high"]
 
 REASONING_EFFORT: Effort = "xhigh"
 # Control final answer verbosity (orthogonal to reasoning).
-TEXT_VERBOSITY: Verbosity = "low"
+# gpt-5.2-codex currently accepts only "medium" for text verbosity.
+TEXT_VERBOSITY: Verbosity = "medium"
 # Control reasoning summary verbosity shown during streaming.
 # Options: "auto", "concise", "detailed".
 REASONING_SUMMARY = "auto"
@@ -267,6 +268,25 @@ def http_request(url: str, payload: dict, headers: dict):
     return urllib.request.urlopen(req, timeout=60)
 
 
+def format_api_error(body: str) -> str:
+    if not body:
+        return "unknown API error"
+    with suppress(Exception):
+        parsed = json.loads(body)
+        error = parsed.get("error", {})
+        if isinstance(error, dict):
+            code = error.get("code") or error.get("type") or ""
+            message = error.get("message", "")
+            if code and message:
+                return f"{code}: {message}"
+            if message:
+                return message
+            if code:
+                return str(code)
+    compact = " ".join(body.split())
+    return compact[:200] + (" …" if len(compact) > 200 else "")
+
+
 def call_responses_stream(
     base: str,
     model: str,
@@ -443,9 +463,15 @@ def call_responses_stream(
     except HTTPError as e:
         body = e.read().decode("utf-8", errors="ignore") if hasattr(e, "read") else ""
         dbg(f"stream error {e.code}: {body[:200]}{' …' if len(body) > 200 else ''}")
+        sys.stderr.write(
+            f"commit-ai: API request failed ({e.code}): {format_api_error(body)}\n"
+        )
+        sys.stderr.flush()
         return ""
     except Exception as e:
         dbg(f"stream error: {e}")
+        sys.stderr.write(f"commit-ai: API request failed: {e}\n")
+        sys.stderr.flush()
         return ""
     # Unreachable
     # return "".join(out_text_parts).strip()
