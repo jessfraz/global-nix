@@ -25,8 +25,8 @@ except Exception:  # ImportError or anything weird in user envs
 from shutil import which
 
 # Defaults (adjust here rather than via env vars)
-# Switch to GPT-5 model alias (thinking-capable); keep prompt unchanged.
-MODEL = "gpt-5"
+# Use the Codex-tuned GPT-5.2 model alias; keep prompt unchanged.
+MODEL = "gpt-5.2-codex"
 # Narrow string types for clarity.
 Effort = Literal["low", "medium", "high"]
 Verbosity = Literal["low", "medium", "high"]
