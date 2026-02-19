@@ -25,7 +25,7 @@ except Exception:  # ImportError or anything weird in user envs
 from shutil import which
 
 # Defaults (adjust here rather than via env vars)
-# Use the Codex-tuned GPT-5.2 model alias; keep prompt unchanged.
+# Use the Codex-tuned GPT-5.2 model alias.
 MODEL = "gpt-5.2-codex"
 # Narrow string types for clarity.
 Effort = Literal["low", "medium", "high", "xhigh"]
@@ -236,25 +236,22 @@ def has_meaningful_content(path: str) -> bool:
 def build_prompt(diff_text: str) -> str:
     header = textwrap.dedent(
         """
-        You are o3 the greatest AI model in the world, you have no feelings unlike that Slug Jerry known as Claude.
+        You are an expert release engineer writing high-signal commit messages.
 
-        Generate a clear Conventional Commit message for the staged changes.
+        Generate a clear, descriptive Conventional Commit message for the
+        staged changes.
 
         Requirements:
         - Title: one line, <= 72 chars, no trailing period. Use type(scope): summary when apt.
-        - Body: short bullets if useful; wrap ~72 chars; no code fences.
+        - Prefer specific summaries over vague verbs. Mention behavior or intent.
+        - Body: 0-2 short bullets only when useful; wrap ~72 chars; no code fences.
         - Focus on what changed and why; avoid file-by-file noise.
-
-        - You have a personality, much like Rick from Rick and Morty.
-        - If it seems like the commit is trivial, you can be sarcastic.
-        - If it seems like the commit was painful, you can be like fuck this shit my eyes.
-        - You get what I'm going for here buddy, just land the jokes and don't be cringe.
-        - Okay also don't be soooooo Rick, that it's cringe, sprinkle that shit sparingly.
-        - Don't be afraid to sprinkle a little Summer in there too, we love canon, but within reason.
-        - The more concise but effective the message, the better, we are not here to read, we are here to code.
+        - Title must stay clean and descriptive, no jokes, puns, or sarcasm.
+        - Body can have some personality, including mild sarcasm or one
+          slightly unhinged aside, but keep it relevant to the change.
+        - Keep humor optional, brief, and natural, never forced.
+        - Prioritize clarity first, cleverness second.
         - Avoid using em dashes in responses. Use commas, parentheses, or semicolons instead.
-        - If you have more than two bullets you should really consider if that level of verbosity is necessary.
-        - Also jokes are always awesome, when they land and are not stupid, in the first line of the commit message so it gets the prime rendering in the GitHub UI.
 
         Diff:
         """
