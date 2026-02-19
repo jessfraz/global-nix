@@ -78,5 +78,12 @@ in {
     };
   };
 
+  home.file = {
+    ".local/bin/kittycad-pr-automerge" = {
+      source = ../scripts/kittycad-pr-automerge;
+      executable = true;
+    };
+  };
+
   fonts.fontconfig.enable = true;
 }

@@ -1,0 +1,295 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ORG="KittyCAD"
+BOT_AUTHOR="zoo-github-actions-auth[bot]"
+DEPENDABOT_AUTHOR="dependabot[bot]"
+
+TARGET_REPOS=(
+  "cli"
+  "kittycad.rs"
+  "kittycad.go"
+  "kittycad.py"
+  "kittycad.ts"
+  "website"
+)
+
+API_SPEC_TITLES=(
+  "Update engine-api spec"
+  "Update text-to-cad spec"
+  "Update proprietary-to-kcl spec"
+)
+
+DRY_RUN=0
+processed=0
+skipped=0
+errors=0
+
+log() {
+  printf '[kittycad-pr-automerge] %s\n' "$*"
+}
+
+warn() {
+  printf '[kittycad-pr-automerge] WARN: %s\n' "$*" >&2
+}
+
+usage() {
+  cat <<'EOF'
+Usage: kittycad-pr-automerge [--dry-run]
+
+Approves and enables auto-merge for:
+1) "Update api spec" PRs (update-spec branch) in:
+   KittyCAD/cli, kittycad.rs, kittycad.go, kittycad.py, kittycad.ts, website
+2) Open Dependabot PRs across org KittyCAD where review is requested from you
+   (only when CI checks are green)
+3) Open API inbound spec PRs in KittyCAD/api with titles:
+   - Update engine-api spec
+   - Update text-to-cad spec
+   - Update proprietary-to-kcl spec
+EOF
+}
+
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "missing required command: $cmd" >&2
+    exit 1
+  fi
+}
+
+ensure_github_token() {
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    export GH_TOKEN="${GH_TOKEN:-$GITHUB_TOKEN}"
+    return 0
+  fi
+
+  if [ -n "${GH_TOKEN:-}" ]; then
+    export GITHUB_TOKEN="$GH_TOKEN"
+    return 0
+  fi
+
+  local token=""
+  token="$(gh auth token 2>/dev/null || true)"
+  if [ -n "$token" ]; then
+    export GITHUB_TOKEN="$token"
+    export GH_TOKEN="$token"
+    return 0
+  fi
+
+  # Try the existing bash helper from Home Manager config.
+  token="$(bash -ic 'command -v fetch-github-token >/dev/null 2>&1 || exit 1; fetch-github-token >/dev/null 2>&1 || exit 1; printf "%s" "${GITHUB_TOKEN:-}"' 2>/dev/null || true)"
+  if [ -n "$token" ]; then
+    export GITHUB_TOKEN="$token"
+    export GH_TOKEN="$token"
+    return 0
+  fi
+
+  # Last fallback, pull directly from 1Password if available.
+  if command -v op >/dev/null 2>&1; then
+    if ! op whoami --account my.1password.com >/dev/null 2>&1; then
+      # Some op setups print shell exports here, others open browser auth.
+      # Either way, best effort and continue.
+      eval "$(op signin --account my.1password.com 2>/dev/null || true)" >/dev/null 2>&1 || true
+    fi
+    token="$(op --account my.1password.com item get "GitHub Personal Access Token" --fields token --reveal 2>/dev/null || true)"
+    if [ -n "$token" ]; then
+      export GITHUB_TOKEN="$token"
+      export GH_TOKEN="$token"
+      return 0
+    fi
+  fi
+
+  echo "GITHUB_TOKEN is not set and token bootstrap failed. Run fetch-github-token, then retry." >&2
+  return 1
+}
+
+enable_auto_merge() {
+  local repo="$1"
+  local pr="$2"
+  local output=""
+  local rc=0
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "[dry-run] auto-merge -> $repo#$pr"
+    return 0
+  fi
+
+  for method in squash merge rebase; do
+    output="$(gh pr merge "$pr" -R "$repo" --auto "--$method" --delete-branch=false 2>&1)" && {
+      log "enabled auto-merge ($method): $repo#$pr"
+      return 0
+    }
+    rc=$?
+    if printf '%s' "$output" | grep -qiE 'already.*auto-merge|auto-merge.*already|already queued'; then
+      log "auto-merge already enabled: $repo#$pr"
+      return 0
+    fi
+  done
+
+  warn "failed to enable auto-merge for $repo#$pr (exit $rc): $output"
+  return 1
+}
+
+approve_pr() {
+  local repo="$1"
+  local pr="$2"
+  local output=""
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "[dry-run] approve -> $repo#$pr"
+    return 0
+  fi
+
+  output="$(gh pr review "$pr" -R "$repo" --approve -b "Automated approval." 2>&1)" && {
+    log "approved: $repo#$pr"
+    return 0
+  }
+
+  # Approval failures are non-fatal, e.g. already reviewed or self-approval rules.
+  warn "approval skipped for $repo#$pr: $output"
+  return 0
+}
+
+process_pr() {
+  local repo="$1"
+  local pr="$2"
+  local title="$3"
+  local reason="$4"
+
+  log "$reason -> $repo#$pr ($title)"
+  approve_pr "$repo" "$pr"
+  if enable_auto_merge "$repo" "$pr"; then
+    processed=$((processed + 1))
+  else
+    errors=$((errors + 1))
+  fi
+}
+
+ci_is_green() {
+  local repo="$1"
+  local pr="$2"
+  local checks=""
+  local failing=0
+
+  checks="$(gh pr checks "$pr" -R "$repo" --required --json state 2>/dev/null || true)"
+  if [ -z "$checks" ] || [ "$checks" = "[]" ]; then
+    checks="$(gh pr checks "$pr" -R "$repo" --json state 2>/dev/null || true)"
+  fi
+
+  if [ -z "$checks" ] || [ "$checks" = "[]" ]; then
+    return 1
+  fi
+
+  failing="$(jq '[.[] | select(.state != "SUCCESS" and .state != "SKIPPED" and .state != "NEUTRAL")] | length' <<<"$checks")"
+  [ "$failing" -eq 0 ]
+}
+
+process_update_spec_repo_prs() {
+  local repo_short=""
+  local repo=""
+  local prs_json=""
+  local row=""
+  local pr_number=""
+  local title=""
+
+  log "scanning update-spec PRs in target repos..."
+  for repo_short in "${TARGET_REPOS[@]}"; do
+    repo="${ORG}/${repo_short}"
+    prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,headRefName,author,isDraft,url)"
+    while IFS= read -r row; do
+      pr_number="$(jq -r '.number' <<<"$row")"
+      title="$(jq -r '.title' <<<"$row")"
+      process_pr "$repo" "$pr_number" "$title" "repo spec sync"
+    done < <(
+      jq -c --arg bot "$BOT_AUTHOR" '
+        .[]
+        | select(.isDraft == false)
+        | select(.title == "Update api spec")
+        | select(.headRefName == "update-spec")
+        | select(.author.login == $bot)
+      ' <<<"$prs_json"
+    )
+  done
+}
+
+process_dependabot_prs() {
+  local prs_json=""
+  local row=""
+  local repo=""
+  local pr_number=""
+  local title=""
+  local review_requested="${DEPENDABOT_REVIEW_REQUESTED:-@me}"
+
+  log "scanning open Dependabot PRs in ${ORG} requested for review by ${review_requested}..."
+  prs_json="$(gh search prs --owner "$ORG" --author "$DEPENDABOT_AUTHOR" --state open --review-requested "$review_requested" --limit 500 --json number,title,repository,isDraft,url)"
+  while IFS= read -r row; do
+    repo="$(jq -r '.repository.nameWithOwner' <<<"$row")"
+    pr_number="$(jq -r '.number' <<<"$row")"
+    title="$(jq -r '.title' <<<"$row")"
+
+    if ci_is_green "$repo" "$pr_number"; then
+      process_pr "$repo" "$pr_number" "$title" "dependabot (CI green)"
+    else
+      log "skipping dependabot PR without green CI: $repo#$pr_number ($title)"
+      skipped=$((skipped + 1))
+    fi
+  done < <(jq -c '.[] | select(.isDraft == false)' <<<"$prs_json")
+}
+
+process_api_inbound_spec_prs() {
+  local repo="${ORG}/api"
+  local prs_json=""
+  local row=""
+  local pr_number=""
+  local title=""
+
+  log "scanning open api inbound spec PRs..."
+  prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,author,isDraft,url)"
+  while IFS= read -r row; do
+    pr_number="$(jq -r '.number' <<<"$row")"
+    title="$(jq -r '.title' <<<"$row")"
+    process_pr "$repo" "$pr_number" "$title" "api inbound spec sync"
+  done < <(
+    jq -c --arg bot "$BOT_AUTHOR" '
+      .[]
+      | select(.isDraft == false)
+      | select(.author.login == $bot)
+      | select(
+          .title == "Update engine-api spec"
+          or .title == "Update text-to-cad spec"
+          or .title == "Update proprietary-to-kcl spec"
+        )
+    ' <<<"$prs_json"
+  )
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+require_cmd gh
+require_cmd jq
+ensure_github_token
+
+process_update_spec_repo_prs
+process_dependabot_prs
+process_api_inbound_spec_prs
+
+log "done. processed=$processed skipped=$skipped errors=$errors dry_run=$DRY_RUN"
+if [ "$errors" -gt 0 ]; then
+  exit 1
+fi
