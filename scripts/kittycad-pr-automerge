@@ -35,7 +35,9 @@ Approves and enables auto-merge for:
 1) "Update api spec" PRs (update-spec branch) in:
    KittyCAD/cli, kittycad.rs, kittycad.go, kittycad.py, kittycad.ts, website
 2) Open Dependabot PRs across org KittyCAD where review is requested from you
-   (only when CI checks are green)
+   (if CI is failing and the PR is behind base, comments "@dependabot rebase")
+   (if CI is failing and the PR is not behind, reruns failed CI jobs)
+   (still approves and enables auto-merge)
 3) Open API inbound spec PRs in KittyCAD/api with titles:
    - Update engine-api spec
    - Update text-to-cad spec
@@ -178,6 +180,131 @@ ci_is_green() {
   [ "$failing" -eq 0 ]
 }
 
+needs_rebase() {
+  local repo="$1"
+  local pr="$2"
+  local merge_state=""
+
+  merge_state="$(gh pr view "$pr" -R "$repo" --json mergeStateStatus --jq '.mergeStateStatus' 2>/dev/null || true)"
+  [ "$merge_state" = "BEHIND" ]
+}
+
+already_requested_dependabot_rebase() {
+  local repo="$1"
+  local pr="$2"
+  local comments_json=""
+
+  comments_json="$(gh pr view "$pr" -R "$repo" --json comments 2>/dev/null || true)"
+  if [ -z "$comments_json" ]; then
+    return 1
+  fi
+
+  jq -e '
+    .comments[]?
+    | (.body // "")
+    | gsub("\r"; "")
+    | test("^@dependabot rebase[[:space:]]*$")
+  ' <<<"$comments_json" >/dev/null 2>&1
+}
+
+request_dependabot_rebase() {
+  local repo="$1"
+  local pr="$2"
+  local output=""
+
+  if ! needs_rebase "$repo" "$pr"; then
+    return 0
+  fi
+
+  if already_requested_dependabot_rebase "$repo" "$pr"; then
+    log "dependabot rebase already requested: $repo#$pr"
+    return 0
+  fi
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "[dry-run] comment rebase -> $repo#$pr"
+    return 0
+  fi
+
+  output="$(gh pr comment "$pr" -R "$repo" --body "@dependabot rebase" 2>&1)" && {
+    log "requested dependabot rebase: $repo#$pr"
+    return 0
+  }
+
+  warn "failed to request dependabot rebase for $repo#$pr: $output"
+  return 0
+}
+
+rerun_failed_ci_jobs() {
+  local repo="$1"
+  local pr="$2"
+  local head_sha=""
+  local runs_json=""
+  local run_id=""
+  local output=""
+  local reran=0
+
+  head_sha="$(gh pr view "$pr" -R "$repo" --json headRefOid --jq '.headRefOid' 2>/dev/null || true)"
+  if [ -z "$head_sha" ]; then
+    warn "could not determine head SHA for $repo#$pr, skipping CI rerun request"
+    return 0
+  fi
+
+  runs_json="$(gh run list -R "$repo" --commit "$head_sha" --json databaseId,status,conclusion --limit 100 2>/dev/null || true)"
+  if [ -z "$runs_json" ] || [ "$runs_json" = "[]" ]; then
+    log "no workflow runs found for $repo#$pr head $head_sha"
+    return 0
+  fi
+
+  while IFS= read -r run_id; do
+    [ -n "$run_id" ] || continue
+    if [ "$DRY_RUN" -eq 1 ]; then
+      log "[dry-run] rerun failed jobs -> $repo#$pr run $run_id"
+      reran=1
+      continue
+    fi
+
+    output="$(gh run rerun "$run_id" -R "$repo" --failed 2>&1)" && {
+      log "reran failed CI jobs: $repo#$pr run $run_id"
+      reran=1
+      continue
+    }
+
+    warn "failed to rerun failed CI jobs for $repo#$pr run $run_id: $output"
+  done < <(
+    jq -r '
+      .[]
+      | select(.status == "completed")
+      | select(
+          .conclusion == "failure"
+          or .conclusion == "timed_out"
+          or .conclusion == "startup_failure"
+          or .conclusion == "cancelled"
+          or .conclusion == "action_required"
+          or .conclusion == "stale"
+        )
+      | .databaseId
+    ' <<<"$runs_json"
+  )
+
+  if [ "$reran" -eq 0 ]; then
+    log "no failed completed CI runs to rerun: $repo#$pr"
+  fi
+
+  return 0
+}
+
+handle_dependabot_ci_failure() {
+  local repo="$1"
+  local pr="$2"
+
+  if needs_rebase "$repo" "$pr"; then
+    request_dependabot_rebase "$repo" "$pr"
+  else
+    rerun_failed_ci_jobs "$repo" "$pr"
+  fi
+}
+
 process_update_spec_repo_prs() {
   local repo_short=""
   local repo=""
@@ -224,8 +351,8 @@ process_dependabot_prs() {
     if ci_is_green "$repo" "$pr_number"; then
       process_pr "$repo" "$pr_number" "$title" "dependabot (CI green)"
     else
-      log "skipping dependabot PR without green CI: $repo#$pr_number ($title)"
-      skipped=$((skipped + 1))
+      handle_dependabot_ci_failure "$repo" "$pr_number"
+      process_pr "$repo" "$pr_number" "$title" "dependabot (CI not green)"
     fi
   done < <(jq -c '.[] | select(.isDraft == false)' <<<"$prs_json")
 }
