@@ -35,7 +35,7 @@ Approves and enables auto-merge for:
 1) "Update api spec" PRs (update-spec branch) in:
    KittyCAD/cli, kittycad.rs, kittycad.go, kittycad.py, kittycad.ts, website
 2) Open Dependabot PRs across org KittyCAD where review is requested from you
-   (if CI is failing and the PR is behind base, comments "@dependabot rebase")
+   (if PR is behind base, comments "@dependabot rebase", regardless of CI)
    (if CI is failing and the PR is not behind, reruns failed CI jobs)
    (still approves and enables auto-merge)
 3) Open API inbound spec PRs in KittyCAD/api with titles:
@@ -294,17 +294,6 @@ rerun_failed_ci_jobs() {
   return 0
 }
 
-handle_dependabot_ci_failure() {
-  local repo="$1"
-  local pr="$2"
-
-  if needs_rebase "$repo" "$pr"; then
-    request_dependabot_rebase "$repo" "$pr"
-  else
-    rerun_failed_ci_jobs "$repo" "$pr"
-  fi
-}
-
 process_update_spec_repo_prs() {
   local repo_short=""
   local repo=""
@@ -339,6 +328,8 @@ process_dependabot_prs() {
   local repo=""
   local pr_number=""
   local title=""
+  local ci_green=0
+  local behind=0
   local review_requested="${DEPENDABOT_REVIEW_REQUESTED:-@me}"
 
   log "scanning open Dependabot PRs in ${ORG} requested for review by ${review_requested}..."
@@ -348,10 +339,28 @@ process_dependabot_prs() {
     pr_number="$(jq -r '.number' <<<"$row")"
     title="$(jq -r '.title' <<<"$row")"
 
+    ci_green=0
+    behind=0
+
     if ci_is_green "$repo" "$pr_number"; then
+      ci_green=1
+    fi
+
+    if needs_rebase "$repo" "$pr_number"; then
+      behind=1
+    fi
+
+    if [ "$behind" -eq 1 ]; then
+      request_dependabot_rebase "$repo" "$pr_number"
+      if [ "$ci_green" -eq 1 ]; then
+        process_pr "$repo" "$pr_number" "$title" "dependabot (CI green, needs rebase)"
+      else
+        process_pr "$repo" "$pr_number" "$title" "dependabot (CI not green, needs rebase)"
+      fi
+    elif [ "$ci_green" -eq 1 ]; then
       process_pr "$repo" "$pr_number" "$title" "dependabot (CI green)"
     else
-      handle_dependabot_ci_failure "$repo" "$pr_number"
+      rerun_failed_ci_jobs "$repo" "$pr_number"
       process_pr "$repo" "$pr_number" "$title" "dependabot (CI not green)"
     fi
   done < <(jq -c '.[] | select(.isDraft == false)' <<<"$prs_json")
