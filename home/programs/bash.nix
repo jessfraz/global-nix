@@ -46,6 +46,24 @@ in {
 
     # Load the other bash dotfiles we have.
     bashrcExtra = ''
+      case ":$PATH:" in
+          *":$HOME/.local/bin:"*)
+              ;;
+          *)
+              unset __HM_SESS_VARS_SOURCED
+              for hm_session_vars in \
+                  "${config.home.profileDirectory}/etc/profile.d/hm-session-vars.sh" \
+                  "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"; do
+                  if [ -r "$hm_session_vars" ]; then
+                      # shellcheck disable=SC1090
+                      . "$hm_session_vars"
+                      break
+                  fi
+              done
+              unset hm_session_vars
+              ;;
+      esac
+
       source ${config.home.homeDirectory}/.nixbash
 
       # Keep GPG_TTY aligned in interactive terminals.

@@ -21,6 +21,9 @@ in {
   home = {
     username = username;
     homeDirectory = lib.mkForce homeDir;
+    sessionPath = [
+      "$HOME/.local/bin"
+    ];
 
     # This value determines the Home Manager release that your configuration is
     # compatible with. This helps avoid breakage when a new Home Manager release
