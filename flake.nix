@@ -164,7 +164,11 @@
           ++ (with pkgs; [
             openssl
             llvmPackages.libclang.lib
-          ]);
+          ])
+          ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+            pkgs.libcap.dev
+            pkgs.libcap.lib
+          ];
         env =
           (oa.env or {})
           // {
