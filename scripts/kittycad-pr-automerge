@@ -14,12 +14,6 @@ TARGET_REPOS=(
   "website"
 )
 
-API_SPEC_TITLES=(
-  "Update engine-api spec"
-  "Update text-to-cad spec"
-  "Update proprietary-to-kcl spec"
-)
-
 DRY_RUN=0
 processed=0
 skipped=0

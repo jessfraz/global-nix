@@ -10,6 +10,18 @@
     if pkgs.stdenv.isLinux
     then inputs.ghostty.packages.${pkgs.stdenv.system}.default
     else null; # We install on our own on macOS
+  kittycadPrAutomerge = pkgs.writeShellApplication {
+    name = "kittycad-pr-automerge";
+    runtimeInputs = with pkgs; [
+      bash
+      coreutils
+      gh
+      gnugrep
+      gnused
+      jq
+    ];
+    text = builtins.readFile ../scripts/kittycad-pr-automerge;
+  };
 in {
   imports = [
     ./programs/bash.nix
@@ -21,9 +33,6 @@ in {
   home = {
     username = username;
     homeDirectory = lib.mkForce homeDir;
-    sessionPath = [
-      "$HOME/.local/bin"
-    ];
 
     # This value determines the Home Manager release that your configuration is
     # compatible with. This helps avoid breakage when a new Home Manager release
@@ -81,12 +90,9 @@ in {
     };
   };
 
-  home.file = {
-    ".local/bin/kittycad-pr-automerge" = {
-      source = ../scripts/kittycad-pr-automerge;
-      executable = true;
-    };
-  };
+  home.packages = [
+    kittycadPrAutomerge
+  ];
 
   fonts.fontconfig.enable = true;
 }
