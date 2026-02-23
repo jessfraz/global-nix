@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ORG="KittyCAD"
-BOT_AUTHOR="zoo-github-actions-auth[bot]"
+BOT_AUTHOR_LEGACY="zoo-github-actions-auth[bot]"
+BOT_AUTHOR_APP="app/zoo-github-actions-auth"
 DEPENDABOT_AUTHOR="dependabot[bot]"
 
 TARGET_REPOS=(
@@ -311,12 +312,12 @@ process_update_spec_repo_prs() {
       title="$(jq -r '.title' <<<"$row")"
       process_pr "$repo" "$pr_number" "$title" "repo spec sync"
     done < <(
-      jq -c --arg bot "$BOT_AUTHOR" '
+      jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" '
         .[]
         | select(.isDraft == false)
         | select(.title == "Update api spec")
         | select(.headRefName == "update-spec")
-        | select(.author.login == $bot)
+        | select(.author.login == $bot_legacy or .author.login == $bot_app)
       ' <<<"$prs_json"
     )
   done
@@ -380,10 +381,10 @@ process_api_inbound_spec_prs() {
     title="$(jq -r '.title' <<<"$row")"
     process_pr "$repo" "$pr_number" "$title" "api inbound spec sync"
   done < <(
-    jq -c --arg bot "$BOT_AUTHOR" '
+    jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" '
       .[]
       | select(.isDraft == false)
-      | select(.author.login == $bot)
+      | select(.author.login == $bot_legacy or .author.login == $bot_app)
       | select(
           .title == "Update engine-api spec"
           or .title == "Update text-to-cad spec"
