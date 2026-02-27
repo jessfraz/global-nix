@@ -43,7 +43,7 @@ in {
 
       pythonPackage = lib.mkOption {
         type = lib.types.package;
-        default = pkgs.python310;
+        default = pkgs.python311;
         description = "Python runtime exposed to Scrypted plugins.";
       };
 
@@ -79,9 +79,8 @@ in {
         install -d -m0755 -o ${config.services.scrypted.user} -g staff ${config.services.scrypted.storagePath}
       '';
 
-      launchd.daemons.scrypted = {
+      launchd.user.agents.scrypted = {
         serviceConfig = {
-          UserName = config.services.scrypted.user;
           ProgramArguments =
             [
               "${config.services.scrypted.nodePackage}/bin/npx"
@@ -105,7 +104,7 @@ in {
                 "/sbin"
               ]);
 
-            SCRYPTED_PYTHON_PATH = "python${config.services.scrypted.pythonPackage.pythonVersion or "3.10"}";
+            SCRYPTED_PYTHON_PATH = "python${config.services.scrypted.pythonPackage.pythonVersion or "3.11"}";
             SCRYPTED_INSTALL_PATH = config.services.scrypted.storagePath;
             SCRYPTED_VOLUME = "${config.services.scrypted.storagePath}/volume";
 
@@ -151,7 +150,7 @@ in {
               "${config.services.scrypted.nodePackage}/bin"
               "$PATH"
             ];
-            SCRYPTED_PYTHON_PATH = "python${config.services.scrypted.pythonPackage.pythonVersion or "3.10"}";
+            SCRYPTED_PYTHON_PATH = "python${config.services.scrypted.pythonPackage.pythonVersion or "3.11"}";
             SCRYPTED_INSTALL_PATH = config.services.scrypted.storagePath;
           };
           Restart = "on-failure";

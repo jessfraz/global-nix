@@ -91,9 +91,8 @@ in {
         install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${npmCacheDir}
       '';
 
-      launchd.daemons.matterbridge = {
+      launchd.user.agents.matterbridge = {
         serviceConfig = {
-          UserName = config.services.matterbridge.user;
           ProgramArguments =
             [
               "${launchScript}"

@@ -109,11 +109,10 @@ in {
         fi
       '';
 
-      launchd.daemons.homebridge =
+      launchd.user.agents.homebridge =
         if config.services.homebridge.ui.enable
         then {
           serviceConfig = {
-            UserName = config.services.homebridge.user;
             ProgramArguments =
               [
                 "${config.services.homebridge.ui.nodePackage}/bin/node"
@@ -150,7 +149,6 @@ in {
         }
         else {
           serviceConfig = {
-            UserName = config.services.homebridge.user;
             ProgramArguments =
               [
                 "${config.services.homebridge.package}/bin/homebridge"
