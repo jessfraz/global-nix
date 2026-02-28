@@ -36,7 +36,17 @@
       ln -s "../matterbridge" "${npmGlobalDir}/lib/node_modules/node_modules/matterbridge"
     fi
 
-    exec "${config.services.matterbridge.nodePackage}/bin/npx" -y matterbridge --nosudo "$@"
+    # Matterbridge moved frontend assets from frontend/ to apps/frontend/.
+    # Keep a compatibility link so old/new layouts both resolve.
+    if [ -d "${npmGlobalDir}/lib/node_modules/matterbridge/apps/frontend" ] && [ ! -e "${npmGlobalDir}/lib/node_modules/matterbridge/frontend" ]; then
+      ln -s "apps/frontend" "${npmGlobalDir}/lib/node_modules/matterbridge/frontend"
+    fi
+    if [ -d "${npmGlobalDir}/lib/node_modules/matterbridge/frontend" ] && [ ! -e "${npmGlobalDir}/lib/node_modules/matterbridge/apps/frontend" ]; then
+      mkdir -p "${npmGlobalDir}/lib/node_modules/matterbridge/apps"
+      ln -s "../frontend" "${npmGlobalDir}/lib/node_modules/matterbridge/apps/frontend"
+    fi
+
+    exec "${npmGlobalDir}/bin/matterbridge" --nosudo "$@"
   '';
 in {
   options = {
