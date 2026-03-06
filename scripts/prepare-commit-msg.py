@@ -25,15 +25,15 @@ except Exception:  # ImportError or anything weird in user envs
 from shutil import which
 
 # Defaults (adjust here rather than via env vars)
-# Use the Codex-tuned GPT-5.2 model alias.
-MODEL = "gpt-5.2-codex"
+# Use the current GPT-5.4 model for commit message generation.
+MODEL = "gpt-5.4"
 # Narrow string types for clarity.
 Effort = Literal["low", "medium", "high", "xhigh"]
 Verbosity = Literal["low", "medium", "high"]
 
 REASONING_EFFORT: Effort = "xhigh"
 # Control final answer verbosity (orthogonal to reasoning).
-# gpt-5.2-codex currently accepts only "medium" for text verbosity.
+# Keep output concise enough for commit messages.
 TEXT_VERBOSITY: Verbosity = "medium"
 # Control reasoning summary verbosity shown during streaming.
 # Options: "auto", "concise", "detailed".
