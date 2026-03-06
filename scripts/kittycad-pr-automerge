@@ -20,6 +20,28 @@ processed=0
 skipped=0
 errors=0
 
+# Query both viewer review state and auto-merge state at once so repeated runs stay idempotent.
+PR_STATE_QUERY='query($owner: String!, $name: String!, $number: Int!) {
+  viewer {
+    login
+  }
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      autoMergeRequest {
+        enabledAt
+      }
+      latestOpinionatedReviews(first: 100) {
+        nodes {
+          author {
+            login
+          }
+          state
+        }
+      }
+    }
+  }
+}'
+
 log() {
   printf '[kittycad-pr-automerge] %s\n' "$*"
 }
@@ -100,11 +122,68 @@ ensure_github_token() {
   return 1
 }
 
+fetch_pr_state_json() {
+  local repo="$1"
+  local pr="$2"
+  local owner="${repo%%/*}"
+  local name="${repo#*/}"
+
+  gh api graphql \
+    -f owner="$owner" \
+    -f name="$name" \
+    -F number="$pr" \
+    -f query="$PR_STATE_QUERY" 2>/dev/null || true
+}
+
+viewer_already_approved_pr() {
+  local pr_state_json="$1"
+
+  [ -n "$pr_state_json" ] || return 1
+
+  jq -e '
+    (.data.viewer.login // "") as $viewer
+    | [
+        .data.repository.pullRequest.latestOpinionatedReviews.nodes[]?
+        | select((.author.login // "") == $viewer and .state == "APPROVED")
+      ]
+    | length > 0
+  ' <<<"$pr_state_json" >/dev/null 2>&1
+}
+
+auto_merge_already_enabled() {
+  local pr_state_json="$1"
+
+  [ -n "$pr_state_json" ] || return 1
+
+  jq -e '
+    .data.repository.pullRequest != null
+    and .data.repository.pullRequest.autoMergeRequest != null
+  ' <<<"$pr_state_json" >/dev/null 2>&1
+}
+
+pr_state_json_is_usable() {
+  local pr_state_json="$1"
+
+  [ -n "$pr_state_json" ] || return 1
+
+  jq -e '
+    .errors == null
+    and .data.repository.pullRequest != null
+    and (.data.viewer.login // "") != ""
+  ' <<<"$pr_state_json" >/dev/null 2>&1
+}
+
 enable_auto_merge() {
   local repo="$1"
   local pr="$2"
+  local pr_state_json="${3:-}"
   local output=""
   local rc=0
+
+  if auto_merge_already_enabled "$pr_state_json"; then
+    log "auto-merge already enabled: $repo#$pr"
+    return 0
+  fi
 
   if [ "$DRY_RUN" -eq 1 ]; then
     log "[dry-run] auto-merge -> $repo#$pr"
@@ -130,7 +209,13 @@ enable_auto_merge() {
 approve_pr() {
   local repo="$1"
   local pr="$2"
+  local pr_state_json="${3:-}"
   local output=""
+
+  if viewer_already_approved_pr "$pr_state_json"; then
+    log "approval already exists: $repo#$pr"
+    return 0
+  fi
 
   if [ "$DRY_RUN" -eq 1 ]; then
     log "[dry-run] approve -> $repo#$pr"
@@ -152,10 +237,16 @@ process_pr() {
   local pr="$2"
   local title="$3"
   local reason="$4"
+  local pr_state_json=""
 
   log "$reason -> $repo#$pr ($title)"
-  approve_pr "$repo" "$pr"
-  if enable_auto_merge "$repo" "$pr"; then
+  pr_state_json="$(fetch_pr_state_json "$repo" "$pr")"
+  if ! pr_state_json_is_usable "$pr_state_json"; then
+    warn "could not inspect current PR state for $repo#$pr, proceeding without duplicate-action guard"
+    pr_state_json=""
+  fi
+  approve_pr "$repo" "$pr" "$pr_state_json"
+  if enable_auto_merge "$repo" "$pr" "$pr_state_json"; then
     processed=$((processed + 1))
   else
     errors=$((errors + 1))
