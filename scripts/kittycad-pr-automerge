@@ -21,6 +21,7 @@ skipped=0
 errors=0
 
 # Query both viewer review state and auto-merge state at once so repeated runs stay idempotent.
+# shellcheck disable=SC2016
 PR_STATE_QUERY='query($owner: String!, $name: String!, $number: Int!) {
   viewer {
     login
