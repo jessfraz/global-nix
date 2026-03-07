@@ -41,7 +41,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.110.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.111.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
