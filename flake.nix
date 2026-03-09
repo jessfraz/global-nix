@@ -182,7 +182,6 @@
       # Common packages for all systems
       commonPackages = with pkgs; [
         _1password-cli
-        ast-grep
         bash
         bash-completion
         claude-code
