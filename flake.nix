@@ -107,11 +107,15 @@
         else prev.rust-analyzer;
     };
 
-    # Avoid flaky Node.js test phases on Darwin by disabling checks.
-    overlaySkipNodeChecks = final: prev: {
-      nodejs_20 = prev.nodejs_20.overrideAttrs (_: {doCheck = false;});
-      nodejs_22 = prev.nodejs_22.overrideAttrs (_: {doCheck = false;});
-    };
+    # nixpkgs assembles `nodejs_*` from `nodejs-slim_*`, so disable checks on
+    # the slim builders that actually run the flaky Darwin test suite.
+    overlaySkipNodeChecks = final: prev:
+      if prev.stdenv.isDarwin
+      then {
+        nodejs-slim_20 = prev.nodejs-slim_20.overrideAttrs (_: {doCheck = false;});
+        nodejs-slim_22 = prev.nodejs-slim_22.overrideAttrs (_: {doCheck = false;});
+      }
+      else {};
 
     commonOverlays = [
       overlay
