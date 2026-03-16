@@ -32,17 +32,17 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1772999266,
-        "narHash": "sha256-tOrqGXh4k5GzcPhCUaiYoUVt4liYfgRd2ejkrdQpqWs=",
-        "ref": "refs/tags/rust-v0.112.0",
-        "rev": "0ec16b2d9dd7d92f5661b132afdf4df3abb3d443",
-        "revCount": 4268,
+        "lastModified": 1773185703,
+        "narHash": "sha256-7t+mVwP4+YrG1ciI+OLqsK7TUM9SrDbPsJNrt26iy9c=",
+        "ref": "refs/tags/rust-v0.114.0",
+        "rev": "b9904c0ae4ecb773549efd6ea3fb05229402fdb9",
+        "revCount": 4409,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/openai/codex"
       },
       "original": {
-        "ref": "refs/tags/rust-v0.112.0",
+        "ref": "refs/tags/rust-v0.114.0",
         "submodules": true,
         "type": "git",
         "url": "https://github.com/openai/codex"
