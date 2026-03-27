@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
 HOMEBRIDGE_PATH = REPO_ROOT / "pkgs" / "homebridge.nix"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
+RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
 
 FAKE_SRI = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
@@ -293,12 +294,52 @@ def update_mole() -> None:
     print(f"mole -> {version}")
 
 
+def update_ramp() -> None:
+    tags = get_tags("https://github.com/ramp-public/ramp-cli.git")
+    latest_tag = select_latest_tag(tags, preferred_prefixes=("v",))
+    if not latest_tag.startswith("v"):
+        raise UpdateError(f"Unexpected Ramp tag format: {latest_tag}")
+
+    version = latest_tag[1:]
+    original_text = RAMP_CLI_PATH.read_text(encoding="utf-8")
+
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.M)
+    if not version_match:
+        raise UpdateError("Could not find Ramp CLI version in pkgs/ramp-cli.nix")
+
+    current_version = version_match.group(1)
+    if current_version == version:
+        print(f"ramp already at {version}")
+        return
+
+    src_url = (
+        f"https://github.com/ramp-public/ramp-cli/archive/refs/tags/{latest_tag}.tar.gz"
+    )
+    src_hash = prefetch_sri(src_url)
+
+    updated = replace_one(
+        r'^(\s*version = ")[^"]+(";)',
+        rf"\g<1>{version}\g<2>",
+        original_text,
+        "ramp version",
+    )
+    updated = replace_one(
+        r'^(\s*hash = ")[^"]+(";)',
+        rf"\g<1>{src_hash}\g<2>",
+        updated,
+        "ramp hash",
+    )
+
+    RAMP_CLI_PATH.write_text(updated, encoding="utf-8")
+    print(f"ramp -> {version}")
+
+
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Update pinned tags and hashes.")
     parser.add_argument(
         "targets",
         nargs="+",
-        choices=["codex", "homebridge", "mole", "all"],
+        choices=["codex", "homebridge", "mole", "ramp", "all"],
         help="Targets to update.",
     )
     return parser.parse_args(argv)
@@ -308,7 +349,7 @@ def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
     targets = set(args.targets)
     if "all" in targets:
-        targets = {"codex", "homebridge", "mole"}
+        targets = {"codex", "homebridge", "mole", "ramp"}
 
     try:
         if "codex" in targets:
@@ -317,6 +358,8 @@ def main(argv: Sequence[str]) -> int:
             update_homebridge()
         if "mole" in targets:
             update_mole()
+        if "ramp" in targets:
+            update_ramp()
     except UpdateError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

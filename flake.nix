@@ -40,6 +40,11 @@
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
+    googleworkspace-cli = {
+      url = "github:googleworkspace/cli";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     codex = {
       url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.117.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -61,6 +66,7 @@
     dotfiles,
     dotvim,
     zoo-cli,
+    googleworkspace-cli,
     codex,
     fh,
   } @ inputs: let
@@ -78,6 +84,7 @@
     overlay = final: prev: {
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
+      rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
       coredns = prev.coredns.overrideAttrs (old: let
         postPatchScript =
           if old ? postPatch
@@ -168,6 +175,8 @@
         ];
       };
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      googleWorkspaceCli = googleworkspace-cli.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      stripeCli = pkgs."stripe-cli";
       codexCli = codex.packages.${system}.default.overrideAttrs (oa: {
         nativeBuildInputs =
           (oa.nativeBuildInputs or [])
@@ -215,6 +224,7 @@
         findutils
         git
         git-lfs
+        googleWorkspaceCli
         gnumake
         gnupg
         gnused
@@ -223,10 +233,14 @@
         ncurses
         nodejs_22
         pinentry-tty
+        rampCli
         silver-searcher
         starship
+        stripeCli
+        tailscale
         tree
         uv
+        vault
         watch
         yarn
         zooCli
@@ -241,7 +255,6 @@
             _1password-gui
             google-chrome
             pinentry-tty
-            tailscale
             xclip
           ]
         else

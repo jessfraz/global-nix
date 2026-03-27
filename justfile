@@ -36,6 +36,9 @@ update-homebridge:
 update-mole:
     python3 scripts/update-pins.py mole
 
+update-ramp:
+    python3 scripts/update-pins.py ramp
+
 update-pins:
     python3 scripts/update-pins.py all
 
