@@ -136,6 +136,22 @@ in {
           export GOOGLE_API_KEY=$(op --account my.1password.com item get "Google AI Studio" --fields credential --reveal)
       }
 
+      function fetch-gws-personal() {
+          op-ensure-session my.1password.com || return $?
+          export GOOGLE_WORKSPACE_CLI_CLIENT_ID=$(op --account my.1password.com item get "gws cli" --fields username --reveal)
+          export GOOGLE_WORKSPACE_CLI_CLIENT_SECRET=$(op --account my.1password.com item get "gws cli" --fields credential --reveal)
+          unset GOOGLE_WORKSPACE_CLI_TOKEN
+          unset GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
+      }
+
+      function fetch-gws-work() {
+          op-ensure-session kittycadinc.1password.com || return $?
+          export GOOGLE_WORKSPACE_CLI_CLIENT_ID=$(op --account kittycadinc.1password.com item get --vault Employee "gws cli" --fields username --reveal)
+          export GOOGLE_WORKSPACE_CLI_CLIENT_SECRET=$(op --account kittycadinc.1password.com item get --vault Employee "gws cli" --fields credential --reveal)
+          unset GOOGLE_WORKSPACE_CLI_TOKEN
+          unset GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
+      }
+
       function fetch-deepseek-key() {
           op-ensure-session my.1password.com || return $?
           export DEEPSEEK_API_KEY=$(op --account my.1password.com item get "deepseek.com" --fields apikey --reveal)
