@@ -50,6 +50,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    switchboard = {
+      url = "git+ssh://git@github.com/jessfraz/switchboard.git";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
     # FlakeHub CLI (fh)
     fh = {
       url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
@@ -68,6 +74,7 @@
     zoo-cli,
     googleworkspace-cli,
     codex,
+    switchboard,
     fh,
   } @ inputs: let
     # Global variables
@@ -205,6 +212,7 @@
             RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
           };
       });
+      switchboardCli = switchboard.packages.${pkgs.stdenv.hostPlatform.system}.default;
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
       # Common packages for all systems
@@ -237,6 +245,7 @@
         silver-searcher
         starship
         stripeCli
+        switchboardCli
         tailscale
         tree
         uv
