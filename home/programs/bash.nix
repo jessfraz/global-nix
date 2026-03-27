@@ -138,6 +138,7 @@ in {
 
       function fetch-gws-personal() {
           op-ensure-session my.1password.com || return $?
+          export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="${config.home.homeDirectory}/.config/gws-personal"
           export GOOGLE_WORKSPACE_CLI_CLIENT_ID=$(op --account my.1password.com item get "gws cli" --fields username --reveal)
           export GOOGLE_WORKSPACE_CLI_CLIENT_SECRET=$(op --account my.1password.com item get "gws cli" --fields credential --reveal)
           unset GOOGLE_WORKSPACE_CLI_TOKEN
@@ -146,6 +147,7 @@ in {
 
       function fetch-gws-work() {
           op-ensure-session kittycadinc.1password.com || return $?
+          export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="${config.home.homeDirectory}/.config/gws-work"
           export GOOGLE_WORKSPACE_CLI_CLIENT_ID=$(op --account kittycadinc.1password.com item get --vault Employee "gws cli" --fields username --reveal)
           export GOOGLE_WORKSPACE_CLI_CLIENT_SECRET=$(op --account kittycadinc.1password.com item get --vault Employee "gws cli" --fields credential --reveal)
           unset GOOGLE_WORKSPACE_CLI_TOKEN
