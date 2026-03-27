@@ -212,48 +212,57 @@
             RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
           };
       });
-      switchboardCli = switchboard.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      switchboardPackages = switchboard.packages.${pkgs.stdenv.hostPlatform.system};
+      switchboardClis = with switchboardPackages; [
+        switchboard
+        mychart
+        mindbody
+        momence
+      ];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
       # Common packages for all systems
-      commonPackages = with pkgs; [
-        _1password-cli
-        bash
-        bash-completion
-        claude-code
-        codexCli
-        coreutils
-        curl
-        flakehubCli
-        # Provide python with the 'rich' library for nicer stderr rendering
-        # in scripts/prepare-commit-msg.py.
-        (python312.withPackages (ps: [ps.rich]))
-        rustToolchain
-        findutils
-        git
-        git-lfs
-        googleWorkspaceCli
-        gnumake
-        gnupg
-        gnused
-        jq
-        just
-        ncurses
-        nodejs_22
-        pinentry-tty
-        rampCli
-        silver-searcher
-        starship
-        stripeCli
-        switchboardCli
-        tailscale
-        tree
-        uv
-        vault
-        watch
-        yarn
-        zooCli
-      ];
+      commonPackages =
+        (with pkgs; [
+          _1password-cli
+          bash
+          bash-completion
+          claude-code
+          codexCli
+          coreutils
+          curl
+          flakehubCli
+          # Provide python with the 'rich' library for nicer stderr rendering
+          # in scripts/prepare-commit-msg.py.
+          (python312.withPackages (ps: [ps.rich]))
+          rustToolchain
+          findutils
+          git
+          git-lfs
+          googleWorkspaceCli
+          gnumake
+          gnupg
+          gnused
+          jq
+          just
+          ncurses
+          nodejs_22
+          pinentry-tty
+          rampCli
+          silver-searcher
+          starship
+          stripeCli
+        ])
+        ++ switchboardClis
+        ++ (with pkgs; [
+          tailscale
+          tree
+          uv
+          vault
+          watch
+          yarn
+          zooCli
+        ]);
 
       # System-specific packages
       systemSpecificPackages =
