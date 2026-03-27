@@ -124,6 +124,19 @@
       rust-overlay.overlays.default
     ];
 
+    # `rusty_v8` wants to download a prebuilt archive at build time, which is
+    # a lousy fit for Nix. Prefetch the archive and pass the local path instead.
+    rustyV8Archives = {
+      aarch64-darwin = {
+        url = "https://github.com/denoland/rusty_v8/releases/download/v146.4.0/librusty_v8_release_aarch64-apple-darwin.a.gz";
+        hash = "sha256-v+LJvjKlbChUbw+WWCXuaPv2BkBfMQzE4XtEilaM+Yo=";
+      };
+      x86_64-linux = {
+        url = "https://github.com/denoland/rusty_v8/releases/download/v146.4.0/librusty_v8_release_x86_64-unknown-linux-gnu.a.gz";
+        hash = "sha256-5ktNmeSuKTouhGJEqJuAF4uhA4LBP7WRwfppaPUpEVM=";
+      };
+    };
+
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
@@ -145,6 +158,7 @@
         };
         overlays = commonOverlays;
       };
+      rustyV8Archive = pkgs.fetchurl (builtins.getAttr system rustyV8Archives);
       rustBin = pkgs.rust-bin.stable.latest;
       rustToolchain = rustBin.default.override {
         extensions = [
@@ -179,6 +193,7 @@
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
             CC = "clang";
             CXX = "clang++";
+            RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
           };
       });
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
