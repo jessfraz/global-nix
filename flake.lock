@@ -300,11 +300,11 @@
         "zon2nix": "zon2nix"
       },
       "locked": {
-        "lastModified": 1775056247,
-        "narHash": "sha256-EDYyMZhC8P81WOXdIMXlK2A+h912mXNGVaVLRjG3KoM=",
+        "lastModified": 1775079147,
+        "narHash": "sha256-sb9QPOTvxoVDay7J71arfFg8J31hsl7u1whmjJbZSSc=",
         "owner": "ghostty-org",
         "repo": "ghostty",
-        "rev": "f6e6bb0238cbf4ce8c154c07f5df8c5109dc9f03",
+        "rev": "b8251de7e8656ae4a848856f00f1003347ad37d7",
         "type": "github"
       },
       "original": {
@@ -404,11 +404,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775075223,
-        "narHash": "sha256-koolplqbU5RQjQwdcYGz/AVKk18vQiYjHdSi17COIJ0=",
+        "lastModified": 1775080052,
+        "narHash": "sha256-jAB4ZZbx8ECu9GcE/PUUwT+wpooZ0Ssmn2imB8PVTdM=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "f21d8ebbc959e5da6fbda105ff47e334f058ac06",
+        "rev": "6267895e9898399f0ce2fe79b645e9ee4858aaff",
         "type": "github"
       },
       "original": {
@@ -816,11 +816,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775066063,
-        "narHash": "sha256-vZxBqsjB5+Vqo8NfXHI7ZTrTteyfDuum2g7/5j7p3h0=",
+        "lastModified": 1775081921,
+        "narHash": "sha256-5fLBmZgYk7/gxC4PUHrUcPDzxIC2Bp7tjcnW8eszBrk=",
         "ref": "refs/heads/main",
-        "rev": "36faa13afa7b44a1f9ae036af479c8de656dd64e",
-        "revCount": 89,
+        "rev": "622c5798d3e64e3fa4a4523b6582dabc3b2c96eb",
+        "revCount": 91,
         "type": "git",
         "url": "ssh://git@github.com/jessfraz/switchboard.git"
       },
