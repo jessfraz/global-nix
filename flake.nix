@@ -213,11 +213,13 @@
           };
       });
       switchboardPackages = switchboard.packages.${pkgs.stdenv.hostPlatform.system};
-      switchboardClis = with switchboardPackages; [
-        switchboard
-        mychart
-        mindbody
-        momence
+      switchboardClis = [
+        switchboardPackages.switchboard
+        switchboardPackages.mychart
+        switchboardPackages.mindbody
+        switchboardPackages.momence
+        switchboardPackages.plaid
+        switchboardPackages.schwab
       ];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
