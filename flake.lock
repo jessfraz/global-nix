@@ -300,11 +300,11 @@
         "zon2nix": "zon2nix"
       },
       "locked": {
-        "lastModified": 1775079147,
-        "narHash": "sha256-sb9QPOTvxoVDay7J71arfFg8J31hsl7u1whmjJbZSSc=",
+        "lastModified": 1775159799,
+        "narHash": "sha256-iNyp97v0wwBi/NZ5YNzCR9XPEwVCS6rcaRHgjHYyaHs=",
         "owner": "ghostty-org",
         "repo": "ghostty",
-        "rev": "b8251de7e8656ae4a848856f00f1003347ad37d7",
+        "rev": "0790937d03df6e7a9420c61de91ce520a85fe4ef",
         "type": "github"
       },
       "original": {
@@ -404,11 +404,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775080052,
-        "narHash": "sha256-jAB4ZZbx8ECu9GcE/PUUwT+wpooZ0Ssmn2imB8PVTdM=",
+        "lastModified": 1775223910,
+        "narHash": "sha256-QRdehpSKTttlZe0oY2n5OCfZeCMrHkKNlWF1LJzO9tY=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "6267895e9898399f0ce2fe79b645e9ee4858aaff",
+        "rev": "f68887a4c11e662b0eb0323d34b3fb9506226719",
         "type": "github"
       },
       "original": {
@@ -578,11 +578,11 @@
     },
     "nixpkgs_5": {
       "locked": {
-        "lastModified": 1774709303,
-        "narHash": "sha256-D3Q07BbIA2KnTcSXIqqu9P586uWxN74zNoCH3h2ESHg=",
+        "lastModified": 1775036866,
+        "narHash": "sha256-ZojAnPuCdy657PbTq5V0Y+AHKhZAIwSIT2cb8UgAz/U=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "8110df5ad7abf5d4c0f6fb0f8f978390e77f9685",
+        "rev": "6201e203d09599479a3b3450ed24fa81537ebc4e",
         "type": "github"
       },
       "original": {
@@ -792,11 +792,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775013181,
-        "narHash": "sha256-zPrt6oNM1r/RO5bWYaZ3hthfG9vzkr6kQdoqDd5x4Qw=",
+        "lastModified": 1775185947,
+        "narHash": "sha256-8ctPmj6RME4q4ELeg+BuY9lV/34M4AG1CNc0Im9PDDk=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "e8046c1d9ccadd497c2344d8fa49dab62f22f7be",
+        "rev": "199eeb6748116f7da4fbd3a680bc854e99d9132b",
         "type": "github"
       },
       "original": {
@@ -816,11 +816,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775081921,
-        "narHash": "sha256-5fLBmZgYk7/gxC4PUHrUcPDzxIC2Bp7tjcnW8eszBrk=",
+        "lastModified": 1775235396,
+        "narHash": "sha256-dZTJ90917hWhLjnlh9HLnYzuSglZbAHVuEPphW+PVxE=",
         "ref": "refs/heads/main",
-        "rev": "622c5798d3e64e3fa4a4523b6582dabc3b2c96eb",
-        "revCount": 91,
+        "rev": "dc5529e0ba4bbeb2f20fbdc96c55c5434f6367db",
+        "revCount": 94,
         "type": "git",
         "url": "ssh://git@github.com/jessfraz/switchboard.git"
       },
@@ -922,11 +922,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775073731,
-        "narHash": "sha256-ysO2nYwhsU4bj6wwdXDlBnq638sgYFLqH24gwVU2FTE=",
+        "lastModified": 1775159501,
+        "narHash": "sha256-g60ywi94OmJ7XbYWYgIkAA9j8FlcGL2ijmURra9JNz0=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "372cb32be1101487f8410ad885947ad8dadeaa0a",
+        "rev": "928374b7186543567798b80b303dd9c139615966",
         "type": "github"
       },
       "original": {

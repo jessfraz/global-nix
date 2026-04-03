@@ -84,11 +84,33 @@
     gitName = "Jessie Frazelle";
     gitEmail = "github@jessfraz.com";
 
+    # TODO(jessfraz): remove this override once nixpkgs stops pinning a yanked claude-code release.
+    claudeCodeVersion = "2.1.91";
+    claudeCodeBinaryBaseUrl = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases";
+    claudeCodeBinaryHashes = {
+      darwin-arm64 = "0xnkdz368pddd0qi2a7jk6cxi0flyc2pl7g282ij7ln57rnxfcvl";
+      linux-x64 = "1rlnfbyirq31daz62f3bkvyzfcmz01p2yvajnd00jcz308dlxdq1";
+    };
+
     # tpl variables
     tplIpPrefix = "10.42.9";
     tplResolverFile = "resolver/tpl"; # serves *.tpl
 
     overlay = final: prev: {
+      claude-code-bin =
+        let
+          platformKey = "${prev.stdenv.hostPlatform.node.platform}-${prev.stdenv.hostPlatform.node.arch}";
+        in
+        if builtins.hasAttr platformKey claudeCodeBinaryHashes
+        then
+          prev.claude-code-bin.overrideAttrs (_: {
+            version = claudeCodeVersion;
+            src = prev.fetchurl {
+              url = "${claudeCodeBinaryBaseUrl}/${claudeCodeVersion}/${platformKey}/claude";
+              sha256 = builtins.getAttr platformKey claudeCodeBinaryHashes;
+            };
+          })
+        else prev.claude-code-bin;
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
@@ -229,7 +251,7 @@
           _1password-cli
           bash
           bash-completion
-          claude-code
+          claude-code-bin
           codexCli
           coreutils
           curl
