@@ -816,11 +816,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775235396,
-        "narHash": "sha256-dZTJ90917hWhLjnlh9HLnYzuSglZbAHVuEPphW+PVxE=",
+        "lastModified": 1775239387,
+        "narHash": "sha256-2rhR7//pi3zXjX/ju64jAG4Eq32gILhR2fPTYYO+R8U=",
         "ref": "refs/heads/main",
-        "rev": "dc5529e0ba4bbeb2f20fbdc96c55c5434f6367db",
-        "revCount": 94,
+        "rev": "6396c7a9c60ee4fbcf6a24fb6c4572b8aa1a471c",
+        "revCount": 96,
         "type": "git",
         "url": "ssh://git@github.com/jessfraz/switchboard.git"
       },
@@ -922,11 +922,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775159501,
-        "narHash": "sha256-g60ywi94OmJ7XbYWYgIkAA9j8FlcGL2ijmURra9JNz0=",
+        "lastModified": 1775236863,
+        "narHash": "sha256-yNreXCNktFMW1D339dsQeLQYTZ6WQIQro2DqN9EXYZc=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "928374b7186543567798b80b303dd9c139615966",
+        "rev": "25b3b36005cb032af1495d9efdfa35b90ee080ae",
         "type": "github"
       },
       "original": {
