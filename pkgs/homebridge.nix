@@ -5,13 +5,13 @@ in
     pname = "homebridge";
     version = "1.11.4";
     nodejs = pkgs.nodejs_22;
-    gihubSha256 = "sha256-usp7zszkEfGsWXApywAolFhG0i59Pr/IvvaBMeU7YHc=";
+    githubHash = "sha256-usp7zszkEfGsWXApywAolFhG0i59Pr/IvvaBMeU7YHc=";
 
     src = fetchFromGitHub {
       owner = "homebridge";
       repo = "homebridge";
       rev = "v${version}";
-      sha256 = gihubSha256;
+      sha256 = githubHash;
     };
 
     # copy package-lock.json from the GitHub repo so buildNpmPackage is happy
@@ -20,7 +20,7 @@ in
         owner = "homebridge";
         repo = "homebridge";
         rev = "v${version}";
-        sha256 = gihubSha256;
+        sha256 = githubHash;
       }}/package-lock.json ./package-lock.json
     '';
 
@@ -29,11 +29,11 @@ in
     # vendor the dependency tree
     npmDepsHash = "sha256-Ci5aIDIEchB0niORK2cRy06qObLplCSogo6wRVXv9Vs=";
     dontNpmBuild = true; # skip `npm run build`
-
-    nativeBuildInputs = [pkgs.nodePackages.typescript];
     postBuild = ''
-      echo "Running plain tsc…"
-      tsc -p .
+      # Homebridge ships its own pinned TypeScript, so use that instead of the
+      # removed nixpkgs `nodePackages` set.
+      echo "Running vendored tsc..."
+      ./node_modules/.bin/tsc -p .
     '';
 
     # buildNpmPackage puts the CLI at $out/bin/homebridge automatically
