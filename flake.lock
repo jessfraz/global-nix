@@ -70,11 +70,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775592633,
-        "narHash": "sha256-qQrvg7fV/zKxUoL63/jTFlLvmd/fODv0RVg8KRSn7YM=",
+        "lastModified": 1775603215,
+        "narHash": "sha256-z5uyVQG6LbM73zCHTF76gX+QOtJuEM3izTIbSxefUAs=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "84b77b5607ac87da893a0d96809e58b718b8b920",
+        "rev": "f06047a561fbf11a24608ad81afa801620fb0327",
         "type": "github"
       },
       "original": {
@@ -816,11 +816,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775599220,
-        "narHash": "sha256-3xLGx5o8zhFy6twBvvRtaVFMGyemf8Jn9HXxhXVwDGc=",
+        "lastModified": 1775604515,
+        "narHash": "sha256-TDysxYdPMEH5uNQg0fJdEvyUEhxY5xXxXHeixr/nOrQ=",
         "ref": "refs/heads/main",
-        "rev": "40ec5a7ddd4db6876a62feedb5e1d7650e12c63a",
-        "revCount": 99,
+        "rev": "b6aa9c8cd40c5806df4b70f8e14c33053591df59",
+        "revCount": 109,
         "type": "git",
         "url": "ssh://git@github.com/jessfraz/switchboard.git"
       },

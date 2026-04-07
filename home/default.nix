@@ -8,7 +8,7 @@
 }: let
   ghosttyPkg =
     if pkgs.stdenv.isLinux
-    then inputs.ghostty.packages.${pkgs.stdenv.system}.default
+    then inputs.ghostty.packages.${pkgs.stdenv.hostPlatform.system}.default
     else null; # We install on our own on macOS
   kittycadPrAutomerge = pkgs.writeShellApplication {
     name = "kittycad-pr-automerge";

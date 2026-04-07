@@ -154,6 +154,13 @@ in {
           unset GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
       }
 
+      function fetch-schwab-keys() {
+          op-ensure-session my.1password.com || return $?
+          export SCHWAB_CONFIG="${config.home.homeDirectory}/.config/schwab-personal/config.json"
+          export SCHWAB_CLIENT_ID=$(op --account my.1password.com item get "schwab cli" --fields username --reveal)
+          export SCHWAB_CLIENT_SECRET=$(op --account my.1password.com item get "schwab cli" --fields credential --reveal)
+      }
+
       function fetch-deepseek-key() {
           op-ensure-session my.1password.com || return $?
           export DEEPSEEK_API_KEY=$(op --account my.1password.com item get "deepseek.com" --fields apikey --reveal)
