@@ -94,11 +94,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1775590467,
-        "narHash": "sha256-Tx5CByn1pfmgrnUsLeOoqMTX8I9HWZ0HRFwdEV0daws=",
+        "lastModified": 1775605231,
+        "narHash": "sha256-Cc57Yxq2jdonYz++Rrw657+lAQ/4b7SmsBfvQXc6WXs=",
         "ref": "refs/heads/main",
-        "rev": "fda2173584088e6fff318bbd9b738eb292ec1d3a",
-        "revCount": 833,
+        "rev": "cff25600497363a51ee5c08b3f74beaab6cc2f9c",
+        "revCount": 835,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
