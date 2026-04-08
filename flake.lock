@@ -816,11 +816,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775604515,
-        "narHash": "sha256-TDysxYdPMEH5uNQg0fJdEvyUEhxY5xXxXHeixr/nOrQ=",
+        "lastModified": 1775606353,
+        "narHash": "sha256-ig9p0o/yXgKxizaoN41SMsMiUVKFvMSSy7cMINkNsBc=",
         "ref": "refs/heads/main",
-        "rev": "b6aa9c8cd40c5806df4b70f8e14c33053591df59",
-        "revCount": 109,
+        "rev": "2cb5e67f604f6780177ffd3f3f6e404e51dff221",
+        "revCount": 110,
         "type": "git",
         "url": "ssh://git@github.com/jessfraz/switchboard.git"
       },
