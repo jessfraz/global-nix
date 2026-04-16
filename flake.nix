@@ -46,7 +46,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.118.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.121.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -193,18 +193,45 @@
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
       googleWorkspaceCli = googleworkspace-cli.packages.${pkgs.stdenv.hostPlatform.system}.default;
       stripeCli = pkgs."stripe-cli";
-      codexCli = codex.packages.${system}.default.overrideAttrs (oa: {
-        nativeBuildInputs =
-          (oa.nativeBuildInputs or [])
-          ++ (with pkgs; [
-            cmake
-            git
-            llvmPackages.clang
-            pkg-config
-          ]);
+      codexSrc = codex.outPath + "/codex-rs";
+      codexCargoToml = builtins.fromTOML (builtins.readFile "${codexSrc}/Cargo.toml");
+      codexVersion =
+        if codexCargoToml.workspace.package.version != "0.0.0"
+        then codexCargoToml.workspace.package.version
+        else "0.0.0-dev+${codex.shortRev or "dirty"}";
+      codexRustPlatform = pkgs.makeRustPlatform {
+        cargo = rustBin.minimal;
+        rustc = rustBin.minimal;
+      };
+      codexCli = codexRustPlatform.buildRustPackage {
+        pname = "codex-rs";
+        version = codexVersion;
+        src = codexSrc;
+        cargoLock = {
+          lockFile = "${codexSrc}/Cargo.lock";
+          outputHashes = {
+            "ratatui-0.29.0" = "sha256-HBvT5c8GsiCxMffNjJGLmHnvG77A6cqEL+1ARurBXho=";
+            "crossterm-0.28.1" = "sha256-6qCtfSMuXACKFb9ATID39XyFDIEMFDmbx6SSmNe+728=";
+            "nucleo-0.5.0" = "sha256-Hm4SxtTSBrcWpXrtSqeO0TACbUxq3gizg1zD/6Yw/sI=";
+            "nucleo-matcher-0.3.1" = "sha256-Hm4SxtTSBrcWpXrtSqeO0TACbUxq3gizg1zD/6Yw/sI=";
+            "runfiles-0.1.0" = "sha256-uJpVLcQh8wWZA3GPv9D8Nt43EOirajfDJ7eq/FB+tek=";
+            "tokio-tungstenite-0.28.0" = "sha256-hJAkvWxDjB9A9GqansahWhTmj/ekcelslLUTtwqI7lw=";
+            "tungstenite-0.27.0" = "sha256-AN5wql2X2yJnQ7lnDxpljNw0Jua40GtmT+w3wjER010=";
+            "libwebrtc-0.3.26" = "sha256-0HPuwaGcqpuG+Pp6z79bCuDu/DyE858VZSYr3DKZD9o=";
+          };
+        };
+        doCheck = false;
+        postPatch = ''
+          sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
+        '';
+        nativeBuildInputs = with pkgs; [
+          cmake
+          git
+          llvmPackages.clang
+          pkg-config
+        ];
         buildInputs =
-          (oa.buildInputs or [])
-          ++ (with pkgs; [
+          (with pkgs; [
             openssl
             llvmPackages.libclang.lib
           ])
@@ -212,15 +239,22 @@
             pkgs.libcap.dev
             pkgs.libcap.lib
           ];
-        env =
-          (oa.env or {})
-          // {
-            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-            CC = "clang";
-            CXX = "clang++";
-            RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
-          };
-      });
+        env = {
+          PKG_CONFIG_PATH = pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
+            [pkgs.openssl] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [pkgs.libcap]
+          );
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          CC = "clang";
+          CXX = "clang++";
+          RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
+        };
+        meta = with pkgs.lib; {
+          description = "OpenAI Codex command-line interface rust implementation";
+          homepage = "https://github.com/openai/codex";
+          license = licenses.asl20;
+          mainProgram = "codex";
+        };
+      };
       switchboardPackages = switchboard.packages.${pkgs.stdenv.hostPlatform.system};
       switchboardClis = [
         switchboardPackages.switchboard
