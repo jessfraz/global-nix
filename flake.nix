@@ -92,6 +92,11 @@
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
+      # nixpkgs gopls now installs `modernize`, which collides with gotools.
+      # Keep gotools as the source of that binary and only expose `gopls` here.
+      gopls = prev.gopls.overrideAttrs (_: {
+        subPackages = ["."];
+      });
       coredns = prev.coredns.overrideAttrs (old: let
         postPatchScript =
           if old ? postPatch
@@ -160,6 +165,14 @@
       };
     };
 
+    livekitWebrtcArchives = {
+      aarch64-darwin = {
+        url = "https://github.com/livekit/rust-sdks/releases/download/webrtc-24f6822-2/webrtc-mac-arm64-release.zip";
+        hash = "sha256-eb5cwV5uBjPEOA4z4XLX6/Gm3Og+ngmXYdYQPw1+tsE=";
+        directory = "mac-arm64-release";
+      };
+    };
+
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
 
@@ -182,6 +195,28 @@
         overlays = commonOverlays;
       };
       rustyV8Archive = pkgs.fetchurl (builtins.getAttr system rustyV8Archives);
+      livekitWebrtcArchive =
+        if builtins.hasAttr system livekitWebrtcArchives
+        then
+          pkgs.fetchurl {
+            inherit (builtins.getAttr system livekitWebrtcArchives) url hash;
+            name = "livekit-webrtc-${system}.zip";
+          }
+        else null;
+      livekitWebrtcDirectory =
+        if livekitWebrtcArchive != null
+        then (builtins.getAttr system livekitWebrtcArchives).directory
+        else null;
+      livekitWebrtcPrebuilt =
+        if livekitWebrtcArchive != null
+        then
+          pkgs.runCommand "livekit-webrtc-${system}" {
+            nativeBuildInputs = [pkgs.unzip];
+          } ''
+            mkdir -p "$out"
+            unzip -q "${livekitWebrtcArchive}" -d "$out"
+          ''
+        else null;
       rustBin = pkgs.rust-bin.stable.latest;
       rustToolchain = rustBin.default.override {
         extensions = [
@@ -239,15 +274,19 @@
             pkgs.libcap.dev
             pkgs.libcap.lib
           ];
-        env = {
-          PKG_CONFIG_PATH = pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
-            [pkgs.openssl] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [pkgs.libcap]
-          );
-          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-          CC = "clang";
-          CXX = "clang++";
-          RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
-        };
+        env =
+          {
+            PKG_CONFIG_PATH = pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
+              [pkgs.openssl] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [pkgs.libcap]
+            );
+            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+            CC = "clang";
+            CXX = "clang++";
+            RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
+          }
+          // pkgs.lib.optionalAttrs (livekitWebrtcPrebuilt != null) {
+            LK_CUSTOM_WEBRTC = "${livekitWebrtcPrebuilt}/${livekitWebrtcDirectory}";
+          };
         meta = with pkgs.lib; {
           description = "OpenAI Codex command-line interface rust implementation";
           homepage = "https://github.com/openai/codex";
