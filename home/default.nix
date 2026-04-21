@@ -27,6 +27,7 @@ in {
     ./programs/bash.nix
     ./programs/git.nix
     ./programs/gpg.nix
+    ./programs/neovim.nix
     ./programs/starship.nix
   ];
 
