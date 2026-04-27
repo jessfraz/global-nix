@@ -294,7 +294,9 @@ def format_reasoning_markdown(markdown: str) -> str:
 
     for line in lines:
         match = LIST_ITEM_RE.match(line)
-        is_top_level_item = bool(match and len(match.group("indent").expandtabs(4)) == 0)
+        is_top_level_item = bool(
+            match and len(match.group("indent").expandtabs(4)) == 0
+        )
         if is_top_level_item and seen_list_item:
             if formatted and formatted[-1].strip():
                 formatted.append("")
@@ -355,7 +357,10 @@ def call_responses_stream(
                     if not HAVE_RICH:
                         return md  # unused without Rich
                     return Panel(
-                        Markdown(format_reasoning_markdown(md), code_theme="github-dark"),
+                        Markdown(
+                            format_reasoning_markdown(md),
+                            code_theme="github-dark",
+                        ),
                         border_style="grey37",
                         title="reasoning",
                         title_align="left",
