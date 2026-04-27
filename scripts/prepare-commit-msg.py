@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -25,8 +26,8 @@ except Exception:  # ImportError or anything weird in user envs
 from shutil import which
 
 # Defaults (adjust here rather than via env vars)
-# Use the current GPT-5.4 model for commit message generation.
-MODEL = "gpt-5.4"
+# Use the current GPT-5.5 model for commit message generation.
+MODEL = "gpt-5.5"
 # Narrow string types for clarity.
 Effort = Literal["low", "medium", "high", "xhigh"]
 Verbosity = Literal["low", "medium", "high"]
@@ -70,6 +71,7 @@ REASONING_EVENT_TYPES = {
 }
 REASONING_DONE_EVENT = "response.reasoning_summary_part.done"
 TERMINAL_EVENT_TYPES = {"response.completed", "response.error", "response.failed"}
+LIST_ITEM_RE = re.compile(r"^(?P<indent>[ \t]*)(?:[-*+]|\d+[.)])\s+")
 
 # Ensure Nix profile bins are on PATH for git hooks (e.g., 1Password `op`).
 _home = os.environ.get("HOME", "")
@@ -284,6 +286,27 @@ def format_api_error(body: str) -> str:
     return compact[:200] + (" …" if len(compact) > 200 else "")
 
 
+def format_reasoning_markdown(markdown: str) -> str:
+    """Add padded separators between top-level reasoning list items."""
+    lines = markdown.splitlines()
+    formatted: list[str] = []
+    seen_list_item = False
+
+    for line in lines:
+        match = LIST_ITEM_RE.match(line)
+        is_top_level_item = bool(match and len(match.group("indent").expandtabs(4)) == 0)
+        if is_top_level_item and seen_list_item:
+            if formatted and formatted[-1].strip():
+                formatted.append("")
+            formatted.extend(["---", ""])
+        formatted.append(line)
+        if is_top_level_item:
+            seen_list_item = True
+
+    trailing_newline = "\n" if markdown.endswith("\n") else ""
+    return "\n".join(formatted) + trailing_newline
+
+
 def call_responses_stream(
     base: str,
     model: str,
@@ -332,7 +355,7 @@ def call_responses_stream(
                     if not HAVE_RICH:
                         return md  # unused without Rich
                     return Panel(
-                        Markdown(md, code_theme="github-dark"),
+                        Markdown(format_reasoning_markdown(md), code_theme="github-dark"),
                         border_style="grey37",
                         title="reasoning",
                         title_align="left",
