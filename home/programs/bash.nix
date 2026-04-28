@@ -198,6 +198,12 @@ in {
           export PYX_API_KEY=$(op --account kittycadinc.1password.com item get --vault Employee "pyx.dev Token" --fields credential --reveal)
       }
 
+      function fetch-easypost-keys() {
+          op-ensure-session kittycadinc.1password.com || return $?
+          export EASYPOST_TEST_API_KEY=$(op --account kittycadinc.1password.com item get --vault Employee "easypost.com" --fields testkey --reveal)
+          export EASYPOST_API_KEY=$(op --account kittycadinc.1password.com item get --vault Employee "easypost.com" --fields apikey --reveal)
+      }
+
       function fetch-stripe-key() {
           op-ensure-session kittycadinc.1password.com || return $?
           export STRIPE_API_KEY=$(op --account kittycadinc.1password.com item get "stripe prod zoo" --fields credential --reveal)
