@@ -311,7 +311,7 @@
           _1password-cli
           bash
           bash-completion
-          claude-code-bin
+          claude-code
           codexCli
           coreutils
           curl
