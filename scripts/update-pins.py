@@ -201,10 +201,10 @@ def update_homebridge() -> None:
         "homebridge version",
     )
     updated = replace_one(
-        r'^(\s*gihubSha256 = ")[^"]+(";)',
+        r'^(\s*githubHash = ")[^"]+(";)',
         rf"\g<1>{src_hash}\g<2>",
         updated,
-        "homebridge gihubSha256",
+        "homebridge githubHash",
     )
 
     with_fake = replace_one(
