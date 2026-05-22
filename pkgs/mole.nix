@@ -6,11 +6,11 @@
   makeWrapper,
   bashInteractive,
 }: let
-  version = "1.38.1";
+  version = "1.39.0";
   tag = "V${version}";
-  srcHash = "sha256-HL56RBJbzhelQeW/RwTqbvJPHQGzRLyCPjWVCUQGyIQ=";
-  binariesHashArm64 = "sha256-AeX1/H7vDMDbAnEWmU7q9Re/z1UdSspQJGCfWSpTt0s=";
-  binariesHashAmd64 = "sha256-paZPX8dNY3KFFqiHvQ/AsXDhgZy8DGvPuFBx84s2Pb4=";
+  srcHash = "sha256-WdBSOobyjvBgWT/MRaRvZUQZy9Z5/rjYBqQwlrY9ShU=";
+  binariesHashArm64 = "sha256-yfhBdId1zYhzoBQ/85Itz1e58oqOz+4Bp/xB6CX/J9w=";
+  binariesHashAmd64 = "sha256-6DEZa1iAzvq5o6zvWaGJyVZd6L5AF1RYF0surZw/v8M=";
 
   archSuffix =
     if stdenvNoCC.hostPlatform.isAarch64
