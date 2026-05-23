@@ -63,9 +63,9 @@ in {
         # Ensure gpg-agent's TTY is updated before SSH auth prompts.
         Match host * exec "gpg-connect-agent updatestartuptty /bye"
       '';
-      matchBlocks = {
+      settings = {
         "*" = {
-          addKeysToAgent = "yes";
+          AddKeysToAgent = "yes";
         };
       };
     };
