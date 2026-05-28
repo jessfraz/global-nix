@@ -94,11 +94,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1779908856,
-        "narHash": "sha256-BXaEFa1FsunaLQHFxjlTT5SZIgJh4zvMgI5Ey/SXaPE=",
+        "lastModified": 1779926460,
+        "narHash": "sha256-TRXmencMbJyupSNsVZJKN0+Tk7UbUPFTkrHBf6Xnlkg=",
         "ref": "refs/heads/main",
-        "rev": "2538609aea1bb2e679ecbb33f216fb8b0909e232",
-        "revCount": 845,
+        "rev": "ce7a19b0886192b023ae6d6ee99e9dccf25edf01",
+        "revCount": 846,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
@@ -300,11 +300,11 @@
         "zon2nix": "zon2nix"
       },
       "locked": {
-        "lastModified": 1779905474,
-        "narHash": "sha256-HEujkNo35uVzwOXQZqDLwPSgIyY9P9FjmTjODmn/Kto=",
+        "lastModified": 1779920929,
+        "narHash": "sha256-VTZudBFgDA4URhoQDAeYhdtfxexUWwijUQoqs5MoJXA=",
         "owner": "ghostty-org",
         "repo": "ghostty",
-        "rev": "6d089a544db53f3457374c2c406bccee80722cdf",
+        "rev": "15264856f61b112c8beb14fbe3f403f6266c8bdf",
         "type": "github"
       },
       "original": {
@@ -427,11 +427,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1779903589,
-        "narHash": "sha256-et+FE0z4bGpEC6XC0ivaednDNIdKhLx7G6XEdQKQyYk=",
+        "lastModified": 1779921235,
+        "narHash": "sha256-GHRPsN+q909iWiC37B6kS4I56btVcfmxG/fOhPpwVz0=",
         "owner": "kittycad",
         "repo": "modeling-app",
-        "rev": "4cca91b0a3b882748c100b1406ddc80baa0ca96d",
+        "rev": "4275c0a7e17e9f83290e3ab6d31634844c42c9ba",
         "type": "github"
       },
       "original": {
@@ -816,11 +816,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1779908300,
-        "narHash": "sha256-48SP1vxlm63dis2CZyIWoTB7fOuLJ6BXJInrsSrUe+g=",
+        "lastModified": 1779923603,
+        "narHash": "sha256-AxvzNfv6v+79YOZV0zyY5p5C6lh75as6Kwmjs1RFRLA=",
         "ref": "refs/heads/main",
-        "rev": "7343575f965e67cdc50f15e43bc416cf9857fc1a",
-        "revCount": 125,
+        "rev": "15a5036f6ee72d904f97f1d1b71d60e0cc3b3714",
+        "revCount": 157,
         "type": "git",
         "url": "ssh://git@github.com/jessfraz/switchboard.git"
       },
