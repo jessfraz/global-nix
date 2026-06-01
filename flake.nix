@@ -92,6 +92,7 @@
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
+      slackCli = prev.callPackage ./pkgs/slack-cli.nix {};
       # nixpkgs gopls now installs `modernize`, which collides with gotools.
       # Keep gotools as the source of that binary and only expose `gopls` here.
       gopls = prev.gopls.overrideAttrs (_: {
@@ -390,6 +391,7 @@
           pinentry-tty
           rampCli
           silver-searcher
+          slackCli
           starship
           stripeCli
         ])
