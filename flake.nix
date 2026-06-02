@@ -153,62 +153,6 @@
       rust-overlay.overlays.default
     ];
 
-    mkKclLanguageServer = pkgs: let
-      src = dotvim.inputs.modeling-app + "/rust";
-      cargoToml = builtins.fromTOML (builtins.readFile "${src}/kcl-language-server/Cargo.toml");
-      rustBin = pkgs.rust-bin.stable.latest;
-      rustPlatform = pkgs.makeRustPlatform {
-        cargo = rustBin.minimal;
-        rustc = rustBin.minimal;
-      };
-    in
-      rustPlatform.buildRustPackage {
-        pname = "kcl-language-server";
-        version = cargoToml.package.version;
-        inherit src;
-
-        cargoHash = "sha256-A1dYhikUnbyxD7uIRSt36QaADZ2FsLvqzm8rKphPXs4=";
-        cargoBuildFlags = [
-          "-p"
-          "kcl-language-server"
-        ];
-        doCheck = false;
-        nativeBuildInputs = [pkgs.pkg-config];
-        buildInputs = [pkgs.openssl];
-
-        meta = with pkgs.lib; {
-          description = "Language server for KCL";
-          homepage = "https://github.com/KittyCAD/modeling-app";
-          license = licenses.mit;
-          mainProgram = "kcl-language-server";
-        };
-      };
-
-    dotvimHomeManagerModule = args @ {
-      lib,
-      pkgs,
-      ...
-    }: let
-      module = dotvim.homeManagerModules.default args;
-      isKclLanguageServer = package: let
-        pname = package.pname or "";
-        name = package.name or "";
-      in
-        pname == "kcl-language-server" || lib.hasPrefix "kcl-language-server-" name;
-    in
-      module
-      // {
-        home =
-          (module.home or {})
-          // {
-            packages =
-              builtins.filter
-              (package: !(isKclLanguageServer package))
-              (module.home.packages or [])
-              ++ [(mkKclLanguageServer pkgs)];
-          };
-      };
-
     # `rusty_v8` wants to download a prebuilt archive at build time, which is
     # a lousy fit for Nix. Prefetch the archive and pass the local path instead.
     rustyV8Archives = {
@@ -465,7 +409,7 @@
             };
             home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
-              dotvimHomeManagerModule
+              dotvim.homeManagerModules.default
               ./home/default.nix
               ./home/hosts/linux/default.nix
             ];
@@ -511,7 +455,7 @@
             };
             home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
-              dotvimHomeManagerModule
+              dotvim.homeManagerModules.default
               ./home/default.nix
               ./home/hosts/darwin/default.nix
             ];
@@ -556,7 +500,7 @@
               };
               home-manager.users.${username}.imports = [
                 dotfiles.homeManagerModules.default
-                dotvimHomeManagerModule
+                dotvim.homeManagerModules.default
                 ./home/default.nix
                 ./home/hosts/darwin/default.nix
                 ./home/hosts/darwin/home-server.nix
