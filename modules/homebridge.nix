@@ -8,6 +8,13 @@
     if pkgs.stdenv.isDarwin
     then (config.users.primaryUser or (builtins.getEnv "USER"))
     else "homebridge";
+  launchdResilience = {
+    KeepAlive = true;
+    RunAtLoad = true;
+    ThrottleInterval = 30;
+    ExitTimeOut = 30;
+    ProcessType = "Background";
+  };
 in {
   options = {
     services.homebridge = {
@@ -112,75 +119,63 @@ in {
       launchd.user.agents.homebridge =
         if config.services.homebridge.ui.enable
         then {
-          serviceConfig = {
-            ProgramArguments =
-              [
-                "${config.services.homebridge.ui.nodePackage}/bin/node"
-                "${config.services.homebridge.ui.packagePath}/dist/bin/hb-service.js"
-                "run"
-                "-U"
-                config.services.homebridge.storagePath
-                "-P"
-                config.services.homebridge.ui.pluginPath
-              ]
-              ++ config.services.homebridge.ui.extraArgs;
+          serviceConfig =
+            {
+              ProgramArguments =
+                [
+                  "${config.services.homebridge.ui.nodePackage}/bin/node"
+                  "${config.services.homebridge.ui.packagePath}/dist/bin/hb-service.js"
+                  "run"
+                  "-U"
+                  config.services.homebridge.storagePath
+                  "-P"
+                  config.services.homebridge.ui.pluginPath
+                ]
+                ++ config.services.homebridge.ui.extraArgs;
 
-            EnvironmentVariables =
-              ({
-                  HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
-                }
-                // lib.optionalAttrs (!(config.services.homebridge.environment ? PATH)) {
-                  PATH = defaultPath;
-                })
-              // config.services.homebridge.environment;
+              EnvironmentVariables =
+                ({
+                    HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
+                  }
+                  // lib.optionalAttrs (!(config.services.homebridge.environment ? PATH)) {
+                    PATH = defaultPath;
+                  })
+                // config.services.homebridge.environment;
 
-            WorkingDirectory = config.services.homebridge.storagePath;
-            StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
-            StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
-
-            KeepAlive = {
-              PathState = {
-                "/nix/store" = true;
-              };
-              SuccessfulExit = false;
-            };
-            RunAtLoad = true;
-          };
+              WorkingDirectory = config.services.homebridge.storagePath;
+              StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
+              StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
+            }
+            // launchdResilience;
         }
         else {
-          serviceConfig = {
-            ProgramArguments =
-              [
-                "${config.services.homebridge.package}/bin/homebridge"
-                "-U"
-                config.services.homebridge.storagePath
-                "-I"
-                "-P"
-                config.services.homebridge.ui.pluginPath
-                "--color"
-              ]
-              ++ config.services.homebridge.extraArgs;
+          serviceConfig =
+            {
+              ProgramArguments =
+                [
+                  "${config.services.homebridge.package}/bin/homebridge"
+                  "-U"
+                  config.services.homebridge.storagePath
+                  "-I"
+                  "-P"
+                  config.services.homebridge.ui.pluginPath
+                  "--color"
+                ]
+                ++ config.services.homebridge.extraArgs;
 
-            EnvironmentVariables =
-              ({
-                  HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
-                }
-                // lib.optionalAttrs (!(config.services.homebridge.environment ? PATH)) {
-                  PATH = defaultPath;
-                })
-              // config.services.homebridge.environment;
+              EnvironmentVariables =
+                ({
+                    HOMEBRIDGE_LOG_PATH = "${config.services.homebridge.storagePath}/homebridge.*";
+                  }
+                  // lib.optionalAttrs (!(config.services.homebridge.environment ? PATH)) {
+                    PATH = defaultPath;
+                  })
+                // config.services.homebridge.environment;
 
-            StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
-            StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
-
-            KeepAlive = {
-              PathState = {
-                "/nix/store" = true;
-              };
-              SuccessfulExit = false;
-            };
-            RunAtLoad = true;
-          };
+              StandardOutPath = "${config.services.homebridge.storagePath}/homebridge.log";
+              StandardErrorPath = "${config.services.homebridge.storagePath}/homebridge.log";
+            }
+            // launchdResilience;
         };
     }))
 

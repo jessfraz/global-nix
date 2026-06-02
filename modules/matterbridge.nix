@@ -16,6 +16,13 @@
   npmGlobalDir = "${dataDir}/npm-global";
   npmCacheDir = "${dataDir}/npm-cache";
   logPath = "${dataDir}/matterbridge.log";
+  launchdResilience = {
+    KeepAlive = true;
+    RunAtLoad = true;
+    ThrottleInterval = 30;
+    ExitTimeOut = 30;
+    ProcessType = "Background";
+  };
   # Wrapper ensures Matterbridge plugins can install and resolve dependencies.
   launchScript = pkgs.writeShellScript "matterbridge-launch" ''
     set -euo pipefail
@@ -26,6 +33,9 @@
       HOME=${baseDir} \
       NPM_CONFIG_PREFIX=${npmGlobalDir} \
       NPM_CONFIG_CACHE=${npmCacheDir} \
+      NPM_CONFIG_UPDATE_NOTIFIER=false \
+      NPM_CONFIG_AUDIT=false \
+      NPM_CONFIG_FUND=false \
       "${config.services.matterbridge.nodePackage}/bin/npm" \
         install -g matterbridge --omit=dev --prefix "${npmGlobalDir}" --cache "${npmCacheDir}"
     fi
@@ -102,42 +112,40 @@ in {
       '';
 
       launchd.user.agents.matterbridge = {
-        serviceConfig = {
-          ProgramArguments =
-            [
-              "${launchScript}"
-            ]
-            ++ config.services.matterbridge.extraArgs;
-
-          EnvironmentVariables = {
-            PATH = lib.concatStringsSep ":" ([
-                "${config.services.matterbridge.nodePackage}/bin"
-                "${npmGlobalDir}/bin"
+        serviceConfig =
+          {
+            ProgramArguments =
+              [
+                "${launchScript}"
               ]
-              ++ [
-                "/usr/local/bin"
-                "/usr/bin"
-                "/bin"
-                "/usr/sbin"
-                "/sbin"
-              ]);
-            HOME = baseDir;
-            NPM_CONFIG_PREFIX = npmGlobalDir;
-            NPM_CONFIG_CACHE = npmCacheDir;
-            NODE_PATH = "${npmGlobalDir}/lib/node_modules";
-          };
+              ++ config.services.matterbridge.extraArgs;
 
-          WorkingDirectory = pluginDir;
-          StandardOutPath = logPath;
-          StandardErrorPath = logPath;
-
-          KeepAlive = {
-            PathState = {
-              "/nix/store" = true;
+            EnvironmentVariables = {
+              PATH = lib.concatStringsSep ":" ([
+                  "${config.services.matterbridge.nodePackage}/bin"
+                  "${npmGlobalDir}/bin"
+                ]
+                ++ [
+                  "/usr/local/bin"
+                  "/usr/bin"
+                  "/bin"
+                  "/usr/sbin"
+                  "/sbin"
+                ]);
+              HOME = baseDir;
+              NPM_CONFIG_PREFIX = npmGlobalDir;
+              NPM_CONFIG_CACHE = npmCacheDir;
+              NPM_CONFIG_UPDATE_NOTIFIER = "false";
+              NPM_CONFIG_AUDIT = "false";
+              NPM_CONFIG_FUND = "false";
+              NODE_PATH = "${npmGlobalDir}/lib/node_modules";
             };
-          };
-          RunAtLoad = true;
-        };
+
+            WorkingDirectory = pluginDir;
+            StandardOutPath = logPath;
+            StandardErrorPath = logPath;
+          }
+          // launchdResilience;
       };
     })
   ]);
