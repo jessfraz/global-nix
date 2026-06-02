@@ -46,7 +46,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.134.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.136.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -167,7 +167,7 @@
         version = cargoToml.package.version;
         inherit src;
 
-        cargoHash = "sha256-lBuVrPpHseKrApwkIJrnudsz93ZfwDRm+zxWENJxek8=";
+        cargoHash = "sha256-A1dYhikUnbyxD7uIRSt36QaADZ2FsLvqzm8rKphPXs4=";
         cargoBuildFlags = [
           "-p"
           "kcl-language-server"
