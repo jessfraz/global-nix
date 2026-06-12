@@ -46,7 +46,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.136.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.139.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -334,7 +334,7 @@
           nodejs_22
           pinentry-tty
           rampCli
-          silver-searcher
+          ripgrep
           slackCli
           starship
           stripeCli
