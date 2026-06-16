@@ -226,7 +226,22 @@
           "rustfmt"
         ];
       };
-      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      zooCli = let
+        package = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      in
+        if (zoo-cli.rev or null) == "ae4c94c1047f1813d122f18c0252af8c522298d1"
+        then
+          package.overrideAttrs (_: {
+            # This kittycad/cli rev has a stale Nix hash for the openapitor
+            # git dependency. Replace only the generated Cargo vendor deps.
+            cargoDeps = pkgs.rustPlatform.importCargoLock {
+              lockFile = "${zoo-cli.outPath}/Cargo.lock";
+              outputHashes = {
+                "openapitor-0.0.9" = "sha256-K1kn7bsceiYbWFzRh+vx3kPSoT10RznVWtkJphQiiGU=";
+              };
+            };
+          })
+        else package;
       googleWorkspaceCli = googleworkspace-cli.packages.${pkgs.stdenv.hostPlatform.system}.default;
       stripeCli = pkgs."stripe-cli";
       codexSrc = codex.outPath + "/codex-rs";
