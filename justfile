@@ -33,6 +33,9 @@ update-codex:
 update-homebridge:
     python3 scripts/update-pins.py homebridge
 
+update-scrypted:
+    python3 scripts/update-pins.py scrypted
+
 update-mole:
     python3 scripts/update-pins.py mole
 

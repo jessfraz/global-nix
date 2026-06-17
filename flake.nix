@@ -92,6 +92,7 @@
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
+      scrypted = prev.callPackage ./pkgs/scrypted.nix {};
       slackCli = prev.callPackage ./pkgs/slack-cli.nix {};
       # nixpkgs gopls now installs `modernize`, which collides with gotools.
       # Keep gotools as the source of that binary and only expose `gopls` here.
@@ -392,6 +393,12 @@
     # Generate packages for all supported systems
     packages = forAllSystems (system: {
       default = mkPackages system;
+      scrypted =
+        (import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+          overlays = commonOverlays;
+        }).scrypted;
     });
 
     # NixOS configurations

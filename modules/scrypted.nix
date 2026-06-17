@@ -10,7 +10,6 @@
     else "scrypted";
   storagePath = config.services.scrypted.storagePath;
   npmCacheDir = "${storagePath}/npm-cache";
-  scryptedServe = "${storagePath}/node_modules/.bin/scrypted-serve";
   launchdResilience = {
     KeepAlive = true;
     RunAtLoad = true;
@@ -18,23 +17,6 @@
     ExitTimeOut = 30;
     ProcessType = "Background";
   };
-  launchScript = pkgs.writeShellScript "scrypted-launch" ''
-    set -euo pipefail
-
-    mkdir -p "${storagePath}" "${storagePath}/volume" "${npmCacheDir}"
-
-    if [ ! -x "${scryptedServe}" ]; then
-      HOME="${storagePath}" \
-      NPM_CONFIG_CACHE="${npmCacheDir}" \
-      NPM_CONFIG_UPDATE_NOTIFIER=false \
-      NPM_CONFIG_AUDIT=false \
-      NPM_CONFIG_FUND=false \
-      "${config.services.scrypted.nodePackage}/bin/npm" \
-        install @scrypted/server --omit=dev --prefix "${storagePath}" --cache "${npmCacheDir}"
-    fi
-
-    exec "${scryptedServe}" "$@"
-  '';
 in {
   options = {
     services.scrypted = {
@@ -43,7 +25,7 @@ in {
       package = lib.mkOption {
         type = lib.types.package;
         default = pkgs.scrypted;
-        description = "Scrypted package to run.";
+        description = "Scrypted server package to run.";
       };
 
       user = lib.mkOption {
@@ -87,6 +69,8 @@ in {
       environment.systemPackages = [
         config.services.scrypted.nodePackage
         config.services.scrypted.pythonPackage
+        config.services.scrypted.package
+        pkgs.ffmpeg
         pkgs.gst_all_1.gstreamer
       ];
     }
@@ -122,7 +106,7 @@ in {
           {
             ProgramArguments =
               [
-                "${launchScript}"
+                "${config.services.scrypted.package}/bin/scrypted-serve"
               ]
               ++ config.services.scrypted.extraArgs;
 
@@ -132,6 +116,8 @@ in {
               PATH = lib.concatStringsSep ":" ([
                   "${config.services.scrypted.pythonPackage}/bin"
                   "${config.services.scrypted.nodePackage}/bin"
+                  "${pkgs.ffmpeg}/bin"
+                  "${pkgs.gst_all_1.gstreamer}/bin"
                 ]
                 ++ [
                   "/usr/local/bin" # keep Homebrew happy if you use it
@@ -142,6 +128,7 @@ in {
                 ]);
 
               SCRYPTED_PYTHON_PATH = "python${config.services.scrypted.pythonPackage.pythonVersion or "3.11"}";
+              SCRYPTED_FFMPEG_PATH = "${pkgs.ffmpeg}/bin/ffmpeg";
               SCRYPTED_INSTALL_PATH = storagePath;
               SCRYPTED_VOLUME = "${storagePath}/volume";
               NPM_CONFIG_CACHE = npmCacheDir;
@@ -174,7 +161,7 @@ in {
         };
         Service = {
           ExecStart = lib.concatStringsSep " " (
-            ["${config.services.scrypted.nodePackage}/bin/npx" "-y" "scrypted@latest" "serve"]
+            ["${config.services.scrypted.package}/bin/scrypted-serve"]
             ++ config.services.scrypted.extraArgs
           );
           WorkingDirectory = config.services.scrypted.storagePath;
@@ -183,9 +170,11 @@ in {
             PATH = lib.concatStringsSep ":" [
               "${config.services.scrypted.pythonPackage}/bin"
               "${config.services.scrypted.nodePackage}/bin"
+              "${pkgs.ffmpeg}/bin"
               "$PATH"
             ];
             SCRYPTED_PYTHON_PATH = "python${config.services.scrypted.pythonPackage.pythonVersion or "3.11"}";
+            SCRYPTED_FFMPEG_PATH = "${pkgs.ffmpeg}/bin/ffmpeg";
             SCRYPTED_INSTALL_PATH = config.services.scrypted.storagePath;
           };
           Restart = "on-failure";

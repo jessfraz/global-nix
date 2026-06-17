@@ -15,6 +15,8 @@
     ExitTimeOut = 30;
     ProcessType = "Background";
   };
+  homebridgePackagePath = "${config.services.homebridge.package}/lib/node_modules/homebridge";
+  homebridgeModulePath = "${config.services.homebridge.ui.pluginPath}/homebridge";
 in {
   options = {
     services.homebridge = {
@@ -111,9 +113,12 @@ in {
       system.activationScripts.homebridge-mkdir = ''
         install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.storagePath}
         install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.ui.pluginPath}
-        if [ ! -e "${config.services.homebridge.ui.pluginPath}/homebridge" ] && [ ! -L "${config.services.homebridge.ui.pluginPath}/homebridge" ]; then
-          ln -s "${config.services.homebridge.package}/lib/node_modules/homebridge" "${config.services.homebridge.ui.pluginPath}/homebridge"
+        if [ ! -f ${lib.escapeShellArg "${homebridgePackagePath}/dist/childBridgeFork.js"} ]; then
+          echo "Homebridge package is missing dist/childBridgeFork.js: ${homebridgePackagePath}" >&2
+          exit 1
         fi
+        rm -rf ${lib.escapeShellArg homebridgeModulePath}
+        ln -s ${lib.escapeShellArg homebridgePackagePath} ${lib.escapeShellArg homebridgeModulePath}
       '';
 
       launchd.user.agents.homebridge =
