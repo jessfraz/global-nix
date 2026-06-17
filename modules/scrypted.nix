@@ -86,7 +86,7 @@ in {
     })
 
     (lib.mkIf pkgs.stdenv.isDarwin {
-      system.activationScripts.scrypted-mkdir = ''
+      system.activationScripts.scrypted-mkdir.text = ''
         install -d -m0755 -o ${config.services.scrypted.user} -g staff ${storagePath}
         install -d -m0755 -o ${config.services.scrypted.user} -g staff ${storagePath}/volume
         install -d -m0755 -o ${config.services.scrypted.user} -g staff ${npmCacheDir}

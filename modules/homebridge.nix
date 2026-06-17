@@ -110,14 +110,20 @@ in {
             "/sbin"
           ]);
     in {
-      system.activationScripts.homebridge-mkdir = ''
+      system.activationScripts.homebridge-mkdir.text = ''
         install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.storagePath}
         install -d -m0755 -o ${config.services.homebridge.user} -g staff ${config.services.homebridge.ui.pluginPath}
         if [ ! -f ${lib.escapeShellArg "${homebridgePackagePath}/dist/childBridgeFork.js"} ]; then
           echo "Homebridge package is missing dist/childBridgeFork.js: ${homebridgePackagePath}" >&2
           exit 1
         fi
-        rm -rf ${lib.escapeShellArg homebridgeModulePath}
+        if [ -L ${lib.escapeShellArg homebridgeModulePath} ] || [ -f ${lib.escapeShellArg homebridgeModulePath} ]; then
+          rm -f ${lib.escapeShellArg homebridgeModulePath}
+        elif [ -e ${lib.escapeShellArg homebridgeModulePath} ]; then
+          echo "Refusing to replace non-symlink Homebridge install: ${homebridgeModulePath}" >&2
+          echo "Move that one path aside, then rebuild. Existing Homebridge plugins under ${config.services.homebridge.ui.pluginPath} are not touched." >&2
+          exit 1
+        fi
         ln -s ${lib.escapeShellArg homebridgePackagePath} ${lib.escapeShellArg homebridgeModulePath}
       '';
 

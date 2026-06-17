@@ -100,7 +100,7 @@ in {
     }
 
     (lib.mkIf pkgs.stdenv.isDarwin {
-      system.activationScripts.matterbridge-mkdir = ''
+      system.activationScripts.matterbridge-mkdir.text = ''
         if [ ! -d "${baseDir}" ]; then
           install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${baseDir}
         fi
