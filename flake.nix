@@ -46,7 +46,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.140.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.142.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -230,7 +230,7 @@
       zooCli = let
         package = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
       in
-        if (zoo-cli.rev or null) == "ae4c94c1047f1813d122f18c0252af8c522298d1"
+        if (zoo-cli.rev or null) == "a35ca4366f4d8912eea24975113c9164b35f9ca1"
         then
           package.overrideAttrs (_: {
             # This kittycad/cli rev has a stale Nix hash for the openapitor
@@ -238,7 +238,7 @@
             cargoDeps = pkgs.rustPlatform.importCargoLock {
               lockFile = "${zoo-cli.outPath}/Cargo.lock";
               outputHashes = {
-                "openapitor-0.0.9" = "sha256-K1kn7bsceiYbWFzRh+vx3kPSoT10RznVWtkJphQiiGU=";
+                "openapitor-0.0.9" = "sha256-fgpXxNA+RQLWM6IswnzAP93WTYZs/5ITk6sQw7vpR8A=";
               };
             };
           })
@@ -267,8 +267,8 @@
             "nucleo-0.5.0" = "sha256-Hm4SxtTSBrcWpXrtSqeO0TACbUxq3gizg1zD/6Yw/sI=";
             "nucleo-matcher-0.3.1" = "sha256-Hm4SxtTSBrcWpXrtSqeO0TACbUxq3gizg1zD/6Yw/sI=";
             "runfiles-0.1.0" = "sha256-uJpVLcQh8wWZA3GPv9D8Nt43EOirajfDJ7eq/FB+tek=";
-            "tokio-tungstenite-0.28.0" = "sha256-hJAkvWxDjB9A9GqansahWhTmj/ekcelslLUTtwqI7lw=";
-            "tungstenite-0.27.0" = "sha256-AN5wql2X2yJnQ7lnDxpljNw0Jua40GtmT+w3wjER010=";
+            "tokio-tungstenite-0.28.0" = "sha256-V1xmnrfRWOcZZogelZEA4vvyMj2awCfHVA5/glQ6KAI=";
+            "tungstenite-0.27.0" = "sha256-VVHhk7l9J/sEmG3q/UuV/sQ3f+fGsmq5vumSy8vbMvw=";
             "libwebrtc-0.3.26" = "sha256-0HPuwaGcqpuG+Pp6z79bCuDu/DyE858VZSYr3DKZD9o=";
           };
         };
