@@ -3,9 +3,9 @@
 in
   buildNpmPackage rec {
     pname = "homebridge";
-    version = "2.1.0";
+    version = "2.1.1";
     nodejs = pkgs.nodejs_22;
-    githubHash = "sha256-GIq0LjDF6dyXqU6yMTY2+56lF/UkdZFtnwpNG0k7Ic0=";
+    githubHash = "sha256-2u+hzNk3dAPeA7YzkJQNUCDmIpVybxp77JLKV9Nro/s=";
 
     src = fetchFromGitHub {
       owner = "homebridge";
@@ -27,7 +27,7 @@ in
     production = false;
 
     # vendor the dependency tree
-    npmDepsHash = "sha256-gVrmuUUwAzCc1/cBrmt9nXyxfIncIj+RyCVsrqXGgVs=";
+    npmDepsHash = "sha256-9dfXEJHMorDCl89UqGOfbQWf6ju+5AwhE3skhejtUuY=";
     dontNpmBuild = true; # skip `npm run build`
     postBuild = ''
       # Homebridge ships its own pinned TypeScript, so use that instead of the
