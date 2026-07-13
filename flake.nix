@@ -229,17 +229,25 @@
       };
       zooCli = let
         package = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+        zooCliRev = zoo-cli.rev or "";
+        cargoOutputHashOverrides = {
+          "a35ca4366f4d8912eea24975113c9164b35f9ca1" = {
+            "openapitor-0.0.9" = "sha256-fgpXxNA+RQLWM6IswnzAP93WTYZs/5ITk6sQw7vpR8A=";
+          };
+          "41069aff358e5eb4a68f8b73d26967164da9019e" = {
+            "openapitor-0.0.9" = "sha256-UpyQzk4VnqNKwS2DUz9tM+v5YKEVoNkd9GyzaGX1uzk=";
+          };
+        };
+        cargoOutputHashes = cargoOutputHashOverrides.${zooCliRev} or null;
       in
-        if (zoo-cli.rev or null) == "a35ca4366f4d8912eea24975113c9164b35f9ca1"
+        if cargoOutputHashes != null
         then
           package.overrideAttrs (_: {
-            # This kittycad/cli rev has a stale Nix hash for the openapitor
-            # git dependency. Replace only the generated Cargo vendor deps.
+            # Some kittycad/cli revs have stale Nix hashes for git dependencies.
+            # Replace only the generated Cargo vendor deps for known bad revs.
             cargoDeps = pkgs.rustPlatform.importCargoLock {
               lockFile = "${zoo-cli.outPath}/Cargo.lock";
-              outputHashes = {
-                "openapitor-0.0.9" = "sha256-fgpXxNA+RQLWM6IswnzAP93WTYZs/5ITk6sQw7vpR8A=";
-              };
+              outputHashes = cargoOutputHashes;
             };
           })
         else package;
