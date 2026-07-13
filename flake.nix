@@ -99,6 +99,31 @@
       gopls = prev.gopls.overrideAttrs (_: {
         subPackages = ["."];
       });
+      terminal-notifier = prev.terminal-notifier.overrideAttrs (_: {
+        src = prev.fetchzip {
+          url = "https://github.com/alloy/terminal-notifier/releases/download/2.0.0/terminal-notifier-2.0.0.zip";
+          sha256 = "0gi54v92hi1fkryxlz3k5s5d8h0s66cc57ds0vbm1m1qk3z4xhb0";
+          stripRoot = false;
+        };
+        nativeBuildInputs = [];
+        buildInputs = [];
+        xcbuildFlags = [];
+        dontBuild = true;
+        installPhase = ''
+          runHook preInstall
+
+          mkdir -p "$out/Applications" "$out/bin"
+          cp -r terminal-notifier.app "$out/Applications/"
+          cat >"$out/bin/terminal-notifier" <<EOF
+          #!${prev.runtimeShell}
+          cd "$out/Applications/terminal-notifier.app"
+          exec ./Contents/MacOS/terminal-notifier "\$@"
+          EOF
+          chmod +x "$out/bin/terminal-notifier"
+
+          runHook postInstall
+        '';
+      });
       coredns = prev.coredns.overrideAttrs (old: let
         postPatchScript =
           if old ? postPatch
