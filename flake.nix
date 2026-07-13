@@ -94,11 +94,6 @@
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
       scrypted = prev.callPackage ./pkgs/scrypted.nix {};
       slackCli = prev.callPackage ./pkgs/slack-cli.nix {};
-      # nixpkgs gopls now installs `modernize`, which collides with gotools.
-      # Keep gotools as the source of that binary and only expose `gopls` here.
-      gopls = prev.gopls.overrideAttrs (_: {
-        subPackages = ["."];
-      });
       terminal-notifier = prev.terminal-notifier.overrideAttrs (_: {
         src = prev.fetchzip {
           url = "https://github.com/alloy/terminal-notifier/releases/download/2.0.0/terminal-notifier-2.0.0.zip";
@@ -153,8 +148,7 @@
     };
 
     # Provide a compatibility alias for removed attributes in recent nixpkgs.
-    # Some inputs (e.g., editor configs) still reference `rust-analyzer-nightly`.
-    # Alias it to the stable `rust-analyzer` when missing.
+    # dotvim still references `rust-analyzer-nightly` on Linux.
     overlayCompatRust = final: prev: {
       rust-analyzer-nightly =
         if prev ? rust-analyzer-nightly
@@ -256,9 +250,6 @@
         package = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
         zooCliRev = zoo-cli.rev or "";
         cargoOutputHashOverrides = {
-          "a35ca4366f4d8912eea24975113c9164b35f9ca1" = {
-            "openapitor-0.0.9" = "sha256-fgpXxNA+RQLWM6IswnzAP93WTYZs/5ITk6sQw7vpR8A=";
-          };
           "41069aff358e5eb4a68f8b73d26967164da9019e" = {
             "openapitor-0.0.9" = "sha256-UpyQzk4VnqNKwS2DUz9tM+v5YKEVoNkd9GyzaGX1uzk=";
           };
