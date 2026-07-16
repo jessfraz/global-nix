@@ -26,8 +26,8 @@ except Exception:  # ImportError or anything weird in user envs
 from shutil import which
 
 # Defaults (adjust here rather than via env vars)
-# Use the current GPT-5.5 model for commit message generation.
-MODEL = "gpt-5.5"
+# Use GPT-5.6 Sol for commit message generation.
+MODEL = "gpt-5.6-sol"
 # Narrow string types for clarity.
 Effort = Literal["low", "medium", "high", "xhigh"]
 Verbosity = Literal["low", "medium", "high"]
