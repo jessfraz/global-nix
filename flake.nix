@@ -253,6 +253,9 @@
           "41069aff358e5eb4a68f8b73d26967164da9019e" = {
             "openapitor-0.0.9" = "sha256-UpyQzk4VnqNKwS2DUz9tM+v5YKEVoNkd9GyzaGX1uzk=";
           };
+          "de962c47098c2e26d4fbb6681c552819d89f829c" = {
+            "openapitor-0.0.9" = "sha256-UpyQzk4VnqNKwS2DUz9tM+v5YKEVoNkd9GyzaGX1uzk=";
+          };
         };
         cargoOutputHashes = cargoOutputHashOverrides.${zooCliRev} or null;
       in
