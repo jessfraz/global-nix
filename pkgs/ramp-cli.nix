@@ -22,6 +22,7 @@ python3Packages.buildPythonApplication rec {
   propagatedBuildInputs = with python3Packages; [
     click
     httpx
+    json5
     jsonref
     tomli-w
   ];
