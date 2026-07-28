@@ -469,6 +469,7 @@
 
     # macOS configurations
     darwinModules.coredns = import ./modules/coredns.nix;
+    darwinModules.darwin-service-watchdog = import ./modules/darwin-service-watchdog.nix;
     darwinModules.homebridge = import ./modules/homebridge.nix;
     darwinModules.matterbridge = import ./modules/matterbridge.nix;
     darwinModules.scrypted = import ./modules/scrypted.nix;
@@ -534,6 +535,7 @@
               };
             }
             self.darwinModules.coredns
+            self.darwinModules.darwin-service-watchdog
             self.darwinModules.homebridge
             self.darwinModules.matterbridge
             self.darwinModules.scrypted
