@@ -7,6 +7,10 @@
   cfg = config.services.darwinServiceWatchdog;
 
   escape = lib.escapeShellArg;
+  optionalValue = value:
+    if value == null
+    then ""
+    else toString value;
 
   renderLogFile = logFile: ''
     rotate_log ${escape logFile.path} ${toString logFile.maxBytes} ${toString logFile.keepBytes}
@@ -30,6 +34,8 @@
     log_file="$state_dir/watchdog.log"
     curl=${escape "${pkgs.curl}/bin/curl"}
     timeout_seconds=${toString cfg.timeoutSeconds}
+    restart_max_load_average=${escape (optionalValue cfg.restartMaxLoadAverage)}
+    restart_max_swap_used_mib=${escape (optionalValue cfg.restartMaxSwapUsedMiB)}
 
     /bin/mkdir -p "$state_dir"
 
@@ -114,6 +120,36 @@
       /bin/rm -f "$tmp"
     }
 
+    host_pressure_blocks_restart() {
+      local label="$1"
+      local load_average
+      local swap_used_mib
+
+      if [ -n "$restart_max_load_average" ]; then
+        load_average="$(/usr/bin/uptime | /usr/bin/awk -F'load averages?: ' '{ split($2, a, " "); gsub(",", "", a[1]); print a[1] }')"
+        if [ -n "$load_average" ] && /usr/bin/awk -v value="$load_average" -v limit="$restart_max_load_average" 'BEGIN { exit !(value >= limit) }'; then
+          log "$label restart suppressed by host pressure: load average $load_average >= $restart_max_load_average"
+          return 0
+        fi
+      fi
+
+      if [ -n "$restart_max_swap_used_mib" ]; then
+        swap_used_mib="$(/usr/sbin/sysctl -n vm.swapusage | /usr/bin/sed -E 's/.*used = ([0-9]+)(\.[0-9]+)?M.*/\1/')"
+        case "$swap_used_mib" in
+          ""|*[!0-9]*)
+            ;;
+          *)
+            if [ "$swap_used_mib" -ge "$restart_max_swap_used_mib" ]; then
+              log "$label restart suppressed by host pressure: swap used ''${swap_used_mib}MiB >= ''${restart_max_swap_used_mib}MiB"
+              return 0
+            fi
+            ;;
+        esac
+      fi
+
+      return 1
+    }
+
     check_service() {
       local label="$1"
       local grace_seconds="$2"
@@ -192,6 +228,10 @@
         return 0
       fi
 
+      if host_pressure_blocks_restart "$label"; then
+        return 0
+      fi
+
       log "restarting $label"
       if /bin/launchctl kickstart -k "gui/$uid/$label" >> "$log_file" 2>&1; then
         write_state "$last_restart_file" "$current_time"
@@ -230,6 +270,20 @@ in {
       type = lib.types.ints.positive;
       default = 5;
       description = "Per-endpoint curl timeout.";
+    };
+
+    restartMaxLoadAverage = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.positive;
+      default = null;
+      example = 32;
+      description = "Skip service restarts while the 1-minute host load average is at or above this value.";
+    };
+
+    restartMaxSwapUsedMiB = lib.mkOption {
+      type = lib.types.nullOr lib.types.ints.positive;
+      default = null;
+      example = 4096;
+      description = "Skip service restarts while macOS reports at least this much swap in use.";
     };
 
     checks = lib.mkOption {

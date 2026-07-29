@@ -1,4 +1,5 @@
 {
+  lib,
   username,
   volumesPath,
   ...
@@ -10,6 +11,16 @@
     ./containers/tripitcalb0t.nix
     ./containers/znc.nix
   ];
+
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    install -d -m0755 /etc/nix
+    {
+      printf '%s\n' '# Managed by global-nix. Determinate Nix includes this from /etc/nix/nix.conf.'
+      printf '%s\n' 'max-jobs = 1'
+      printf '%s\n' 'cores = 2'
+    } > /etc/nix/nix.custom.conf
+    chmod 0644 /etc/nix/nix.custom.conf
+  '';
 
   homebrew = {
     enable = true;
@@ -49,6 +60,8 @@
   services.darwinServiceWatchdog = {
     enable = true;
     user = username;
+    restartMaxLoadAverage = 32;
+    restartMaxSwapUsedMiB = 4096;
 
     checks = {
       homebridge = {

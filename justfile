@@ -26,6 +26,24 @@ ci:
     just fmt-check
     just lint
 
+# Apply root Nix daemon build limits before macmini rebuilds.
+apply-macmini-nix-limits:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    tmp="$(mktemp)"
+    trap 'rm -f "${tmp}"' EXIT
+    printf '%s\n' \
+        '# Managed by global-nix. Determinate Nix includes this from /etc/nix/nix.conf.' \
+        'max-jobs = 1' \
+        'cores = 2' \
+        > "${tmp}"
+
+    sudo install -m 0644 "${tmp}" /etc/nix/nix.custom.conf
+
+    sudo launchctl kickstart -k system/systems.determinate.nix-daemon
+    nix config show | rg '^(max-jobs|cores) ='
+
 # Update pinned external versions and hashes.
 update-codex:
     python3 scripts/update-pins.py codex
