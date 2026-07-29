@@ -182,6 +182,20 @@ in {
           export KALSHI_PRIVATE_KEY=$(op --account my.1password.com item get "kalshi.com" --fields "private-key" --reveal)
       }
 
+      function fetch-unifi-keys() {
+          op-ensure-session my.1password.com || return $?
+
+          local network_api_key protect_api_key
+          network_api_key=$(op --account my.1password.com item get "ubnt.com" --fields "home-api-key-network" --reveal) || return $?
+          protect_api_key=$(op --account my.1password.com item get "ubnt.com" --fields "home-api-key-protect" --reveal) || return $?
+
+          export UNIFI_NETWORK_API_KEY="$network_api_key"
+          export UNIFI_PROTECT_API_KEY="$protect_api_key"
+          export UNIFI_ACCESS_API_KEY="$protect_api_key"
+      }
+      alias fetch-unifi="fetch-unifi-keys"
+      alias fetch-ubiquiti="fetch-unifi-keys"
+
       function fetch-kc-token() {
           op-ensure-session kittycadinc.1password.com || return $?
           export KITTYCAD_API_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Token" --fields credential --reveal)

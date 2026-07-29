@@ -46,7 +46,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.144.5&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.145.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -296,7 +296,6 @@
             "runfiles-0.1.0" = "sha256-uJpVLcQh8wWZA3GPv9D8Nt43EOirajfDJ7eq/FB+tek=";
             "tokio-tungstenite-0.28.0" = "sha256-V1xmnrfRWOcZZogelZEA4vvyMj2awCfHVA5/glQ6KAI=";
             "tungstenite-0.27.0" = "sha256-VVHhk7l9J/sEmG3q/UuV/sQ3f+fGsmq5vumSy8vbMvw=";
-            "libwebrtc-0.3.26" = "sha256-0HPuwaGcqpuG+Pp6z79bCuDu/DyE858VZSYr3DKZD9o=";
           };
         };
         doCheck = false;
