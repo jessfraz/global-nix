@@ -299,6 +299,10 @@
           };
         };
         doCheck = false;
+        cargoBuildFlags = [
+          "--package"
+          "codex-cli"
+        ];
         postPatch = ''
           sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
         '';
