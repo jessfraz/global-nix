@@ -253,11 +253,11 @@
         "zon2nix": "zon2nix"
       },
       "locked": {
-        "lastModified": 1785708060,
-        "narHash": "sha256-n3ljeBssqc7VkmO/q1mNg8wsxGSrvJXD0dqQF0P9aHI=",
+        "lastModified": 1785726460,
+        "narHash": "sha256-pvbS2/rhIJbkq0QqyVwRertdPp2JIu44IRF5C71Iea8=",
         "owner": "ghostty-org",
         "repo": "ghostty",
-        "rev": "d351d9ce07d53c9bee9db4bf28a95c17c0a9d448",
+        "rev": "b4592eefd27290457852ad7d4f16799ecc00b983",
         "type": "github"
       },
       "original": {
@@ -664,11 +664,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785705632,
-        "narHash": "sha256-DEQLpQFH1SMzxZTd8QC4+eFK0KdrUX7hjIXCnDWKD8s=",
+        "lastModified": 1785726773,
+        "narHash": "sha256-h9KNTzwdM5a9w/S9pmjMPdHcEA8b/7zfh4K42zUOIlw=",
         "ref": "refs/heads/main",
-        "rev": "f7c5b3d5132cc3ca9f3d52eacfe1d00a45c7c9d5",
-        "revCount": 163,
+        "rev": "6e8d56b445f9eb9a0b66be9884c03e8571b2b5ac",
+        "revCount": 176,
         "type": "git",
         "url": "ssh://git@github.com/jessfraz/switchboard.git"
       },
