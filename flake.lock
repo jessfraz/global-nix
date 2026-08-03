@@ -70,11 +70,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785715809,
-        "narHash": "sha256-UwyGsJ9Lz67RncWr7f/rcx1tPeZsemDxdEhbh/lecis=",
+        "lastModified": 1785739023,
+        "narHash": "sha256-Ym2NQG0CA4kYIHariZalhrbAqQT2igkXI38vC+cuZXo=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "3daee64c1424acfe4fdd4f65489e365219cb7d4a",
+        "rev": "88243444e2bd0b22bc93f072431236c278c5c8ad",
         "type": "github"
       },
       "original": {
@@ -94,11 +94,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1785705947,
-        "narHash": "sha256-j4Z5u2LJTLhtftxkfKdbjWvKoBkGQziiQYsY8iFtUL8=",
+        "lastModified": 1785739177,
+        "narHash": "sha256-zDcy9IXsiV0q7mPJvthr2W7PnOyYmyyzosM0hka8Io0=",
         "ref": "refs/heads/main",
-        "rev": "ce90143d2fa8effc725b4af0ac439acad2be5e96",
-        "revCount": 860,
+        "rev": "b09581155d9fe62792fc5f4a40e4d18300954e67",
+        "revCount": 861,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
@@ -379,11 +379,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1785593851,
-        "narHash": "sha256-ZxEkG/oMJSw7yUfGFF3G5xgd0bekpNY44mJseLB9Nl0=",
+        "lastModified": 1785734424,
+        "narHash": "sha256-m71ENqBciDFEPoICA9m1d4I3xIwTlp+6wh+pp6nErr4=",
         "owner": "kittycad",
         "repo": "modeling-app",
-        "rev": "86b0fce0b2ddb9c3214541394fbc43e94447f759",
+        "rev": "806c8d35163dc9831f548dafec668739a1d7bcc7",
         "type": "github"
       },
       "original": {
@@ -620,11 +620,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785648791,
-        "narHash": "sha256-4wZa7NDOxbcm9pTNNcg88nvvPb9uVcWsJ+Ncil8eB1I=",
+        "lastModified": 1785736145,
+        "narHash": "sha256-DauSP0ACycrq3MEEmDz/Scsxhs9TPBTexwKbTuE8Bw8=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "32346a8154e65fa10bac36f7b476a5294cb8b150",
+        "rev": "292249772330735cb32b90dedf44feddec40e7d0",
         "type": "github"
       },
       "original": {
@@ -640,11 +640,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785648791,
-        "narHash": "sha256-4wZa7NDOxbcm9pTNNcg88nvvPb9uVcWsJ+Ncil8eB1I=",
+        "lastModified": 1785736145,
+        "narHash": "sha256-DauSP0ACycrq3MEEmDz/Scsxhs9TPBTexwKbTuE8Bw8=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "32346a8154e65fa10bac36f7b476a5294cb8b150",
+        "rev": "292249772330735cb32b90dedf44feddec40e7d0",
         "type": "github"
       },
       "original": {
