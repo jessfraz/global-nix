@@ -70,11 +70,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785739023,
-        "narHash": "sha256-Ym2NQG0CA4kYIHariZalhrbAqQT2igkXI38vC+cuZXo=",
+        "lastModified": 1785751410,
+        "narHash": "sha256-eD7aG6clctV25Ngx0TZsDgqoF/A1/13ZP72urSKD9hU=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "88243444e2bd0b22bc93f072431236c278c5c8ad",
+        "rev": "1c06b51d18de99cb76f29da838f506096bd7e855",
         "type": "github"
       },
       "original": {
@@ -94,11 +94,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1785739177,
-        "narHash": "sha256-zDcy9IXsiV0q7mPJvthr2W7PnOyYmyyzosM0hka8Io0=",
+        "lastModified": 1785751426,
+        "narHash": "sha256-qfDjKmUMoO8Mb6FOS1xCn+jfxS9XITlFCjQw1+vNLIk=",
         "ref": "refs/heads/main",
-        "rev": "b09581155d9fe62792fc5f4a40e4d18300954e67",
-        "revCount": 861,
+        "rev": "9af919a92277333587d586a5253bae45752a031d",
+        "revCount": 862,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
@@ -476,11 +476,11 @@
     },
     "nixpkgs_4": {
       "locked": {
-        "lastModified": 1785571196,
-        "narHash": "sha256-KoTsyMQqnXQZq8deCEnu4QkyldkwH/bpMMhUcfMdGIw=",
+        "lastModified": 1785692966,
+        "narHash": "sha256-vUfIeBEfpbAfZ5zjgIkYk7eHBeVfCYVjLbWnMkseYnk=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "148bab9c1c3c53136ecb44a6ea356a0ed5b39b06",
+        "rev": "643809054d65fdd466a63e3155b8c498cb483c04",
         "type": "github"
       },
       "original": {
