@@ -119,6 +119,21 @@
           runHook postInstall
         '';
       });
+      biome = prev.biome.overrideAttrs (old: {
+        preCheck =
+          (old.preCheck or "")
+          + prev.lib.optionalString prev.stdenv.isDarwin ''
+            # Biome's Unix socket tests exceed macOS's SUN_LEN limit when they
+            # inherit Nix's long per-derivation temporary directory.
+            biomeTestTmp="$(mktemp -d /tmp/biome-check.XXXXXX)"
+            cleanupBiomeTestTmp() {
+              rm -rf -- "$biomeTestTmp"
+            }
+            exitHooks+=(cleanupBiomeTestTmp)
+            failureHooks+=(cleanupBiomeTestTmp)
+            export TMPDIR="$biomeTestTmp"
+          '';
+      });
       coredns = prev.coredns.overrideAttrs (old: let
         postPatchScript =
           if old ? postPatch
