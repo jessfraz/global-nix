@@ -89,6 +89,7 @@
     tplResolverFile = "resolver/tpl"; # serves *.tpl
 
     overlay = final: prev: {
+      axiomCli = prev.callPackage ./pkgs/axiom-cli.nix {};
       homebridge = prev.callPackage ./pkgs/homebridge.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
@@ -371,6 +372,7 @@
       commonPackages =
         (with pkgs; [
           _1password-cli
+          axiomCli
           bash
           bash-completion
           claude-code
