@@ -212,6 +212,11 @@ in {
           export PYX_API_KEY=$(op --account kittycadinc.1password.com item get --vault Employee "pyx.dev Token" --fields credential --reveal)
       }
 
+      function fetch-axiom-key() {
+          op-ensure-session kittycadinc.1password.com || return $?
+          export AXIOM_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "axiom.co" --fields apikey --reveal)
+      }
+
       function fetch-easypost-keys() {
           op-ensure-session kittycadinc.1password.com || return $?
           export EASYPOST_TEST_API_KEY=$(op --account kittycadinc.1password.com item get --vault Employee "easypost.com" --fields testkey --reveal)
