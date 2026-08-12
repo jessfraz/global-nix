@@ -317,6 +317,8 @@
         cargoBuildFlags = [
           "--package"
           "codex-cli"
+          "--package"
+          "codex-code-mode"
         ];
         postPatch = ''
           sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
