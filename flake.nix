@@ -189,18 +189,49 @@
       rust-overlay.overlays.default
     ];
 
-    # `rusty_v8` wants to download a prebuilt archive at build time, which is
-    # a lousy fit for Nix. Prefetch the archive and pass the local path instead.
-    rustyV8Archives = {
-      aarch64-darwin = {
-        url = "https://github.com/denoland/rusty_v8/releases/download/v146.4.0/librusty_v8_release_aarch64-apple-darwin.a.gz";
-        hash = "sha256-v+LJvjKlbChUbw+WWCXuaPv2BkBfMQzE4XtEilaM+Yo=";
-      };
-      x86_64-linux = {
-        url = "https://github.com/denoland/rusty_v8/releases/download/v146.4.0/librusty_v8_release_x86_64-unknown-linux-gnu.a.gz";
-        hash = "sha256-5ktNmeSuKTouhGJEqJuAF4uhA4LBP7WRwfppaPUpEVM=";
+    codexSrc = codex.outPath + "/codex-rs";
+    codexCargoToml = builtins.fromTOML (builtins.readFile "${codexSrc}/Cargo.toml");
+    codexCargoLock = builtins.fromTOML (builtins.readFile "${codexSrc}/Cargo.lock");
+    codexV8Packages = builtins.filter (package: package.name == "v8") codexCargoLock.package;
+    codexV8Version =
+      if builtins.length codexV8Packages == 1
+      then (builtins.head codexV8Packages).version
+      else throw "Expected exactly one v8 package in the Codex Cargo.lock";
+    codexVersion =
+      if codexCargoToml.workspace.package.version != "0.0.0"
+      then codexCargoToml.workspace.package.version
+      else "0.0.0-dev+${codex.shortRev or "dirty"}";
+
+    # Code mode enables rusty_v8's sandbox feature. Fetch its matching static
+    # archive and generated binding up front rather than downloading at build time.
+    rustyV8ArtifactsByVersion = {
+      "150.4.0" = {
+        aarch64-darwin = {
+          archive = {
+            url = "https://github.com/openai/codex/releases/download/rusty-v8-v${codexV8Version}/librusty_v8_ptrcomp_sandbox_release_aarch64-apple-darwin.a.gz";
+            hash = "sha256-AK27SHmISMd1UEQcaGc6XoUpuOG3PqvN7iMss5tA9KE=";
+          };
+          binding = {
+            url = "https://github.com/openai/codex/releases/download/rusty-v8-v${codexV8Version}/src_binding_ptrcomp_sandbox_release_aarch64-apple-darwin.rs";
+            hash = "sha256-ylrfDPicmnCtRgrnNkiy/om3SqETs8t/dXtqArdYOU8=";
+          };
+        };
+        x86_64-linux = {
+          archive = {
+            url = "https://github.com/openai/codex/releases/download/rusty-v8-v${codexV8Version}/librusty_v8_ptrcomp_sandbox_release_x86_64-unknown-linux-gnu.a.gz";
+            hash = "sha256-o1x10fJuapg4haRbM0kKTr5U8FBQVosyuJz7QhswtYM=";
+          };
+          binding = {
+            url = "https://github.com/openai/codex/releases/download/rusty-v8-v${codexV8Version}/src_binding_ptrcomp_sandbox_release_x86_64-unknown-linux-gnu.rs";
+            hash = "sha256-dyeCauR5vbZF6Acjn7EtH44uI956bPFvXuWSaQ0dhQY=";
+          };
+        };
       };
     };
+    rustyV8Artifacts =
+      if builtins.hasAttr codexV8Version rustyV8ArtifactsByVersion
+      then builtins.getAttr codexV8Version rustyV8ArtifactsByVersion
+      else throw "No rusty_v8 artifacts pinned for Codex v8 ${codexV8Version}";
 
     livekitWebrtcArchives = {
       aarch64-darwin = {
@@ -231,7 +262,13 @@
         };
         overlays = commonOverlays;
       };
-      rustyV8Archive = pkgs.fetchurl (builtins.getAttr system rustyV8Archives);
+      rustyV8ArtifactsForSystem = builtins.getAttr system rustyV8Artifacts;
+      rustyV8Archive =
+        pkgs.fetchurl (rustyV8ArtifactsForSystem.archive
+          // {name = "rusty-v8-${codexV8Version}-${system}.a.gz";});
+      rustyV8Binding =
+        pkgs.fetchurl (rustyV8ArtifactsForSystem.binding
+          // {name = "rusty-v8-${codexV8Version}-${system}-binding.rs";});
       livekitWebrtcArchive =
         if builtins.hasAttr system livekitWebrtcArchives
         then
@@ -288,12 +325,6 @@
         else package;
       googleWorkspaceCli = googleworkspace-cli.packages.${pkgs.stdenv.hostPlatform.system}.default;
       stripeCli = pkgs."stripe-cli";
-      codexSrc = codex.outPath + "/codex-rs";
-      codexCargoToml = builtins.fromTOML (builtins.readFile "${codexSrc}/Cargo.toml");
-      codexVersion =
-        if codexCargoToml.workspace.package.version != "0.0.0"
-        then codexCargoToml.workspace.package.version
-        else "0.0.0-dev+${codex.shortRev or "dirty"}";
       codexRustPlatform = pkgs.makeRustPlatform {
         cargo = rustBin.minimal;
         rustc = rustBin.minimal;
@@ -318,7 +349,7 @@
           "--package"
           "codex-cli"
           "--package"
-          "codex-code-mode"
+          "codex-code-mode-host"
         ];
         postPatch = ''
           sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
@@ -347,10 +378,23 @@
             CC = "clang";
             CXX = "clang++";
             RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
+            RUSTY_V8_SRC_BINDING_PATH = "${rustyV8Binding}";
           }
           // pkgs.lib.optionalAttrs (livekitWebrtcPrebuilt != null) {
             LK_CUSTOM_WEBRTC = "${livekitWebrtcPrebuilt}/${livekitWebrtcDirectory}";
           };
+        postInstall =
+          ''
+            test -x "$out/bin/codex"
+            test -x "$out/bin/codex-code-mode-host"
+          ''
+          + pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+            mkdir -p "$out/codex-resources"
+            ln "$out/bin/codex" "$out/bin/codex-linux-sandbox"
+            ln -s ${pkgs.bubblewrap}/bin/bwrap "$out/codex-resources/bwrap"
+            test -x "$out/bin/codex-linux-sandbox"
+            test -x "$out/codex-resources/bwrap"
+          '';
         meta = with pkgs.lib; {
           description = "OpenAI Codex command-line interface rust implementation";
           homepage = "https://github.com/openai/codex";
