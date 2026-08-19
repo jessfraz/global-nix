@@ -5,7 +5,7 @@
   ...
 }: let
   defaultUser =
-    if pkgs.stdenv.isDarwin
+    if pkgs.stdenv.hostPlatform.isDarwin
     then (config.users.primaryUser or (builtins.getEnv "USER"))
     else "matterbridge";
   baseDir = config.services.matterbridge.storagePath;
@@ -72,7 +72,7 @@ in {
       storagePath = lib.mkOption {
         type = lib.types.path;
         default =
-          if pkgs.stdenv.isDarwin
+          if pkgs.stdenv.hostPlatform.isDarwin
           then "/Users/${config.services.matterbridge.user}"
           else "/var/lib/matterbridge";
         description = "Base directory that holds Matterbridge data and plugins.";
@@ -99,7 +99,7 @@ in {
       ];
     }
 
-    (lib.mkIf pkgs.stdenv.isDarwin {
+    (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
       system.activationScripts.matterbridge-mkdir.text = ''
         if [ ! -d "${baseDir}" ]; then
           install -d -m0755 -o ${config.services.matterbridge.user} -g staff ${baseDir}

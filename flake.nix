@@ -123,7 +123,7 @@
       biome = prev.biome.overrideAttrs (old: {
         preCheck =
           (old.preCheck or "")
-          + prev.lib.optionalString prev.stdenv.isDarwin ''
+          + prev.lib.optionalString prev.stdenv.hostPlatform.isDarwin ''
             # Biome's Unix socket tests exceed macOS's SUN_LEN limit when they
             # inherit Nix's long per-derivation temporary directory.
             biomeTestTmp="$(mktemp -d /tmp/biome-check.XXXXXX)"
@@ -157,7 +157,7 @@
         # 1.14.2 still flakes in networking tests, so don't gate macOS rebuilds
         # on that check suite.
         doCheck =
-          if prev.stdenv.isDarwin
+          if prev.stdenv.hostPlatform.isDarwin
           then false
           else old.doCheck or true;
       });
@@ -175,7 +175,7 @@
     # nixpkgs assembles `nodejs_*` from `nodejs-slim_*`, so disable checks on
     # the slim builders that actually run the flaky Darwin test suite.
     overlaySkipNodeChecks = final: prev:
-      if prev.stdenv.isDarwin
+      if prev.stdenv.hostPlatform.isDarwin
       then {
         nodejs-slim_20 = prev.nodejs-slim_20.overrideAttrs (_: {doCheck = false;});
         nodejs-slim_22 = prev.nodejs-slim_22.overrideAttrs (_: {doCheck = false;});
@@ -365,14 +365,14 @@
             openssl
             llvmPackages.libclang.lib
           ])
-          ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+          ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
             pkgs.libcap.dev
             pkgs.libcap.lib
           ];
         env =
           {
             PKG_CONFIG_PATH = pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
-              [pkgs.openssl] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [pkgs.libcap]
+              [pkgs.openssl] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [pkgs.libcap]
             );
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
             CC = "clang";
@@ -388,7 +388,7 @@
             test -x "$out/bin/codex"
             test -x "$out/bin/codex-code-mode-host"
           ''
-          + pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+          + pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
             mkdir -p "$out/codex-resources"
             ln "$out/bin/codex" "$out/bin/codex-linux-sandbox"
             ln -s ${pkgs.bubblewrap}/bin/bwrap "$out/codex-resources/bwrap"
@@ -461,7 +461,7 @@
 
       # System-specific packages
       systemSpecificPackages =
-        if pkgs.stdenv.isLinux
+        if pkgs.stdenv.hostPlatform.isLinux
         then
           # Linux-specific packages
           with pkgs; [

@@ -5,7 +5,7 @@
   ...
 }: let
   corefilePath =
-    if pkgs.stdenv.isDarwin
+    if pkgs.stdenv.hostPlatform.isDarwin
     then pkgs.writeText "Corefile" config.services.coredns.config
     else null;
 in {
@@ -44,7 +44,7 @@ in {
     };
   };
 
-  config = lib.mkIf (pkgs.stdenv.isDarwin && config.services.coredns.enable) {
+  config = lib.mkIf (pkgs.stdenv.hostPlatform.isDarwin && config.services.coredns.enable) {
     environment.systemPackages = [
       config.services.coredns.package
     ];

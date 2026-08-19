@@ -4,7 +4,7 @@
   ...
 }: let
   pinentryPkg =
-    if pkgs.stdenv.isLinux
+    if pkgs.stdenv.hostPlatform.isLinux
     then pkgs.pinentry-tty
     else pkgs.pinentry_mac;
 in {

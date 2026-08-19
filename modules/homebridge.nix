@@ -5,7 +5,7 @@
   ...
 }: let
   defaultUser =
-    if pkgs.stdenv.isDarwin
+    if pkgs.stdenv.hostPlatform.isDarwin
     then (config.users.primaryUser or (builtins.getEnv "USER"))
     else "homebridge";
   launchdResilience = {
@@ -31,7 +31,7 @@ in {
       user = lib.mkOption {
         type = lib.types.str;
         default =
-          if pkgs.stdenv.isDarwin
+          if pkgs.stdenv.hostPlatform.isDarwin
           then config.users.primaryUser or "${builtins.getEnv "USER"}"
           else defaultUser;
         description = "Account the service runs under.";
@@ -40,7 +40,7 @@ in {
       storagePath = lib.mkOption {
         type = lib.types.path;
         default =
-          if pkgs.stdenv.isDarwin
+          if pkgs.stdenv.hostPlatform.isDarwin
           then "/Users/${config.services.homebridge.user}/.homebridge"
           else "/var/lib/homebridge";
         description = "Config/cache directory.";
@@ -96,7 +96,7 @@ in {
       ];
     }
 
-    (lib.mkIf pkgs.stdenv.isDarwin (let
+    (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (let
       defaultPath =
         lib.concatStringsSep ":"
         ([
@@ -191,7 +191,7 @@ in {
     }))
 
     /*
-      (lib.mkIf pkgs.stdenv.isLinux {
+      (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       users.groups.${config.services.homebridge.user} = {};
       users.users.${config.services.homebridge.user} = {
         isSystemUser = true;

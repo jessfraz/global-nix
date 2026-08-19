@@ -70,11 +70,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787163147,
-        "narHash": "sha256-zjlARdEQpIj884oCMLsjhcUdb8Rv3yqZF0/X/QlLZNI=",
+        "lastModified": 1787166720,
+        "narHash": "sha256-3+sgj+7XhDDX4QfvwfikUuGz1S7MmFhbSA7ZJdGbZBY=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "2f8bce521dce77e235077e68efd912d81cc2ea02",
+        "rev": "28098eb13c8eca3ca7a0520c07abcd74b42861dd",
         "type": "github"
       },
       "original": {

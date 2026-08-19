@@ -348,7 +348,7 @@ in {
     };
   };
 
-  config = lib.mkIf (pkgs.stdenv.isDarwin && cfg.enable) {
+  config = lib.mkIf (pkgs.stdenv.hostPlatform.isDarwin && cfg.enable) {
     assertions =
       lib.mapAttrsToList (name: check: {
         assertion = check.urls != [];

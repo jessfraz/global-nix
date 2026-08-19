@@ -5,7 +5,7 @@
   ...
 }: let
   defaultUser =
-    if pkgs.stdenv.isDarwin
+    if pkgs.stdenv.hostPlatform.isDarwin
     then (config.users.primaryUser or (builtins.getEnv "USER"))
     else "scrypted";
   storagePath = config.services.scrypted.storagePath;
@@ -38,7 +38,7 @@ in {
       storagePath = lib.mkOption {
         type = lib.types.path;
         default =
-          if pkgs.stdenv.isDarwin
+          if pkgs.stdenv.hostPlatform.isDarwin
           then "/Users/${config.services.scrypted.user}/.scrypted"
           else "/var/lib/scrypted";
         description = "Where Scrypted stores its database and plugins.";
@@ -75,7 +75,7 @@ in {
       ];
     }
 
-    (lib.mkIf (pkgs.stdenv.isLinux && config.services.scrypted.user != "root") {
+    (lib.mkIf (pkgs.stdenv.hostPlatform.isLinux && config.services.scrypted.user != "root") {
       users.groups.${config.services.scrypted.user} = {};
       users.users.${config.services.scrypted.user} = {
         isSystemUser = true;
@@ -85,7 +85,7 @@ in {
       };
     })
 
-    (lib.mkIf pkgs.stdenv.isDarwin {
+    (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
       system.activationScripts.scrypted-mkdir.text = ''
         install -d -m0755 -o ${config.services.scrypted.user} -g staff ${storagePath}
         install -d -m0755 -o ${config.services.scrypted.user} -g staff ${storagePath}/volume
@@ -149,7 +149,7 @@ in {
     })
 
     /*
-      (lib.mkIf pkgs.stdenv.isLinux {
+      (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       systemd.tmpfiles.rules = [
         "d ${config.services.scrypted.storagePath} 0755 ${config.services.scrypted.user} ${config.services.scrypted.user} - -"
       ];
