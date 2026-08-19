@@ -17,6 +17,10 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: ./.github/actions/configure-switchboard-ssh
+        with:
+          deploy-key: ${{ secrets.SWITCHBOARD_DEPLOY_KEY }}
+
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
@@ -32,6 +36,10 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: ./.github/actions/configure-switchboard-ssh
+        with:
+          deploy-key: ${{ secrets.SWITCHBOARD_DEPLOY_KEY }}
+
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
@@ -46,10 +54,13 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: ./.github/actions/configure-switchboard-ssh
+        with:
+          deploy-key: ${{ secrets.SWITCHBOARD_DEPLOY_KEY }}
+
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: nix build . for x86_64-darwin
         run: nix build .
-

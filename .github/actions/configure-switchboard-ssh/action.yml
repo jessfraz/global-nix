@@ -1,0 +1,31 @@
+name: Configure Switchboard SSH
+description: Configure read-only SSH access for the private Switchboard flake input
+
+inputs:
+  deploy-key:
+    description: Read-only Switchboard deploy key
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Configure deploy key
+      shell: bash
+      env:
+        SWITCHBOARD_DEPLOY_KEY: ${{ inputs.deploy-key }}
+      run: |
+        if [[ -z "${SWITCHBOARD_DEPLOY_KEY}" ]]; then
+          echo "::error::SWITCHBOARD_DEPLOY_KEY is unavailable for this workflow context"
+          exit 1
+        fi
+
+        umask 077
+        key_path="${RUNNER_TEMP}/switchboard-deploy-key"
+        known_hosts_path="${RUNNER_TEMP}/github-known-hosts"
+        printf '%s\n' "${SWITCHBOARD_DEPLOY_KEY}" > "${key_path}"
+        chmod 0600 "${key_path}"
+        printf '%s\n' \
+          'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' \
+          > "${known_hosts_path}"
+        git_ssh_command="ssh -i ${key_path} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${known_hosts_path}"
+        printf 'GIT_SSH_COMMAND=%s\n' "${git_ssh_command}" >> "${GITHUB_ENV}"
