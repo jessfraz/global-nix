@@ -418,6 +418,7 @@
         (with pkgs; [
           _1password-cli
           axiomCli
+          awscli2
           bash
           bash-completion
           claude-code
