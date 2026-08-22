@@ -46,7 +46,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.148.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.149.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -302,6 +302,10 @@
       zooCli = let
         package = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
         zooCliRev = zoo-cli.rev or "";
+        cargoVendorHashOverrides = {
+          "1a8673993311034ebcae75027ab5c820209a1256" = "sha256-bj9w15HsZbLkuXanN/W7Lw0Tb52nQMWGBqg+J2Ab6Dc=";
+        };
+        cargoVendorHash = cargoVendorHashOverrides.${zooCliRev} or null;
         cargoOutputHashOverrides = {
           "41069aff358e5eb4a68f8b73d26967164da9019e" = {
             "openapitor-0.0.9" = "sha256-UpyQzk4VnqNKwS2DUz9tM+v5YKEVoNkd9GyzaGX1uzk=";
@@ -312,7 +316,17 @@
         };
         cargoOutputHashes = cargoOutputHashOverrides.${zooCliRev} or null;
       in
-        if cargoOutputHashes != null
+        if cargoVendorHash != null
+        then
+          package.overrideAttrs (oldAttrs: {
+            # This lockfile has registry and Git crates with identical names
+            # and versions, which importCargoLock cannot vendor without collisions.
+            cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+              inherit (oldAttrs) pname version src;
+              hash = cargoVendorHash;
+            };
+          })
+        else if cargoOutputHashes != null
         then
           package.overrideAttrs (_: {
             # Some kittycad/cli revs have stale Nix hashes for git dependencies.
@@ -351,9 +365,16 @@
           "--package"
           "codex-code-mode-host"
         ];
-        postPatch = ''
-          sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
-        '';
+        postPatch =
+          ''
+            sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
+          ''
+          + pkgs.lib.optionalString (codexVersion == "0.149.0") ''
+            # These crates exceed rustc's default query-depth limit in this release.
+            sed -i '1i#![recursion_limit = "256"]' \
+              cli/src/main.rs \
+              exec/src/lib.rs
+          '';
         nativeBuildInputs = with pkgs; [
           cmake
           git
