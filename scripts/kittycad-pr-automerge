@@ -5,6 +5,7 @@ ORG="KittyCAD"
 BOT_AUTHOR_LEGACY="zoo-github-actions-auth[bot]"
 BOT_AUTHOR_APP="app/zoo-github-actions-auth"
 DEPENDABOT_AUTHOR="dependabot[bot]"
+IGNORED_REPO="${ORG}/engine"
 
 TARGET_REPOS=(
   "cli"
@@ -51,6 +52,20 @@ warn() {
   printf '[kittycad-pr-automerge] WARN: %s\n' "$*" >&2
 }
 
+ignore_pr_if_configured() {
+  local repo="$1"
+  local pr="$2"
+  local title="$3"
+
+  if [ "$repo" != "$IGNORED_REPO" ]; then
+    return 1
+  fi
+
+  log "ignoring configured repository: $repo#$pr ($title)"
+  skipped=$((skipped + 1))
+  return 0
+}
+
 usage() {
   cat <<'EOF'
 Usage: kittycad-pr-automerge [--dry-run]
@@ -59,6 +74,7 @@ Approves and enables auto-merge for:
 1) "Update api spec" PRs (update-spec branch) in:
    KittyCAD/cli, kittycad.rs, kittycad.go, kittycad.py, kittycad.ts, website
 2) Open Dependabot PRs across org KittyCAD where review is requested from you
+   (excluding KittyCAD/engine)
    (if PR is behind base, comments "@dependabot rebase", regardless of CI)
    (if CI is failing and the PR is not behind, reruns failed CI jobs)
    (still approves and enables auto-merge)
@@ -239,6 +255,10 @@ process_pr() {
   local title="$3"
   local reason="$4"
   local pr_state_json=""
+
+  if ignore_pr_if_configured "$repo" "$pr" "$title"; then
+    return 0
+  fi
 
   log "$reason -> $repo#$pr ($title)"
   pr_state_json="$(fetch_pr_state_json "$repo" "$pr")"
@@ -431,6 +451,10 @@ process_dependabot_prs() {
     repo="$(jq -r '.repository.nameWithOwner' <<<"$row")"
     pr_number="$(jq -r '.number' <<<"$row")"
     title="$(jq -r '.title' <<<"$row")"
+
+    if ignore_pr_if_configured "$repo" "$pr_number" "$title"; then
+      continue
+    fi
 
     ci_green=0
     behind=0

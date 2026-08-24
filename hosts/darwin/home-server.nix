@@ -3,8 +3,15 @@
   username,
   volumesPath,
   ...
-}: {
+}: let
+  servicePorts = {
+    homebridge = 8581;
+    matterbridge = 8283;
+    scrypted = 10443;
+  };
+in {
   imports = [
+    (import ./tailscale-home-server.nix {inherit servicePorts;})
     ./coredns.nix
     ./containers/certbot-renew.nix
     ./containers/nginx.nix
@@ -66,7 +73,7 @@
     checks = {
       homebridge = {
         label = "org.nixos.homebridge";
-        urls = ["http://127.0.0.1:8581"];
+        urls = ["http://127.0.0.1:${toString servicePorts.homebridge}"];
         startupGraceSeconds = 300;
         failureThreshold = 3;
         restartCooldownSeconds = 600;
@@ -81,7 +88,7 @@
 
       scrypted = {
         label = "org.nixos.scrypted";
-        urls = ["https://127.0.0.1:10443"];
+        urls = ["https://127.0.0.1:${toString servicePorts.scrypted}"];
         startupGraceSeconds = 600;
         failureThreshold = 3;
         restartCooldownSeconds = 900;
@@ -96,7 +103,7 @@
 
       matterbridge = {
         label = "org.nixos.matterbridge";
-        urls = ["http://127.0.0.1:8283"];
+        urls = ["http://127.0.0.1:${toString servicePorts.matterbridge}"];
         startupGraceSeconds = 300;
         failureThreshold = 3;
         restartCooldownSeconds = 600;
