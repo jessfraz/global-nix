@@ -11,6 +11,7 @@ from urllib.request import urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
+FLAKE_LOCK_PATH = REPO_ROOT / "flake.lock"
 HOMEBRIDGE_PATH = REPO_ROOT / "pkgs" / "homebridge.nix"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
 RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
@@ -23,12 +24,17 @@ class UpdateError(RuntimeError):
     pass
 
 
-def run(cmd: Sequence[str], check: bool = True) -> subprocess.CompletedProcess[str]:
+def run(
+    cmd: Sequence[str],
+    check: bool = True,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         cmd,
         check=check,
         text=True,
         capture_output=True,
+        cwd=cwd,
     )
 
 
@@ -129,7 +135,6 @@ def update_codex() -> None:
                 "nix",
                 "flake",
                 "update",
-                "--update-input",
                 "codex",
                 "--option",
                 "warn-dirty",
@@ -142,6 +147,73 @@ def update_codex() -> None:
         print("nix not found, skipping flake.lock update")
 
 
+def update_zoo() -> None:
+    if not which("nix"):
+        raise UpdateError("nix is required to update the Zoo flake input.")
+
+    original_lock = FLAKE_LOCK_PATH.read_text(encoding="utf-8")
+    succeeded = False
+    try:
+        try:
+            run(
+                [
+                    "nix",
+                    "flake",
+                    "update",
+                    "zoo-cli",
+                    "--option",
+                    "warn-dirty",
+                    "false",
+                ],
+                cwd=REPO_ROOT,
+            )
+
+            package_expr = (
+                "let flake = builtins.getFlake (toString ./.); "
+                "in flake.inputs.zoo-cli.packages.${builtins.currentSystem}.zoo"
+            )
+            vendor = run(
+                [
+                    "nix",
+                    "build",
+                    "--impure",
+                    "--expr",
+                    f"({package_expr}).cargoDeps",
+                    "--no-link",
+                    "--rebuild",
+                ],
+                check=False,
+                cwd=REPO_ROOT,
+            )
+            if vendor.returncode != 0:
+                detail = vendor.stderr.strip().splitlines()
+                message = detail[-1] if detail else "unknown Nix build failure"
+                raise UpdateError(f"Zoo Cargo vendor hash validation failed: {message}")
+
+            version = run(
+                [
+                    "nix",
+                    "eval",
+                    "--impure",
+                    "--raw",
+                    "--expr",
+                    f"({package_expr}).version",
+                ],
+                cwd=REPO_ROOT,
+            ).stdout.strip()
+        except subprocess.CalledProcessError as exc:
+            detail = (exc.stderr or exc.stdout or "unknown Nix command failure").strip()
+            raise UpdateError(
+                f"Failed to update the Zoo flake input: {detail}"
+            ) from exc
+        succeeded = True
+    finally:
+        if not succeeded:
+            FLAKE_LOCK_PATH.write_text(original_lock, encoding="utf-8")
+
+    print(f"zoo -> {version}")
+
+
 def compute_homebridge_npm_hash() -> str:
     if not which("nix"):
         raise UpdateError("nix is required to compute npmDepsHash.")
@@ -150,13 +222,8 @@ def compute_homebridge_npm_hash() -> str:
         [
             "let",
             "  flake = builtins.getFlake (toString ./.);",
-            "  overlaySkipNodeChecks = final: prev: {",
-            "    nodejs_20 = prev.nodejs_20.overrideAttrs (_: { doCheck = false; });",
-            "    nodejs_22 = prev.nodejs_22.overrideAttrs (_: { doCheck = false; });",
-            "  };",
             "  pkgs = import flake.inputs.nixpkgs {",
             "    system = builtins.currentSystem;",
-            "    overlays = [overlaySkipNodeChecks];",
             "  };",
             "in pkgs.callPackage ./pkgs/homebridge.nix {}",
         ]
@@ -248,13 +315,8 @@ def compute_scrypted_npm_hash() -> str:
         [
             "let",
             "  flake = builtins.getFlake (toString ./.);",
-            "  overlaySkipNodeChecks = final: prev: {",
-            "    nodejs_20 = prev.nodejs_20.overrideAttrs (_: { doCheck = false; });",
-            "    nodejs_22 = prev.nodejs_22.overrideAttrs (_: { doCheck = false; });",
-            "  };",
             "  pkgs = import flake.inputs.nixpkgs {",
             "    system = builtins.currentSystem;",
-            "    overlays = [overlaySkipNodeChecks];",
             "  };",
             "in pkgs.callPackage ./pkgs/scrypted.nix {}",
         ]
@@ -446,7 +508,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "targets",
         nargs="+",
-        choices=["codex", "homebridge", "mole", "ramp", "scrypted", "all"],
+        choices=["codex", "homebridge", "mole", "ramp", "scrypted", "zoo", "all"],
         help="Targets to update.",
     )
     return parser.parse_args(argv)
@@ -456,7 +518,7 @@ def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
     targets = set(args.targets)
     if "all" in targets:
-        targets = {"codex", "homebridge", "mole", "ramp", "scrypted"}
+        targets = {"codex", "homebridge", "mole", "ramp", "scrypted", "zoo"}
 
     try:
         if "codex" in targets:
@@ -469,9 +531,14 @@ def main(argv: Sequence[str]) -> int:
             update_mole()
         if "ramp" in targets:
             update_ramp()
+        if "zoo" in targets:
+            update_zoo()
     except UpdateError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    except KeyboardInterrupt:
+        print("error: interrupted", file=sys.stderr)
+        return 130
     return 0
 
 

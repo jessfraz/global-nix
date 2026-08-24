@@ -60,6 +60,9 @@ update-mole:
 update-ramp:
     python3 scripts/update-pins.py ramp
 
+update-zoo:
+    python3 scripts/update-pins.py zoo
+
 update-pins:
     python3 scripts/update-pins.py all
 

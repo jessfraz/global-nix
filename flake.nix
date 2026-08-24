@@ -35,7 +35,7 @@
     };
 
     zoo-cli = {
-      url = "github:kittycad/cli";
+      url = "github:kittycad/cli/fix/nix-cargo-vendor";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
@@ -46,7 +46,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.149.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.149.1&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -95,47 +95,6 @@
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
       scrypted = prev.callPackage ./pkgs/scrypted.nix {};
       slackCli = prev.callPackage ./pkgs/slack-cli.nix {};
-      biome = prev.biome.overrideAttrs (old: {
-        preCheck =
-          (old.preCheck or "")
-          + prev.lib.optionalString prev.stdenv.hostPlatform.isDarwin ''
-            # Biome's Unix socket tests exceed macOS's SUN_LEN limit when they
-            # inherit Nix's long per-derivation temporary directory.
-            biomeTestTmp="$(mktemp -d /tmp/biome-check.XXXXXX)"
-            cleanupBiomeTestTmp() {
-              rm -rf -- "$biomeTestTmp"
-            }
-            exitHooks+=(cleanupBiomeTestTmp)
-            failureHooks+=(cleanupBiomeTestTmp)
-            export TMPDIR="$biomeTestTmp"
-          '';
-      });
-      coredns = prev.coredns.overrideAttrs (old: let
-        postPatchScript =
-          if old ? postPatch
-          then old.postPatch
-          else "";
-        guardSubstitution =
-          builtins.replaceStrings
-          ["substituteInPlace test/corefile_test.go \\"]
-          ["if [ -f test/corefile_test.go ] && grep -q \"TestCorefile1\" test/corefile_test.go; then\n    substituteInPlace test/corefile_test.go \\"]
-          postPatchScript;
-        guardedPostPatch =
-          builtins.replaceStrings
-          ["--replace-fail \"TestCorefile1\" \"SkipCorefile1\""]
-          ["--replace \"TestCorefile1\" \"SkipCorefile1\"\n    fi"]
-          guardSubstitution;
-      in {
-        postPatch =
-          guardedPostPatch;
-        # nixpkgs already carries several Darwin-specific CoreDNS test skips and
-        # 1.14.2 still flakes in networking tests, so don't gate macOS rebuilds
-        # on that check suite.
-        doCheck =
-          if prev.stdenv.hostPlatform.isDarwin
-          then false
-          else old.doCheck or true;
-      });
     };
 
     # Provide a compatibility alias for removed attributes in recent nixpkgs.
@@ -147,19 +106,8 @@
         else prev.rust-analyzer;
     };
 
-    # nixpkgs assembles `nodejs_*` from `nodejs-slim_*`, so disable checks on
-    # the slim builders that actually run the flaky Darwin test suite.
-    overlaySkipNodeChecks = final: prev:
-      if prev.stdenv.hostPlatform.isDarwin
-      then {
-        nodejs-slim_20 = prev.nodejs-slim_20.overrideAttrs (_: {doCheck = false;});
-        nodejs-slim_22 = prev.nodejs-slim_22.overrideAttrs (_: {doCheck = false;});
-      }
-      else {};
-
     commonOverlays = [
       overlay
-      overlaySkipNodeChecks
       overlayCompatRust
       rust-overlay.overlays.default
     ];
@@ -274,44 +222,7 @@
           "rustfmt"
         ];
       };
-      zooCli = let
-        package = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
-        zooCliRev = zoo-cli.rev or "";
-        cargoVendorHashOverrides = {
-          "1a8673993311034ebcae75027ab5c820209a1256" = "sha256-bj9w15HsZbLkuXanN/W7Lw0Tb52nQMWGBqg+J2Ab6Dc=";
-        };
-        cargoVendorHash = cargoVendorHashOverrides.${zooCliRev} or null;
-        cargoOutputHashOverrides = {
-          "41069aff358e5eb4a68f8b73d26967164da9019e" = {
-            "openapitor-0.0.9" = "sha256-UpyQzk4VnqNKwS2DUz9tM+v5YKEVoNkd9GyzaGX1uzk=";
-          };
-          "de962c47098c2e26d4fbb6681c552819d89f829c" = {
-            "openapitor-0.0.9" = "sha256-UpyQzk4VnqNKwS2DUz9tM+v5YKEVoNkd9GyzaGX1uzk=";
-          };
-        };
-        cargoOutputHashes = cargoOutputHashOverrides.${zooCliRev} or null;
-      in
-        if cargoVendorHash != null
-        then
-          package.overrideAttrs (oldAttrs: {
-            # This lockfile has registry and Git crates with identical names
-            # and versions, which importCargoLock cannot vendor without collisions.
-            cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
-              inherit (oldAttrs) pname version src;
-              hash = cargoVendorHash;
-            };
-          })
-        else if cargoOutputHashes != null
-        then
-          package.overrideAttrs (_: {
-            # Some kittycad/cli revs have stale Nix hashes for git dependencies.
-            # Replace only the generated Cargo vendor deps for known bad revs.
-            cargoDeps = pkgs.rustPlatform.importCargoLock {
-              lockFile = "${zoo-cli.outPath}/Cargo.lock";
-              outputHashes = cargoOutputHashes;
-            };
-          })
-        else package;
+      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
       googleWorkspaceCli = googleworkspace-cli.packages.${pkgs.stdenv.hostPlatform.system}.default;
       stripeCli = pkgs."stripe-cli";
       codexRustPlatform = pkgs.makeRustPlatform {
@@ -340,16 +251,9 @@
           "--package"
           "codex-code-mode-host"
         ];
-        postPatch =
-          ''
-            sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
-          ''
-          + pkgs.lib.optionalString (codexVersion == "0.149.0") ''
-            # These crates exceed rustc's default query-depth limit in this release.
-            sed -i '1i#![recursion_limit = "256"]' \
-              cli/src/main.rs \
-              exec/src/lib.rs
-          '';
+        postPatch = ''
+          sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
+        '';
         nativeBuildInputs = with pkgs; [
           cmake
           git
