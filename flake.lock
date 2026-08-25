@@ -769,16 +769,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1787611403,
-        "narHash": "sha256-mGOJrLzK4bB9G52XGSAnQPnkaKm+XkwlFBpgX7fRGFM=",
+        "lastModified": 1787618790,
+        "narHash": "sha256-jbrJ6eVCLISis0KjpV5z0X9aBIULFYczgrD6O3lQNlU=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "9125ec6b8145f41b0a1147786d58d5ade7c2ca8a",
+        "rev": "540418d1645b704be526376c6a6d68354200f71e",
         "type": "github"
       },
       "original": {
         "owner": "kittycad",
-        "ref": "fix/nix-cargo-vendor",
         "repo": "cli",
         "type": "github"
       }

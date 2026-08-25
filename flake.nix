@@ -35,7 +35,7 @@
     };
 
     zoo-cli = {
-      url = "github:kittycad/cli/fix/nix-cargo-vendor";
+      url = "github:kittycad/cli";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
