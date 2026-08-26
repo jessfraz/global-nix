@@ -209,7 +209,7 @@ in {
 
           local server token
           server=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --format json | jq -er '.urls[0].href') || return $?
-          token=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --fields password --reveal) || return $?
+          token=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --fields apikey --reveal) || return $?
 
           export HOME_ASSISTANT_URL="$server"
           export HOME_ASSISTANT_TOKEN="$token"
