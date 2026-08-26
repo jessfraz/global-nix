@@ -3,9 +3,8 @@
   volumesPath,
   ...
 }: let
-  # Set this to Home Assistant Green's UniFi-reserved IPv4 address once the
-  # appliance is installed. Until then, the old loopback proxy is withdrawn.
-  homeAssistantGreenAddress = null;
+  # Home Assistant Green's UniFi-reserved IPv4 address.
+  homeAssistantGreenAddress = "192.168.1.80";
   homeAssistantPort = 8123;
   servicePorts = {
     scrypted = 10443;
