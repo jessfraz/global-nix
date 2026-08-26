@@ -189,7 +189,7 @@ in {
 
       # Retired services are drained before their local handlers are cleared.
       # This is idempotent and prevents removed backends from lingering after
-      # a rebuild. svc:ha stays retired until the Green address is configured.
+      # a rebuild. When the Green address is unset, svc:ha is retired too.
       ${tailscaleRetiredServiceCommands}
       ${tailscaleRetiredLegacyServeCleanupCommands}
 
