@@ -1,6 +1,5 @@
 {
   hostname,
-  lib,
   username,
   volumesPath,
   ...
@@ -22,14 +21,9 @@ in {
     ./containers/znc.nix
   ];
 
-  system.activationScripts.extraActivation.text = lib.mkAfter ''
-    install -d -m0755 /etc/nix
-    {
-      printf '%s\n' '# Managed by global-nix. Determinate Nix includes this from /etc/nix/nix.conf.'
-      printf '%s\n' 'max-jobs = 1'
-      printf '%s\n' 'cores = 2'
-    } > /etc/nix/nix.custom.conf
-    chmod 0644 /etc/nix/nix.custom.conf
+  globalNix.determinateNix.extraConfig = ''
+    max-jobs = 1
+    cores = 2
   '';
 
   homebrew = {

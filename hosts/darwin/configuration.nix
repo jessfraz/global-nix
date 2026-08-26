@@ -8,6 +8,8 @@
   maxFilesHard = 200000;
   launchctlPath = "/bin/launchctl";
 in {
+  imports = [../../modules/determinate-nix-settings.nix];
+
   # Let Determinate Nix handle Nix configuration
   nix.enable = false;
 

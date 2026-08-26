@@ -33,16 +33,17 @@ apply-macmini-nix-limits:
 
     tmp="$(mktemp)"
     trap 'rm -f "${tmp}"' EXIT
-    printf '%s\n' \
-        '# Managed by global-nix. Determinate Nix includes this from /etc/nix/nix.conf.' \
-        'max-jobs = 1' \
-        'cores = 2' \
-        > "${tmp}"
+    {
+        cat hosts/darwin/nix.custom.conf
+        printf '%s\n' \
+            'max-jobs = 1' \
+            'cores = 2'
+    } > "${tmp}"
 
     sudo install -m 0644 "${tmp}" /etc/nix/nix.custom.conf
 
     sudo launchctl kickstart -k system/systems.determinate.nix-daemon
-    nix config show | rg '^(max-jobs|cores) ='
+    nix config show | rg '^(max-jobs|cores|substituters|trusted-public-keys) ='
 
 # Update pinned external versions and hashes.
 update-codex:
