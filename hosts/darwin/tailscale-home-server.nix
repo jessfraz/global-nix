@@ -194,7 +194,7 @@ in {
       ${tailscaleRetiredLegacyServeCleanupCommands}
 
       # Tailscale Services have stable MagicDNS names such as
-      # hb.<tailnet>.ts.net and can only be hosted by tagged nodes.
+      # scrypted.<tailnet>.ts.net and can only be hosted by tagged nodes.
       if ! printf '%s' "$status_json" | ${jq} -e \
         --arg tag ${lib.escapeShellArg serviceHostTag} \
         '(.Self.Tags // []) | index($tag) != null' \
