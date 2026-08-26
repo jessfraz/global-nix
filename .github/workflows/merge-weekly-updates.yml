@@ -1,0 +1,139 @@
+name: Merge Weekly Updates
+
+on:
+  workflow_run:
+    workflows: ["Test Nix Flake"]
+    types: [completed]
+
+concurrency:
+  group: merge-weekly-dependency-updates
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_dispatch' &&
+      github.event.workflow_run.head_branch == 'automation/weekly-updates' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.actor.login == 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate and merge the bot update
+        env:
+          EXPECTED_BRANCH: automation/weekly-updates
+          EXPECTED_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          owner="${GH_REPO%%/*}"
+          pulls="$(gh api --method GET "repos/${GH_REPO}/pulls" \
+            -f state=open \
+            -f base=main \
+            -f "head=${owner}:${EXPECTED_BRANCH}")"
+
+          count="$(jq 'length' <<< "${pulls}")"
+          if [[ "${count}" -ne 1 ]]; then
+            echo "Expected exactly one open weekly update PR, found ${count}." >&2
+            exit 1
+          fi
+
+          pr_number="$(jq -r '.[0].number' <<< "${pulls}")"
+          pr_author="$(jq -r '.[0].user.login' <<< "${pulls}")"
+          head_repo="$(jq -r '.[0].head.repo.full_name' <<< "${pulls}")"
+          head_branch="$(jq -r '.[0].head.ref' <<< "${pulls}")"
+          head_sha="$(jq -r '.[0].head.sha' <<< "${pulls}")"
+          base_branch="$(jq -r '.[0].base.ref' <<< "${pulls}")"
+          draft="$(jq -r '.[0].draft' <<< "${pulls}")"
+
+          [[ "${pr_author}" == "github-actions[bot]" ]] || {
+            echo "PR #${pr_number} is owned by ${pr_author}, not github-actions[bot]." >&2
+            exit 1
+          }
+          [[ "${head_repo}" == "${GH_REPO}" ]] || {
+            echo "PR #${pr_number} comes from unexpected repository ${head_repo}." >&2
+            exit 1
+          }
+          [[ "${head_branch}" == "${EXPECTED_BRANCH}" ]] || {
+            echo "PR #${pr_number} comes from unexpected branch ${head_branch}." >&2
+            exit 1
+          }
+          [[ "${base_branch}" == "main" ]] || {
+            echo "PR #${pr_number} targets unexpected branch ${base_branch}." >&2
+            exit 1
+          }
+          [[ "${head_sha}" == "${EXPECTED_HEAD_SHA}" ]] || {
+            echo "PR #${pr_number} changed after its successful test run." >&2
+            exit 1
+          }
+          [[ "${draft}" == "false" ]] || {
+            echo "PR #${pr_number} is still a draft." >&2
+            exit 1
+          }
+
+          allowed_files='^(flake\.lock|flake\.nix|hosts/darwin/containers/home-assistant\.nix|pkgs/(homebridge|mole|ramp-cli|scrypted)\.nix)$'
+          changed_files="$(gh api --paginate "repos/${GH_REPO}/pulls/${pr_number}/files" \
+            --jq '.[].filename')"
+          if [[ -z "${changed_files}" ]]; then
+            echo "PR #${pr_number} has no changed files." >&2
+            exit 1
+          fi
+
+          unexpected_files=""
+          while IFS= read -r changed_file; do
+            if [[ ! "${changed_file}" =~ ${allowed_files} ]]; then
+              unexpected_files+="${changed_file}"$'\n'
+            fi
+          done <<< "${changed_files}"
+          if [[ -n "${unexpected_files}" ]]; then
+            echo "PR #${pr_number} changes files outside the updater allowlist:" >&2
+            echo "${unexpected_files}" >&2
+            exit 1
+          fi
+
+          commits="$(gh api --paginate "repos/${GH_REPO}/pulls/${pr_number}/commits")"
+          commit_count="$(jq 'length' <<< "${commits}")"
+          if [[ "${commit_count}" -ne 1 ]]; then
+            echo "Expected one generated commit, found ${commit_count}." >&2
+            exit 1
+          fi
+          commit_author="$(jq -r '.[0].author.login' <<< "${commits}")"
+          commit_committer="$(jq -r '.[0].committer.login' <<< "${commits}")"
+          commit_email="$(jq -r '.[0].commit.author.email' <<< "${commits}")"
+          committer_email="$(jq -r '.[0].commit.committer.email' <<< "${commits}")"
+          parent_count="$(jq '.[0].parents | length' <<< "${commits}")"
+          parent_sha="$(jq -r '.[0].parents[0].sha' <<< "${commits}")"
+          if [[ "${commit_author}" != "github-actions[bot]" || \
+                "${commit_committer}" != "github-actions[bot]" || \
+                "${commit_email}" != "41898282+github-actions[bot]@users.noreply.github.com" || \
+                "${committer_email}" != "41898282+github-actions[bot]@users.noreply.github.com" ]]; then
+            echo "PR #${pr_number} contains a commit not authored by the update bot." >&2
+            exit 1
+          fi
+          if [[ "${parent_count}" -ne 1 ]]; then
+            echo "PR #${pr_number} does not contain one linear generated commit." >&2
+            exit 1
+          fi
+
+          current_main_sha="$(gh api "repos/${GH_REPO}/git/ref/heads/main" --jq '.object.sha')"
+          if [[ "${parent_sha}" != "${current_main_sha}" ]]; then
+            echo "main changed after PR #${pr_number} was generated; refresh and retest it." >&2
+            exit 1
+          fi
+
+          result="$(gh api --method PUT "repos/${GH_REPO}/pulls/${pr_number}/merge" \
+            -f "sha=${EXPECTED_HEAD_SHA}" \
+            -f merge_method=squash)"
+          if [[ "$(jq -r '.merged' <<< "${result}")" != "true" ]]; then
+            jq -r '.message' <<< "${result}" >&2
+            exit 1
+          fi
+
+          {
+            echo "## Weekly dependency updates"
+            echo "Squash-merged PR #${pr_number} after **Test Nix Flake** succeeded at \`${EXPECTED_HEAD_SHA}\`."
+          } >> "${GITHUB_STEP_SUMMARY}"

@@ -1,0 +1,144 @@
+name: Weekly Dependency Updates
+
+on:
+  schedule:
+    - cron: "17 17 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: weekly-dependency-updates
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+env:
+  UPDATE_BRANCH: automation/weekly-updates
+  UPDATE_TITLE: "chore: weekly dependency updates"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Configure public build cache
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        with:
+          name: jessfraz-global-nix
+          skipPush: true
+
+      - name: Update pins and flake inputs
+        run: |
+          {
+            nix shell nixpkgs#just --command just update-pins
+            nix flake update --option warn-dirty false
+          } 2>&1 | tee "${RUNNER_TEMP}/update-output.txt"
+
+      - name: Commit generated updates
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "${UPDATE_BRANCH}"
+          git add --all
+
+          if git diff --cached --quiet; then
+            echo "has_changes=false" >> "${GITHUB_OUTPUT}"
+            echo "## Weekly dependency updates" >> "${GITHUB_STEP_SUMMARY}"
+            echo "Everything is already current." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          git commit -m "${UPDATE_TITLE}"
+          echo "has_changes=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Push update branch
+        if: steps.commit.outputs.has_changes == 'true'
+        run: |
+          remote_sha="$(git ls-remote origin "refs/heads/${UPDATE_BRANCH}" | cut -f1)"
+          if [[ -n "${remote_sha}" ]]; then
+            git push \
+              --force-with-lease="refs/heads/${UPDATE_BRANCH}:${remote_sha}" \
+              origin "HEAD:refs/heads/${UPDATE_BRANCH}"
+          else
+            git push origin "HEAD:refs/heads/${UPDATE_BRANCH}"
+          fi
+
+      - name: Open or refresh update pull request
+        if: steps.commit.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          owner="${GH_REPO%%/*}"
+          pulls="$(gh api --method GET "repos/${GH_REPO}/pulls" \
+            -f state=open \
+            -f base=main \
+            -f "head=${owner}:${UPDATE_BRANCH}")"
+          count="$(jq 'length' <<< "${pulls}")"
+          if [[ "${count}" -gt 1 ]]; then
+            echo "Expected at most one open weekly update PR, found ${count}." >&2
+            exit 1
+          fi
+
+          body="${RUNNER_TEMP}/weekly-update-body.md"
+          {
+            echo "Automated weekly dependency refresh."
+            echo
+            echo "This PR updates the repository pins and all flake inputs, then merges only after the existing **Test Nix Flake** workflow succeeds. It never deploys a host."
+            echo
+            echo "### Updater output"
+            echo
+            echo '```text'
+            cat "${RUNNER_TEMP}/update-output.txt"
+            echo '```'
+            echo
+            echo "### Changed files"
+            echo
+            echo '```text'
+            git diff --stat origin/main...HEAD
+            echo '```'
+          } > "${body}"
+
+          if [[ "${count}" -eq 1 ]]; then
+            pr_number="$(jq -r '.[0].number' <<< "${pulls}")"
+            pr_author="$(jq -r '.[0].user.login' <<< "${pulls}")"
+            if [[ "${pr_author}" != "github-actions[bot]" ]]; then
+              echo "Refusing to update PR #${pr_number}, owned by ${pr_author}." >&2
+              exit 1
+            fi
+            gh pr edit "${pr_number}" --title "${UPDATE_TITLE}" --body-file "${body}"
+          else
+            gh pr create \
+              --base main \
+              --head "${UPDATE_BRANCH}" \
+              --title "${UPDATE_TITLE}" \
+              --body-file "${body}"
+          fi
+
+      - name: Run the existing Nix test workflow
+        if: steps.commit.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh api --method POST \
+            "repos/${GH_REPO}/actions/workflows/nix.yml/dispatches" \
+            -f "ref=${UPDATE_BRANCH}"
+          {
+            echo "## Weekly dependency updates"
+            echo "Opened or refreshed the automated update PR and dispatched **Test Nix Flake**."
+            echo "No host deployment was attempted."
+          } >> "${GITHUB_STEP_SUMMARY}"

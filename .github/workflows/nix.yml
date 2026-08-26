@@ -9,21 +9,31 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   nix-flake-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           submodules: recursive
 
-      - uses: ./.github/actions/configure-switchboard-ssh
-        with:
-          deploy-key: ${{ secrets.SWITCHBOARD_DEPLOY_KEY }}
-
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Configure Cachix
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        with:
+          name: jessfraz-global-nix
+          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+
+      - name: Check formatting and lint
+        run: nix shell nixpkgs#just nixpkgs#alejandra nixpkgs#ruff --command just ci
 
       - name: nix flake check for all platforms
         run: |
@@ -32,17 +42,20 @@ jobs:
   nix-build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           submodules: recursive
 
-      - uses: ./.github/actions/configure-switchboard-ssh
-        with:
-          deploy-key: ${{ secrets.SWITCHBOARD_DEPLOY_KEY }}
-
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Configure Cachix
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        with:
+          name: jessfraz-global-nix
+          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
       - name: nix build . for x86_64-linux
         run: nix build .
@@ -50,17 +63,20 @@ jobs:
   nix-build-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           submodules: recursive
 
-      - uses: ./.github/actions/configure-switchboard-ssh
-        with:
-          deploy-key: ${{ secrets.SWITCHBOARD_DEPLOY_KEY }}
-
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Configure Cachix
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        with:
+          name: jessfraz-global-nix
+          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
       - name: nix build . for x86_64-darwin
         run: nix build .

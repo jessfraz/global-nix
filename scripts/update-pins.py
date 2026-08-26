@@ -4,9 +4,9 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from shutil import which
-from typing import Iterable, Sequence
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -43,7 +43,7 @@ def run(
 
 
 def replace_one(pattern: str, repl: str, text: str, label: str) -> str:
-    updated, count = re.subn(pattern, repl, text, flags=re.M)
+    updated, count = re.subn(pattern, repl, text, flags=re.MULTILINE)
     if count != 1:
         raise UpdateError(f"Expected 1 match for {label}, found {count}.")
     return updated
@@ -94,6 +94,7 @@ def prefetch_sri(url: str) -> str:
             ["nix", "store", "prefetch-file", "--json", "--unpack", url],
             text=True,
             capture_output=True,
+            check=False,
         )
         if result.returncode == 0:
             data = json.loads(result.stdout)
@@ -305,21 +306,20 @@ def compute_homebridge_npm_hash() -> str:
     if not which("nix"):
         raise UpdateError("nix is required to compute npmDepsHash.")
 
-    expr = "\n".join(
-        [
-            "let",
-            "  flake = builtins.getFlake (toString ./.);",
-            "  pkgs = import flake.inputs.nixpkgs {",
-            "    system = builtins.currentSystem;",
-            "  };",
-            "in pkgs.callPackage ./pkgs/homebridge.nix {}",
-        ]
+    expr = (
+        "let\n"
+        "  flake = builtins.getFlake (toString ./.);\n"
+        "  pkgs = import flake.inputs.nixpkgs {\n"
+        "    system = builtins.currentSystem;\n"
+        "  };\n"
+        "in pkgs.callPackage ./pkgs/homebridge.nix {}"
     )
     build = subprocess.run(
         ["nix", "build", "--impure", "--expr", expr, "--no-link"],
         text=True,
         capture_output=True,
         cwd=REPO_ROOT,
+        check=False,
     )
     output = f"{build.stdout}\n{build.stderr}"
     if build.returncode == 0:
@@ -340,7 +340,7 @@ def update_homebridge() -> None:
     latest_version = latest_tag[1:]
     original_text = HOMEBRIDGE_PATH.read_text(encoding="utf-8")
 
-    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.M)
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
     if not version_match:
         raise UpdateError("Could not find homebridge version in pkgs/homebridge.nix")
 
@@ -398,21 +398,20 @@ def compute_scrypted_npm_hash() -> str:
     if not which("nix"):
         raise UpdateError("nix is required to compute Scrypted npmDepsHash.")
 
-    expr = "\n".join(
-        [
-            "let",
-            "  flake = builtins.getFlake (toString ./.);",
-            "  pkgs = import flake.inputs.nixpkgs {",
-            "    system = builtins.currentSystem;",
-            "  };",
-            "in pkgs.callPackage ./pkgs/scrypted.nix {}",
-        ]
+    expr = (
+        "let\n"
+        "  flake = builtins.getFlake (toString ./.);\n"
+        "  pkgs = import flake.inputs.nixpkgs {\n"
+        "    system = builtins.currentSystem;\n"
+        "  };\n"
+        "in pkgs.callPackage ./pkgs/scrypted.nix {}"
     )
     build = subprocess.run(
         ["nix", "build", "--impure", "--expr", expr, "--no-link"],
         text=True,
         capture_output=True,
         cwd=REPO_ROOT,
+        check=False,
     )
     output = f"{build.stdout}\n{build.stderr}"
     if build.returncode == 0:
@@ -436,7 +435,7 @@ def update_scrypted() -> None:
 
     original_text = SCRYPTED_PATH.read_text(encoding="utf-8")
 
-    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.M)
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
     if not version_match:
         raise UpdateError("Could not find Scrypted version in pkgs/scrypted.nix")
 
@@ -498,7 +497,7 @@ def update_mole() -> None:
     version = latest_tag.lstrip("vV")
     original_text = MOLE_PATH.read_text(encoding="utf-8")
 
-    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.M)
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
     if not version_match:
         raise UpdateError("Could not find Mole version in pkgs/mole.nix")
 
@@ -559,7 +558,7 @@ def update_ramp() -> None:
     version = latest_tag[1:]
     original_text = RAMP_CLI_PATH.read_text(encoding="utf-8")
 
-    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.M)
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
     if not version_match:
         raise UpdateError("Could not find Ramp CLI version in pkgs/ramp-cli.nix")
 

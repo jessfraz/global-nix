@@ -51,7 +51,7 @@
     };
 
     switchboard = {
-      url = "git+ssh://git@github.com/jessfraz/switchboard.git";
+      url = "github:jessfraz/switchboard";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };

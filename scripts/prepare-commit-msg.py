@@ -4,26 +4,29 @@ import os
 import re
 import subprocess
 import sys
-import urllib.request
-from urllib.error import HTTPError
-from typing import Optional, Sequence, Union, Literal
 import textwrap
-from pathlib import Path
+import urllib.request
+from collections.abc import Sequence
 from contextlib import suppress
+from pathlib import Path
+from shutil import which
+from typing import Literal
+from urllib.error import HTTPError
 
 # Pretty terminal rendering for Markdown reasoning (always available via flake)
 # Pretty terminal rendering for Markdown reasoning (if available). Fallback to
 # simple stderr output when Rich isn't installed so we still show all reasoning.
 try:
     from rich.console import Console  # type: ignore
+    from rich.live import Live  # type: ignore
     from rich.markdown import Markdown  # type: ignore
     from rich.panel import Panel  # type: ignore
-    from rich.live import Live  # type: ignore
 
     HAVE_RICH = True
-except Exception:  # ImportError or anything weird in user envs
+# This optional renderer must never break commits, including when an installed
+# Rich version is present but incompatible with one of these imports.
+except Exception:  # noqa: BLE001
     HAVE_RICH = False
-from shutil import which
 
 # Defaults (adjust here rather than via env vars)
 # Use GPT-5.6 Sol for commit message generation.
@@ -85,7 +88,7 @@ def debug_enabled() -> bool:
     return bool(os.environ.get("COMMIT_AI_DEBUG"))
 
 
-def _debug_log_path() -> Optional[str]:
+def _debug_log_path() -> str | None:
     with suppress(Exception):
         cp = run(["git", "rev-parse", "--git-dir"])
         if cp.returncode == 0:
@@ -166,6 +169,7 @@ def ensure_op_session(account: str) -> None:
         stdout=subprocess.PIPE,
         stderr=None,
         text=True,
+        check=False,
     )
     if cp.returncode != 0:
         dbg("op signin failed")
@@ -175,18 +179,21 @@ def ensure_op_session(account: str) -> None:
         os.environ["OP_SESSION"] = token
 
 
-def run(args_or_cmd: Union[str, Sequence[str]]) -> subprocess.CompletedProcess[str]:
+def run(args_or_cmd: str | Sequence[str]) -> subprocess.CompletedProcess[str]:
     """Run a command; accepts a list[str] or str; returns CompletedProcess."""
     if isinstance(args_or_cmd, str):
         return subprocess.run(
             args_or_cmd,
             shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
+            check=False,
         )
     return subprocess.run(
-        args_or_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        args_or_cmd,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
@@ -388,10 +395,7 @@ def call_responses_stream(
 
                 with live_ctx as live:
                     for raw in resp:
-                        try:
-                            line = raw.decode("utf-8", errors="ignore").strip()
-                        except Exception:
-                            continue
+                        line = raw.decode("utf-8", errors="ignore").strip()
                         if not line.startswith("data:"):
                             continue
                         data = line[5:].strip()
@@ -405,7 +409,7 @@ def call_responses_stream(
                             )
                         try:
                             obj = json.loads(data)
-                        except Exception:
+                        except json.JSONDecodeError:
                             continue
                         etype = obj.get("type", "")
                         if debug_enabled():
@@ -470,15 +474,18 @@ def call_responses_stream(
                                 sys.stderr.write("\n\n")
                                 sys.stderr.flush()
 
-                        if etype in TERMINAL_EVENT_TYPES and seen_reasoning:
+                        if (
+                            etype in TERMINAL_EVENT_TYPES
+                            and seen_reasoning
+                            and not reason_buffer.endswith("\n\n")
+                        ):
                             # Ensure we end on a blank line.
-                            if not reason_buffer.endswith("\n\n"):
-                                reason_buffer += "\n\n"
-                                if HAVE_RICH:
-                                    live.update(_panel(reason_buffer), refresh=True)
-                                else:
-                                    sys.stderr.write("\n\n")
-                                    sys.stderr.flush()
+                            reason_buffer += "\n\n"
+                            if HAVE_RICH:
+                                live.update(_panel(reason_buffer), refresh=True)
+                            else:
+                                sys.stderr.write("\n\n")
+                                sys.stderr.flush()
             finally:
                 pass
         return "".join(parts).strip()
@@ -493,7 +500,9 @@ def call_responses_stream(
         )
         sys.stderr.flush()
         return ""
-    except Exception as e:
+    # A commit-message helper must fail open if an optional renderer or network
+    # dependency raises an unexpected exception.
+    except Exception as e:  # noqa: BLE001
         dbg(f"stream error: {e}")
         sys.stderr.write(f"commit-ai: API request failed: {e}\n")
         sys.stderr.flush()
