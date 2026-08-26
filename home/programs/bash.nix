@@ -196,6 +196,14 @@ in {
       alias fetch-unifi="fetch-unifi-keys"
       alias fetch-ubiquiti="fetch-unifi-keys"
 
+      function fetch-tailscale-key() {
+          op-ensure-session my.1password.com || return $?
+
+          local api_key
+          api_key=$(op --account my.1password.com item get "tailscale.com" --fields apikey --reveal) || return $?
+          export TAILSCALE_API_KEY="$api_key"
+      }
+
       function fetch-kc-token() {
           op-ensure-session kittycadinc.1password.com || return $?
           export KITTYCAD_API_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Token" --fields credential --reveal)
