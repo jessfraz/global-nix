@@ -1,4 +1,8 @@
-{servicePorts}: {
+{
+  homeAssistantGreenAddress,
+  homeAssistantPort,
+  servicePorts,
+}: {
   lib,
   pkgs,
   hostname,
@@ -11,11 +15,13 @@
   };
   ratgdoRoutes = lib.mapAttrsToList (_: address: "${address}/32") ratgdoDevices;
   serviceHostTag = "tag:home-server";
+  homeAssistantServiceTarget =
+    if homeAssistantGreenAddress == null
+    then {}
+    else {ha = "http://${homeAssistantGreenAddress}:${toString homeAssistantPort}";};
   tailscaleServiceTargets =
-    {
-      ha = "http://127.0.0.1:${toString servicePorts.homeAssistant}";
-      hb = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.homebridge}";
-      matterbridge = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.matterbridge}";
+    homeAssistantServiceTarget
+    // {
       scrypted = "https+insecure://127.0.0.1:${toString servicePorts.scrypted}";
     }
     // lib.mapAttrs (_: address: "tls-terminated-tcp://${address}:80") ratgdoDevices;
@@ -32,6 +38,30 @@
   advertisedRoutes = lib.concatStringsSep "," ratgdoRoutes;
   jq = lib.getExe pkgs.jq;
   tailscale = lib.getExe pkgs.tailscale;
+  retiredTailscaleServices =
+    ["svc:hb" "svc:matterbridge"]
+    ++ lib.optional (homeAssistantGreenAddress == null) "svc:ha";
+  tailscaleRetiredServiceCommands =
+    lib.concatMapStringsSep "\n" (service: ''
+      # ${service}
+      if ! drain_output="$(${tailscale} serve drain ${lib.escapeShellArg service} 2>&1)"; then
+        echo "Unable to stop advertising retired Tailscale Service ${service}: $drain_output" >&2
+        exit 1
+      fi
+      if ! clear_output="$(${tailscale} serve clear ${lib.escapeShellArg service} 2>&1)"; then
+        echo "Unable to clear retired Tailscale Service ${service}: $clear_output" >&2
+        exit 1
+      fi
+      if ! capture_tailscale_json ${tailscale} serve get-config --service=${lib.escapeShellArg service}; then
+        echo "Unable to verify retired Tailscale Service ${service}: $tailscale_json_error" >&2
+        exit 1
+      fi
+      if ! printf '%s' "$tailscale_json" | ${jq} -e 'type == "object" and length == 0' >/dev/null; then
+        echo "Retired Tailscale Service ${service} still has local configuration." >&2
+        exit 1
+      fi
+    '')
+    retiredTailscaleServices;
   tailscaleServiceCommands = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: service: ''
       # ${name}
       if ! capture_tailscale_json ${tailscale} serve get-config --service=${lib.escapeShellArg service.serviceName}; then
@@ -73,34 +103,42 @@
       fi
     '')
     tailscaleServices);
-  tailscaleLegacyServeCleanupCommands = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: port: ''
-      # ${name}
-      if ! capture_tailscale_json ${tailscale} serve status --json; then
-        echo "Unable to inspect legacy Tailscale Serve port ${toString port}: $tailscale_json_error" >&2
-        exit 1
-      fi
-      legacy_serve_json="$tailscale_json"
-      if ! legacy_serve_json="$(printf '%s' "$legacy_serve_json" | ${jq} -c 'if . == null then {} elif type == "object" then . else error("invalid Serve configuration") end' 2>/dev/null)"; then
-        echo "Tailscale returned an invalid Serve configuration." >&2
-        exit 1
-      fi
-      legacy_handler="$(printf '%s' "$legacy_serve_json" | ${jq} -c --arg port ${lib.escapeShellArg (toString port)} '.TCP[$port] // null')"
-      if [ "$legacy_handler" != null ]; then
-        if ! printf '%s' "$legacy_handler" | ${jq} -e \
-          --arg target ${lib.escapeShellArg "127.0.0.1:${toString port}"} \
-          '. == {"TCPForward": $target}' \
-          >/dev/null; then
-          echo "Refusing to remove an unexpected node-level Serve handler on port ${toString port}: $legacy_handler" >&2
+  retiredLegacyServePorts = {
+    homeAssistant = homeAssistantPort;
+    homebridge = 8581;
+    matterbridge = 8283;
+  };
+  legacyServeCleanupCommands = ports:
+    lib.concatStringsSep "\n" (lib.mapAttrsToList (name: port: ''
+        # ${name}
+        if ! capture_tailscale_json ${tailscale} serve status --json; then
+          echo "Unable to inspect legacy Tailscale Serve port ${toString port}: $tailscale_json_error" >&2
           exit 1
         fi
+        legacy_serve_json="$tailscale_json"
+        if ! legacy_serve_json="$(printf '%s' "$legacy_serve_json" | ${jq} -c 'if . == null then {} elif type == "object" then . else error("invalid Serve configuration") end' 2>/dev/null)"; then
+          echo "Tailscale returned an invalid Serve configuration." >&2
+          exit 1
+        fi
+        legacy_handler="$(printf '%s' "$legacy_serve_json" | ${jq} -c --arg port ${lib.escapeShellArg (toString port)} '.TCP[$port] // null')"
+        if [ "$legacy_handler" != null ]; then
+          if ! printf '%s' "$legacy_handler" | ${jq} -e \
+            --arg target ${lib.escapeShellArg "127.0.0.1:${toString port}"} \
+            '. == {"TCPForward": $target}' \
+            >/dev/null; then
+            echo "Refusing to remove an unexpected node-level Serve handler on port ${toString port}: $legacy_handler" >&2
+            exit 1
+          fi
 
-        # Reasserting Serve first removes Funnel, if someone enabled it on the
-        # old mapping, before deleting only this exact managed handler.
-        ${tailscale} serve --bg --yes --tcp=${toString port} tcp://127.0.0.1:${toString port}
-        ${tailscale} serve --yes --tcp=${toString port} off
-      fi
-    '')
-    servicePorts);
+          # Reasserting Serve first removes Funnel, if someone enabled it on the
+          # old mapping, before deleting only this exact managed handler.
+          ${tailscale} serve --bg --yes --tcp=${toString port} tcp://127.0.0.1:${toString port}
+          ${tailscale} serve --yes --tcp=${toString port} off
+        fi
+      '')
+      ports);
+  tailscaleRetiredLegacyServeCleanupCommands = legacyServeCleanupCommands retiredLegacyServePorts;
+  tailscaleActiveLegacyServeCleanupCommands = legacyServeCleanupCommands servicePorts;
 in {
   services.tailscale.enable = true;
   launchd.daemons.tailscaled.serviceConfig.KeepAlive = true;
@@ -148,6 +186,12 @@ in {
         echo "Tailscale did not become ready: ''${status_error:-unknown error}" >&2
         exit 1
       fi
+
+      # Retired services are drained before their local handlers are cleared.
+      # This is idempotent and prevents removed backends from lingering after
+      # a rebuild. svc:ha stays retired until the Green address is configured.
+      ${tailscaleRetiredServiceCommands}
+      ${tailscaleRetiredLegacyServeCleanupCommands}
 
       # Tailscale Services have stable MagicDNS names such as
       # hb.<tailnet>.ts.net and can only be hosted by tagged nodes.
@@ -227,7 +271,7 @@ in {
 
       # Retire only the exact raw TCP mappings from the superseded port-based
       # design. Preserve every unrelated node handler and Tailscale Service.
-      ${tailscaleLegacyServeCleanupCommands}
+      ${tailscaleActiveLegacyServeCleanupCommands}
     '';
 
     serviceConfig = {

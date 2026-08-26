@@ -1,21 +1,22 @@
 {
-  hostname,
   username,
   volumesPath,
   ...
 }: let
+  # Set this to Home Assistant Green's UniFi-reserved IPv4 address once the
+  # appliance is installed. Until then, the old loopback proxy is withdrawn.
+  homeAssistantGreenAddress = null;
+  homeAssistantPort = 8123;
   servicePorts = {
-    homeAssistant = 8123;
-    homebridge = 8581;
-    matterbridge = 8283;
     scrypted = 10443;
   };
 in {
   imports = [
-    (import ./tailscale-home-server.nix {inherit servicePorts;})
+    (import ./tailscale-home-server.nix {
+      inherit homeAssistantGreenAddress homeAssistantPort servicePorts;
+    })
     ./coredns.nix
     ./containers/certbot-renew.nix
-    ./containers/home-assistant.nix
     ./containers/nginx.nix
     ./containers/tripitcalb0t.nix
     ./containers/znc.nix
@@ -46,21 +47,6 @@ in {
     #storagePath = "${volumesPath}/scrypted";
   };
 
-  services.homebridge = {
-    enable = true;
-
-    user = username;
-    #storagePath = "${volumesPath}/homebridge";
-    ui.enable = true;
-  };
-
-  services.matterbridge = {
-    enable = true;
-
-    user = username;
-    #storagePath = "${volumesPath}/matterbridge";
-  };
-
   services.darwinServiceWatchdog = {
     enable = true;
     user = username;
@@ -68,36 +54,6 @@ in {
     restartMaxSwapUsedMiB = 4096;
 
     checks = {
-      home-assistant = {
-        label = "org.nixos.${hostname}.home-assistant";
-        urls = ["http://127.0.0.1:${toString servicePorts.homeAssistant}"];
-        startupGraceSeconds = 600;
-        failureThreshold = 3;
-        restartCooldownSeconds = 900;
-        logFiles = [
-          {
-            path = "/Users/${username}/.homeassistant/container.log";
-            maxBytes = 104857600;
-            keepBytes = 20971520;
-          }
-        ];
-      };
-
-      homebridge = {
-        label = "org.nixos.homebridge";
-        urls = ["http://127.0.0.1:${toString servicePorts.homebridge}"];
-        startupGraceSeconds = 300;
-        failureThreshold = 3;
-        restartCooldownSeconds = 600;
-        logFiles = [
-          {
-            path = "/Users/${username}/.homebridge/homebridge.log";
-            maxBytes = 10485760;
-            keepBytes = 1048576;
-          }
-        ];
-      };
-
       scrypted = {
         label = "org.nixos.scrypted";
         urls = ["https://127.0.0.1:${toString servicePorts.scrypted}"];
@@ -109,21 +65,6 @@ in {
             path = "/Users/${username}/.scrypted/scrypted.log";
             maxBytes = 104857600;
             keepBytes = 20971520;
-          }
-        ];
-      };
-
-      matterbridge = {
-        label = "org.nixos.matterbridge";
-        urls = ["http://127.0.0.1:${toString servicePorts.matterbridge}"];
-        startupGraceSeconds = 300;
-        failureThreshold = 3;
-        restartCooldownSeconds = 600;
-        logFiles = [
-          {
-            path = "/Users/${username}/.matterbridge/matterbridge.log";
-            maxBytes = 10485760;
-            keepBytes = 1048576;
           }
         ];
       };

@@ -7,16 +7,11 @@ import sys
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from shutil import which
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
 FLAKE_LOCK_PATH = REPO_ROOT / "flake.lock"
-HOME_ASSISTANT_PATH = (
-    REPO_ROOT / "hosts" / "darwin" / "containers" / "home-assistant.nix"
-)
-HOMEBRIDGE_PATH = REPO_ROOT / "pkgs" / "homebridge.nix"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
 RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
 SCRYPTED_PATH = REPO_ROOT / "pkgs" / "scrypted.nix"
@@ -110,89 +105,6 @@ def prefetch_sri(url: str) -> str:
 def fetch_json(url: str) -> dict[str, object]:
     with urlopen(url) as response:
         return json.load(response)
-
-
-def home_assistant_image_digest(version: str) -> str:
-    repository = "home-assistant/home-assistant"
-    token_query = urlencode(
-        {
-            "service": "ghcr.io",
-            "scope": f"repository:{repository}:pull",
-        }
-    )
-    token_response = fetch_json(f"https://ghcr.io/token?{token_query}")
-    token = token_response.get("token")
-    if not isinstance(token, str) or not token:
-        raise UpdateError("GHCR did not return a Home Assistant pull token.")
-
-    request = Request(
-        f"https://ghcr.io/v2/{repository}/manifests/{version}",
-        headers={
-            "Accept": "application/vnd.oci.image.index.v1+json",
-            "Authorization": f"Bearer {token}",
-        },
-    )
-    with urlopen(request) as response:
-        digest = response.headers.get("Docker-Content-Digest")
-        manifest = json.load(response)
-
-    if not isinstance(digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
-        raise UpdateError("GHCR did not return a valid Home Assistant image digest.")
-
-    manifests = manifest.get("manifests")
-    if not isinstance(manifests, list):
-        raise UpdateError("Home Assistant image is not a multi-platform OCI index.")
-    supports_arm64 = any(
-        isinstance(item, dict)
-        and isinstance(item.get("platform"), dict)
-        and item["platform"].get("os") == "linux"
-        and item["platform"].get("architecture") == "arm64"
-        for item in manifests
-    )
-    if not supports_arm64:
-        raise UpdateError("Home Assistant image does not include linux/arm64.")
-
-    return digest
-
-
-def update_home_assistant() -> None:
-    tags = get_tags("https://github.com/home-assistant/core.git")
-    latest_version = select_latest_tag(tags, preferred_prefixes=())
-    if not re.fullmatch(r"\d{4}\.\d{1,2}\.\d+", latest_version):
-        raise UpdateError(f"Unexpected Home Assistant tag format: {latest_version}")
-
-    image_digest = home_assistant_image_digest(latest_version)
-    original_text = HOME_ASSISTANT_PATH.read_text(encoding="utf-8")
-    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
-    digest_match = re.search(
-        r'^\s*imageDigest = "([^"]+)";', original_text, re.MULTILINE
-    )
-    if not version_match or not digest_match:
-        raise UpdateError(
-            "Could not find Home Assistant version and digest in its Nix module."
-        )
-
-    if (
-        version_match.group(1) == latest_version
-        and digest_match.group(1) == image_digest
-    ):
-        print(f"home-assistant already at {latest_version} ({image_digest})")
-        return
-
-    updated = replace_one(
-        r'^(\s*version = ")[^"]+(";)',
-        rf"\g<1>{latest_version}\g<2>",
-        original_text,
-        "Home Assistant version",
-    )
-    updated = replace_one(
-        r'^(\s*imageDigest = ")[^"]+(";)',
-        rf"\g<1>{image_digest}\g<2>",
-        updated,
-        "Home Assistant image digest",
-    )
-    HOME_ASSISTANT_PATH.write_text(updated, encoding="utf-8")
-    print(f"home-assistant -> {latest_version} ({image_digest})")
 
 
 def update_codex() -> None:
@@ -300,98 +212,6 @@ def update_zoo() -> None:
             FLAKE_LOCK_PATH.write_text(original_lock, encoding="utf-8")
 
     print(f"zoo -> {version}")
-
-
-def compute_homebridge_npm_hash() -> str:
-    if not which("nix"):
-        raise UpdateError("nix is required to compute npmDepsHash.")
-
-    expr = (
-        "let\n"
-        "  flake = builtins.getFlake (toString ./.);\n"
-        "  pkgs = import flake.inputs.nixpkgs {\n"
-        "    system = builtins.currentSystem;\n"
-        "  };\n"
-        "in pkgs.callPackage ./pkgs/homebridge.nix {}"
-    )
-    build = subprocess.run(
-        ["nix", "build", "--impure", "--expr", expr, "--no-link"],
-        text=True,
-        capture_output=True,
-        cwd=REPO_ROOT,
-        check=False,
-    )
-    output = f"{build.stdout}\n{build.stderr}"
-    if build.returncode == 0:
-        raise UpdateError("nix build succeeded, expected npmDepsHash mismatch.")
-
-    matches = re.findall(r"sha256-[A-Za-z0-9+/=]+", output)
-    if not matches:
-        raise UpdateError("Failed to locate npmDepsHash in nix build output.")
-    return matches[-1]
-
-
-def update_homebridge() -> None:
-    tags = get_tags("https://github.com/homebridge/homebridge.git")
-    latest_tag = select_latest_tag(tags, preferred_prefixes=("v",))
-    if not latest_tag.startswith("v"):
-        raise UpdateError(f"Unexpected homebridge tag format: {latest_tag}")
-
-    latest_version = latest_tag[1:]
-    original_text = HOMEBRIDGE_PATH.read_text(encoding="utf-8")
-
-    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
-    if not version_match:
-        raise UpdateError("Could not find homebridge version in pkgs/homebridge.nix")
-
-    current_version = version_match.group(1)
-    if current_version == latest_version:
-        print(f"homebridge already at {latest_version}")
-        return
-
-    src_url = (
-        "https://github.com/homebridge/homebridge/archive/refs/tags/"
-        f"{latest_tag}.tar.gz"
-    )
-    src_hash = prefetch_sri(src_url)
-
-    updated = replace_one(
-        r'^(\s*version = ")[^"]+(";)',
-        rf"\g<1>{latest_version}\g<2>",
-        original_text,
-        "homebridge version",
-    )
-    updated = replace_one(
-        r'^(\s*githubHash = ")[^"]+(";)',
-        rf"\g<1>{src_hash}\g<2>",
-        updated,
-        "homebridge githubHash",
-    )
-
-    with_fake = replace_one(
-        r"^(\s*npmDepsHash = ).*?;",
-        rf'\g<1>"{FAKE_SRI}";',
-        updated,
-        "homebridge npmDepsHash",
-    )
-
-    HOMEBRIDGE_PATH.write_text(with_fake, encoding="utf-8")
-
-    try:
-        npm_hash = compute_homebridge_npm_hash()
-    except Exception:
-        HOMEBRIDGE_PATH.write_text(original_text, encoding="utf-8")
-        raise
-
-    final_text = replace_one(
-        r"^(\s*npmDepsHash = ).*?;",
-        rf'\g<1>"{npm_hash}";',
-        updated,
-        "homebridge npmDepsHash",
-    )
-
-    HOMEBRIDGE_PATH.write_text(final_text, encoding="utf-8")
-    print(f"homebridge -> {latest_version}")
 
 
 def compute_scrypted_npm_hash() -> str:
@@ -596,8 +416,6 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         nargs="+",
         choices=[
             "codex",
-            "home-assistant",
-            "homebridge",
             "mole",
             "ramp",
             "scrypted",
@@ -615,8 +433,6 @@ def main(argv: Sequence[str]) -> int:
     if "all" in targets:
         targets = {
             "codex",
-            "home-assistant",
-            "homebridge",
             "mole",
             "ramp",
             "scrypted",
@@ -626,10 +442,6 @@ def main(argv: Sequence[str]) -> int:
     try:
         if "codex" in targets:
             update_codex()
-        if "home-assistant" in targets:
-            update_home_assistant()
-        if "homebridge" in targets:
-            update_homebridge()
         if "scrypted" in targets:
             update_scrypted()
         if "mole" in targets:

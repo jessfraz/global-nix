@@ -90,7 +90,6 @@
 
     overlay = final: prev: {
       axiomCli = prev.callPackage ./pkgs/axiom-cli.nix {};
-      homebridge = prev.callPackage ./pkgs/homebridge.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
       scrypted = prev.callPackage ./pkgs/scrypted.nix {};
@@ -443,8 +442,6 @@
     # macOS configurations
     darwinModules.coredns = import ./modules/coredns.nix;
     darwinModules.darwin-service-watchdog = import ./modules/darwin-service-watchdog.nix;
-    darwinModules.homebridge = import ./modules/homebridge.nix;
-    darwinModules.matterbridge = import ./modules/matterbridge.nix;
     darwinModules.scrypted = import ./modules/scrypted.nix;
 
     darwinConfigurations = {
@@ -509,8 +506,6 @@
             }
             self.darwinModules.coredns
             self.darwinModules.darwin-service-watchdog
-            self.darwinModules.homebridge
-            self.darwinModules.matterbridge
             self.darwinModules.scrypted
             ./hosts/base/configuration.nix
             ./hosts/darwin/configuration.nix
