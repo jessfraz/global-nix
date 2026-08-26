@@ -13,6 +13,7 @@
   serviceHostTag = "tag:home-server";
   tailscaleServiceTargets =
     {
+      ha = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.homeAssistant}";
       hb = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.homebridge}";
       matterbridge = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.matterbridge}";
       scrypted = "https+insecure://127.0.0.1:${toString servicePorts.scrypted}";

@@ -48,6 +48,9 @@ apply-macmini-nix-limits:
 update-codex:
     python3 scripts/update-pins.py codex
 
+update-home-assistant:
+    python3 scripts/update-pins.py home-assistant
+
 update-homebridge:
     python3 scripts/update-pins.py homebridge
 

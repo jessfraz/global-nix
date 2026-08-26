@@ -1,10 +1,12 @@
 {
+  hostname,
   lib,
   username,
   volumesPath,
   ...
 }: let
   servicePorts = {
+    homeAssistant = 8123;
     homebridge = 8581;
     matterbridge = 8283;
     scrypted = 10443;
@@ -14,6 +16,7 @@ in {
     (import ./tailscale-home-server.nix {inherit servicePorts;})
     ./coredns.nix
     ./containers/certbot-renew.nix
+    ./containers/home-assistant.nix
     ./containers/nginx.nix
     ./containers/tripitcalb0t.nix
     ./containers/znc.nix
@@ -71,6 +74,21 @@ in {
     restartMaxSwapUsedMiB = 4096;
 
     checks = {
+      home-assistant = {
+        label = "org.nixos.${hostname}.home-assistant";
+        urls = ["http://127.0.0.1:${toString servicePorts.homeAssistant}"];
+        startupGraceSeconds = 600;
+        failureThreshold = 3;
+        restartCooldownSeconds = 900;
+        logFiles = [
+          {
+            path = "/Users/${username}/.homeassistant/container.log";
+            maxBytes = 104857600;
+            keepBytes = 20971520;
+          }
+        ];
+      };
+
       homebridge = {
         label = "org.nixos.homebridge";
         urls = ["http://127.0.0.1:${toString servicePorts.homebridge}"];

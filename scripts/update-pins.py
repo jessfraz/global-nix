@@ -7,11 +7,15 @@ import sys
 from pathlib import Path
 from shutil import which
 from typing import Iterable, Sequence
-from urllib.request import urlopen
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
 FLAKE_LOCK_PATH = REPO_ROOT / "flake.lock"
+HOME_ASSISTANT_PATH = (
+    REPO_ROOT / "hosts" / "darwin" / "containers" / "home-assistant.nix"
+)
 HOMEBRIDGE_PATH = REPO_ROOT / "pkgs" / "homebridge.nix"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
 RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
@@ -105,6 +109,89 @@ def prefetch_sri(url: str) -> str:
 def fetch_json(url: str) -> dict[str, object]:
     with urlopen(url) as response:
         return json.load(response)
+
+
+def home_assistant_image_digest(version: str) -> str:
+    repository = "home-assistant/home-assistant"
+    token_query = urlencode(
+        {
+            "service": "ghcr.io",
+            "scope": f"repository:{repository}:pull",
+        }
+    )
+    token_response = fetch_json(f"https://ghcr.io/token?{token_query}")
+    token = token_response.get("token")
+    if not isinstance(token, str) or not token:
+        raise UpdateError("GHCR did not return a Home Assistant pull token.")
+
+    request = Request(
+        f"https://ghcr.io/v2/{repository}/manifests/{version}",
+        headers={
+            "Accept": "application/vnd.oci.image.index.v1+json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    with urlopen(request) as response:
+        digest = response.headers.get("Docker-Content-Digest")
+        manifest = json.load(response)
+
+    if not isinstance(digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+        raise UpdateError("GHCR did not return a valid Home Assistant image digest.")
+
+    manifests = manifest.get("manifests")
+    if not isinstance(manifests, list):
+        raise UpdateError("Home Assistant image is not a multi-platform OCI index.")
+    supports_arm64 = any(
+        isinstance(item, dict)
+        and isinstance(item.get("platform"), dict)
+        and item["platform"].get("os") == "linux"
+        and item["platform"].get("architecture") == "arm64"
+        for item in manifests
+    )
+    if not supports_arm64:
+        raise UpdateError("Home Assistant image does not include linux/arm64.")
+
+    return digest
+
+
+def update_home_assistant() -> None:
+    tags = get_tags("https://github.com/home-assistant/core.git")
+    latest_version = select_latest_tag(tags, preferred_prefixes=())
+    if not re.fullmatch(r"\d{4}\.\d{1,2}\.\d+", latest_version):
+        raise UpdateError(f"Unexpected Home Assistant tag format: {latest_version}")
+
+    image_digest = home_assistant_image_digest(latest_version)
+    original_text = HOME_ASSISTANT_PATH.read_text(encoding="utf-8")
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
+    digest_match = re.search(
+        r'^\s*imageDigest = "([^"]+)";', original_text, re.MULTILINE
+    )
+    if not version_match or not digest_match:
+        raise UpdateError(
+            "Could not find Home Assistant version and digest in its Nix module."
+        )
+
+    if (
+        version_match.group(1) == latest_version
+        and digest_match.group(1) == image_digest
+    ):
+        print(f"home-assistant already at {latest_version} ({image_digest})")
+        return
+
+    updated = replace_one(
+        r'^(\s*version = ")[^"]+(";)',
+        rf"\g<1>{latest_version}\g<2>",
+        original_text,
+        "Home Assistant version",
+    )
+    updated = replace_one(
+        r'^(\s*imageDigest = ")[^"]+(";)',
+        rf"\g<1>{image_digest}\g<2>",
+        updated,
+        "Home Assistant image digest",
+    )
+    HOME_ASSISTANT_PATH.write_text(updated, encoding="utf-8")
+    print(f"home-assistant -> {latest_version} ({image_digest})")
 
 
 def update_codex() -> None:
@@ -508,7 +595,16 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "targets",
         nargs="+",
-        choices=["codex", "homebridge", "mole", "ramp", "scrypted", "zoo", "all"],
+        choices=[
+            "codex",
+            "home-assistant",
+            "homebridge",
+            "mole",
+            "ramp",
+            "scrypted",
+            "zoo",
+            "all",
+        ],
         help="Targets to update.",
     )
     return parser.parse_args(argv)
@@ -518,11 +614,21 @@ def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
     targets = set(args.targets)
     if "all" in targets:
-        targets = {"codex", "homebridge", "mole", "ramp", "scrypted", "zoo"}
+        targets = {
+            "codex",
+            "home-assistant",
+            "homebridge",
+            "mole",
+            "ramp",
+            "scrypted",
+            "zoo",
+        }
 
     try:
         if "codex" in targets:
             update_codex()
+        if "home-assistant" in targets:
+            update_home_assistant()
         if "homebridge" in targets:
             update_homebridge()
         if "scrypted" in targets:
