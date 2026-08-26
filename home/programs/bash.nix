@@ -204,6 +204,20 @@ in {
           export TAILSCALE_API_KEY="$api_key"
       }
 
+      function fetch-home-assistant() {
+          op-ensure-session my.1password.com || return $?
+
+          local server token
+          server=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --format json | jq -er '.urls[0].href') || return $?
+          token=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --fields password --reveal) || return $?
+
+          export HOME_ASSISTANT_URL="$server"
+          export HOME_ASSISTANT_TOKEN="$token"
+          export HASS_SERVER="$server"
+          export HASS_TOKEN="$token"
+      }
+      alias fetch-ha="fetch-home-assistant"
+
       function fetch-kc-token() {
           op-ensure-session kittycadinc.1password.com || return $?
           export KITTYCAD_API_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "KittyCAD Token" --fields credential --reveal)
