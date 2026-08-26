@@ -4,17 +4,20 @@
   hostname,
   ...
 }: let
-  ratgdoRoutes = [
-    "192.168.1.58/32" # Big Garage Door
-    "192.168.1.12/32" # Small Garage Door
-    "192.168.1.190/32" # Gate
-  ];
-  serviceHostTag = "tag:home-server";
-  tailscaleServiceTargets = {
-    hb = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.homebridge}";
-    matterbridge = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.matterbridge}";
-    scrypted = "https+insecure://127.0.0.1:${toString servicePorts.scrypted}";
+  ratgdoDevices = {
+    ratgdo-big-garage = "192.168.1.58";
+    ratgdo-small-garage = "192.168.1.12";
+    ratgdo-gate = "192.168.1.190";
   };
+  ratgdoRoutes = lib.mapAttrsToList (_: address: "${address}/32") ratgdoDevices;
+  serviceHostTag = "tag:home-server";
+  tailscaleServiceTargets =
+    {
+      hb = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.homebridge}";
+      matterbridge = "tls-terminated-tcp://127.0.0.1:${toString servicePorts.matterbridge}";
+      scrypted = "https+insecure://127.0.0.1:${toString servicePorts.scrypted}";
+    }
+    // lib.mapAttrs (_: address: "tls-terminated-tcp://${address}:80") ratgdoDevices;
   tailscaleServices =
     lib.mapAttrs (name: target: {
       serviceName = "svc:${name}";
@@ -30,10 +33,11 @@
   tailscale = lib.getExe pkgs.tailscale;
   tailscaleServiceCommands = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: service: ''
       # ${name}
-      if ! current_service_config="$(${tailscale} serve get-config --service=${lib.escapeShellArg service.serviceName} 2>&1)"; then
-        echo "Unable to read Tailscale Service ${service.serviceName}: $current_service_config" >&2
+      if ! capture_tailscale_json ${tailscale} serve get-config --service=${lib.escapeShellArg service.serviceName}; then
+        echo "Unable to read Tailscale Service ${service.serviceName}: $tailscale_json_error" >&2
         exit 1
       fi
+      current_service_config="$tailscale_json"
       if ! current_service_config="$(printf '%s' "$current_service_config" | ${jq} -cS . 2>/dev/null)"; then
         echo "Tailscale returned an invalid config for ${service.serviceName}." >&2
         exit 1
@@ -47,10 +51,11 @@
           exit 1
         fi
 
-        if ! applied_service_config="$(${tailscale} serve get-config --service=${lib.escapeShellArg service.serviceName} 2>&1)"; then
-          echo "Unable to verify Tailscale Service ${service.serviceName}: $applied_service_config" >&2
+        if ! capture_tailscale_json ${tailscale} serve get-config --service=${lib.escapeShellArg service.serviceName}; then
+          echo "Unable to verify Tailscale Service ${service.serviceName}: $tailscale_json_error" >&2
           exit 1
         fi
+        applied_service_config="$tailscale_json"
         if ! applied_service_config="$(printf '%s' "$applied_service_config" | ${jq} -cS . 2>/dev/null)"; then
           echo "Tailscale returned an invalid config while verifying ${service.serviceName}." >&2
           exit 1
@@ -60,14 +65,20 @@
           exit 1
         fi
       fi
+
+      if ! advertise_output="$(${tailscale} serve advertise ${lib.escapeShellArg service.serviceName} 2>&1)"; then
+        echo "Unable to advertise Tailscale Service ${service.serviceName}: $advertise_output" >&2
+        exit 1
+      fi
     '')
     tailscaleServices);
   tailscaleLegacyServeCleanupCommands = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: port: ''
       # ${name}
-      if ! legacy_serve_json="$(${tailscale} serve status --json 2>&1)"; then
-        echo "Unable to inspect legacy Tailscale Serve port ${toString port}: $legacy_serve_json" >&2
+      if ! capture_tailscale_json ${tailscale} serve status --json; then
+        echo "Unable to inspect legacy Tailscale Serve port ${toString port}: $tailscale_json_error" >&2
         exit 1
       fi
+      legacy_serve_json="$tailscale_json"
       if ! legacy_serve_json="$(printf '%s' "$legacy_serve_json" | ${jq} -c 'if . == null then {} elif type == "object" then . else error("invalid Serve configuration") end' 2>/dev/null)"; then
         echo "Tailscale returned an invalid Serve configuration." >&2
         exit 1
@@ -99,14 +110,27 @@ in {
     script = ''
       set -euo pipefail
 
+      # A newer GUI-managed tailscaled can emit a harmless client-version
+      # warning on stderr. Keep stderr out of JSON and rerun only failed reads
+      # to preserve a useful diagnostic.
+      capture_tailscale_json() {
+        if tailscale_json="$("$@" 2>/dev/null)"; then
+          tailscale_json_error=""
+          return 0
+        fi
+        tailscale_json_error="$("$@" 2>&1 >/dev/null || true)"
+        return 1
+      }
+
       backend_state=""
       status_error=""
       for _ in {1..30}; do
-        if status_json="$(${tailscale} status --json 2>&1)"; then
+        if capture_tailscale_json ${tailscale} status --json; then
+          status_json="$tailscale_json"
           backend_state="$(printf '%s' "$status_json" | ${jq} -r '.BackendState // empty' 2>/dev/null || true)"
           status_error="backend state: ''${backend_state:-unknown}"
         else
-          status_error="$status_json"
+          status_error="$tailscale_json_error"
         fi
 
         if [ "$backend_state" = "Running" ]; then
@@ -131,16 +155,17 @@ in {
         '(.Self.Tags // []) | index($tag) != null' \
         >/dev/null; then
         echo "Tailscale Services require this node to have ${serviceHostTag}." >&2
-        echo "Authorize that tag in the tailnet policy, then reauthenticate macmini with a tagged auth key." >&2
+        echo "Authorize that tag in the tailnet policy, then apply it to macmini or reauthenticate with a tagged auth key." >&2
         exit 1
       fi
 
       # Reconcile node preferences without touching unrelated Serve or Funnel
       # configuration that might already exist on this host.
-      if ! prefs_json="$(${tailscale} get --json 2>&1)"; then
-        echo "Unable to read Tailscale preferences: $prefs_json" >&2
+      if ! capture_tailscale_json ${tailscale} get --json; then
+        echo "Unable to read Tailscale preferences: $tailscale_json_error" >&2
         exit 1
       fi
+      prefs_json="$tailscale_json"
       if ! printf '%s' "$prefs_json" | ${jq} -e 'type == "object"' >/dev/null; then
         echo "Tailscale returned invalid preferences." >&2
         exit 1
@@ -172,7 +197,8 @@ in {
       services_active=false
       service_approval_state="service-host capability not present"
       for _ in {1..30}; do
-        if service_status_json="$(${tailscale} status --json 2>&1)"; then
+        if capture_tailscale_json ${tailscale} status --json; then
+          service_status_json="$tailscale_json"
           service_approval_state="$(printf '%s' "$service_status_json" | ${jq} -c '.Self.CapMap["service-host"] // []' 2>/dev/null || true)"
           if printf '%s' "$service_status_json" | ${jq} -e \
             --argjson services ${lib.escapeShellArg (builtins.toJSON tailscaleServiceNames)} \
@@ -187,14 +213,14 @@ in {
             break
           fi
         else
-          service_approval_state="$service_status_json"
+          service_approval_state="$tailscale_json_error"
         fi
         ${pkgs.coreutils}/bin/sleep 2
       done
       if [ "$services_active" != true ]; then
         echo "Tailscale Services are configured locally but not all are approved and active." >&2
         echo "Current service-host state: $service_approval_state" >&2
-        echo "Define tcp:443 for svc:hb, svc:matterbridge, and svc:scrypted, then approve this host or configure service auto-approvers." >&2
+        echo "Define tcp:443 for ${lib.concatStringsSep ", " tailscaleServiceNames}, then approve this host or configure service auto-approvers." >&2
         exit 1
       fi
 
