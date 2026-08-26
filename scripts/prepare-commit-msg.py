@@ -533,19 +533,19 @@ def main() -> int:
         dbg("not a git repo; exiting")
         return 0
 
-    api_key = ensure_api_key()
-    if not api_key:
-        sys.stderr.write("commit-ai: no OPENAI_API_KEY; skipping\n")
-        sys.stderr.flush()
-        dbg("missing OPENAI_API_KEY")
-        return 0
-
     # Skip if commit message already has meaningful content.
     # Ignore trailers like Signed-off-by when using -s.
     if write_to_file and has_meaningful_content(target):
         sys.stderr.write("commit-ai: message already present; skipping\n")
         sys.stderr.flush()
         dbg("existing commit message detected; not overwriting")
+        return 0
+
+    api_key = ensure_api_key()
+    if not api_key:
+        sys.stderr.write("commit-ai: no OPENAI_API_KEY; skipping\n")
+        sys.stderr.flush()
+        dbg("missing OPENAI_API_KEY")
         return 0
 
     diff = get_diff()
