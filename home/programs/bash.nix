@@ -208,7 +208,7 @@ in {
           op-ensure-session my.1password.com || return $?
 
           local server token
-          server=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --format json | jq -er '.urls[0].href') || return $?
+          server=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --format json | jq -er '.urls[] | select(.label == "website") | .href') || return $?
           token=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --fields apikey --reveal) || return $?
 
           export HOME_ASSISTANT_URL="$server"
