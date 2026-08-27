@@ -240,6 +240,10 @@ in {
 
       ${tailscaleServiceCommands}
 
+      # Retired Service cleanup is best-effort and independent of whether all
+      # active Service advertisements have reached the control plane yet.
+      ${tailscaleRetiredServiceCommands}
+
       # Local config readback is not enough: the Services must also be defined
       # and this host approved by the tailnet control plane.
       services_active=false
@@ -272,9 +276,7 @@ in {
         exit 1
       fi
 
-      # Active Services converge before cleanup so a stale retired handler
-      # cannot block a backend update. All cleanup remains exact and scoped.
-      ${tailscaleRetiredServiceCommands}
+      # Legacy node-level cleanup remains exact and scoped.
       ${tailscaleRetiredLegacyServeCleanupCommands}
       ${tailscaleActiveLegacyServeCleanupCommands}
     '';
