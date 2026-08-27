@@ -18,7 +18,7 @@
   homeAssistantServiceTarget =
     if homeAssistantGreenAddress == null
     then {}
-    else {ha = "http://${homeAssistantGreenAddress}:${toString homeAssistantPort}";};
+    else {ha = "tls-terminated-tcp://${homeAssistantGreenAddress}:${toString homeAssistantPort}";};
   tailscaleServiceTargets =
     homeAssistantServiceTarget
     // {
@@ -44,21 +44,20 @@
   tailscaleRetiredServiceCommands =
     lib.concatMapStringsSep "\n" (service: ''
       # ${service}
-      if ! drain_output="$(${tailscale} serve drain ${lib.escapeShellArg service} 2>&1)"; then
-        echo "Unable to stop advertising retired Tailscale Service ${service}: $drain_output" >&2
-        exit 1
-      fi
-      if ! clear_output="$(${tailscale} serve clear ${lib.escapeShellArg service} 2>&1)"; then
-        echo "Unable to clear retired Tailscale Service ${service}: $clear_output" >&2
-        exit 1
-      fi
-      if ! capture_tailscale_json ${tailscale} serve get-config --service=${lib.escapeShellArg service}; then
-        echo "Unable to verify retired Tailscale Service ${service}: $tailscale_json_error" >&2
-        exit 1
-      fi
-      if ! printf '%s' "$tailscale_json" | ${jq} -e 'type == "object" and length == 0' >/dev/null; then
-        echo "Retired Tailscale Service ${service} still has local configuration." >&2
-        exit 1
+      if drain_output="$(${tailscale} serve drain ${lib.escapeShellArg service} 2>&1)"; then
+        if clear_output="$(${tailscale} serve clear ${lib.escapeShellArg service} 2>&1)"; then
+          if capture_tailscale_json ${tailscale} serve get-config --service=${lib.escapeShellArg service}; then
+            if ! printf '%s' "$tailscale_json" | ${jq} -e 'type == "object" and length == 0' >/dev/null; then
+              echo "Retired Tailscale Service ${service} still has local configuration; will retry." >&2
+            fi
+          else
+            echo "Unable to verify retired Tailscale Service ${service}; will retry: $tailscale_json_error" >&2
+          fi
+        else
+          echo "Unable to clear retired Tailscale Service ${service}; will retry: $clear_output" >&2
+        fi
+      else
+        echo "Unable to drain retired Tailscale Service ${service}; will retry: $drain_output" >&2
       fi
     '')
     retiredTailscaleServices;
@@ -75,6 +74,16 @@
       fi
       desired_service_config="$(${jq} -cS . ${lib.escapeShellArg service.configFile})"
       if [ "$current_service_config" != "$desired_service_config" ]; then
+        if ! printf '%s' "$current_service_config" | ${jq} -e 'type == "object" and length == 0' >/dev/null; then
+          if ! drain_output="$(${tailscale} serve drain ${lib.escapeShellArg service.serviceName} 2>&1)"; then
+            echo "Unable to drain Tailscale Service ${service.serviceName} before updating it: $drain_output" >&2
+            exit 1
+          fi
+          if ! clear_output="$(${tailscale} serve clear ${lib.escapeShellArg service.serviceName} 2>&1)"; then
+            echo "Unable to clear Tailscale Service ${service.serviceName} before updating it: $clear_output" >&2
+            exit 1
+          fi
+        fi
         if ! set_service_output="$(${tailscale} serve set-config \
           --service=${lib.escapeShellArg service.serviceName} \
           ${lib.escapeShellArg service.configFile} 2>&1)"; then
@@ -187,12 +196,6 @@ in {
         exit 1
       fi
 
-      # Retired services are drained before their local handlers are cleared.
-      # This is idempotent and prevents removed backends from lingering after
-      # a rebuild. When the Green address is unset, svc:ha is retired too.
-      ${tailscaleRetiredServiceCommands}
-      ${tailscaleRetiredLegacyServeCleanupCommands}
-
       # Tailscale Services have stable MagicDNS names such as
       # scrypted.<tailnet>.ts.net and can only be hosted by tagged nodes.
       if ! printf '%s' "$status_json" | ${jq} -e \
@@ -269,8 +272,10 @@ in {
         exit 1
       fi
 
-      # Retire only the exact raw TCP mappings from the superseded port-based
-      # design. Preserve every unrelated node handler and Tailscale Service.
+      # Active Services converge before cleanup so a stale retired handler
+      # cannot block a backend update. All cleanup remains exact and scoped.
+      ${tailscaleRetiredServiceCommands}
+      ${tailscaleRetiredLegacyServeCleanupCommands}
       ${tailscaleActiveLegacyServeCleanupCommands}
     '';
 
