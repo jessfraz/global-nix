@@ -15,25 +15,45 @@
   };
   ratgdoRoutes = lib.mapAttrsToList (_: address: "${address}/32") ratgdoDevices;
   serviceHostTag = "tag:home-server";
-  homeAssistantServiceTarget =
+  homeAssistantService =
     if homeAssistantGreenAddress == null
     then {}
-    else {ha = "tls-terminated-tcp://${homeAssistantGreenAddress}:${toString homeAssistantPort}";};
-  tailscaleServiceTargets =
-    homeAssistantServiceTarget
+    else {
+      ha = {
+        protocol = "tls-terminated-tcp";
+        destination = "${homeAssistantGreenAddress}:${toString homeAssistantPort}";
+      };
+    };
+  tailscaleServiceDefinitions =
+    homeAssistantService
     // {
-      scrypted = "https+insecure://127.0.0.1:${toString servicePorts.scrypted}";
+      scrypted = {
+        protocol = "https+insecure";
+        destination = "127.0.0.1:${toString servicePorts.scrypted}";
+      };
     }
-    // lib.mapAttrs (_: address: "tls-terminated-tcp://${address}:80") ratgdoDevices;
-  tailscaleServices =
-    lib.mapAttrs (name: target: {
-      serviceName = "svc:${name}";
-      configFile = pkgs.writeText "tailscale-service-${name}.json" (builtins.toJSON {
-        version = "0.0.1";
-        endpoints."tcp:443" = target;
-      });
+    // lib.mapAttrs (_: address: {
+      protocol = "tls-terminated-tcp";
+      destination = "${address}:80";
     })
-    tailscaleServiceTargets;
+    ratgdoDevices;
+  tailscaleServices =
+    lib.mapAttrs (
+      name: definition: let
+        serviceName = "svc:${name}";
+        configFile = pkgs.writeText "tailscale-service-${name}.json" (builtins.toJSON {
+          version = "0.0.1";
+          endpoints."tcp:443" = "${definition.protocol}://${definition.destination}";
+        });
+        configureCommand =
+          if definition.protocol == "tls-terminated-tcp"
+          then "${tailscale} serve --service=${lib.escapeShellArg serviceName} --tls-terminated-tcp=443 ${lib.escapeShellArg "tcp://${definition.destination}"}"
+          else "${tailscale} serve set-config --service=${lib.escapeShellArg serviceName} ${lib.escapeShellArg configFile}";
+      in {
+        inherit serviceName configFile configureCommand;
+      }
+    )
+    tailscaleServiceDefinitions;
   tailscaleServiceNames = lib.mapAttrsToList (_: service: service.serviceName) tailscaleServices;
   advertisedRoutes = lib.concatStringsSep "," ratgdoRoutes;
   jq = lib.getExe pkgs.jq;
@@ -84,10 +104,8 @@
             exit 1
           fi
         fi
-        if ! set_service_output="$(${tailscale} serve set-config \
-          --service=${lib.escapeShellArg service.serviceName} \
-          ${lib.escapeShellArg service.configFile} 2>&1)"; then
-          echo "Unable to configure Tailscale Service ${service.serviceName}: $set_service_output" >&2
+        if ! configure_service_output="$(${service.configureCommand} 2>&1)"; then
+          echo "Unable to configure Tailscale Service ${service.serviceName}: $configure_service_output" >&2
           exit 1
         fi
 
@@ -149,11 +167,12 @@
   tailscaleRetiredLegacyServeCleanupCommands = legacyServeCleanupCommands retiredLegacyServePorts;
   tailscaleActiveLegacyServeCleanupCommands = legacyServeCleanupCommands servicePorts;
 in {
-  services.tailscale.enable = true;
-  launchd.daemons.tailscaled.serviceConfig.KeepAlive = true;
+  # The sandboxed GUI owns this Mac's tailnet identity. Do not start a second,
+  # unauthenticated nix-darwin tailscaled alongside it.
+  services.tailscale.enable = false;
 
-  # Reconcile settings after tailscaled is authenticated. The failed-exit
-  # keepalive lets a fresh machine wait for its one-time `tailscale up` login.
+  # Reconcile settings after the GUI-managed tailscaled is authenticated. The
+  # failed-exit keepalive lets a fresh machine wait for its one-time login.
   launchd.daemons.tailscale-home-server = {
     script = ''
       set -euo pipefail
@@ -221,8 +240,7 @@ in {
       if ! printf '%s' "$prefs_json" | ${jq} -e \
         --arg hostname ${lib.escapeShellArg hostname} \
         --argjson routes ${lib.escapeShellArg (builtins.toJSON ratgdoRoutes)} \
-        '.ssh == true
-          and ."advertise-exit-node" == false
+        '."advertise-exit-node" == false
           and ."shields-up" == false
           and .hostname == $hostname
           and (
@@ -234,8 +252,7 @@ in {
           --advertise-exit-node=false \
           --advertise-routes=${lib.escapeShellArg advertisedRoutes} \
           --hostname=${lib.escapeShellArg hostname} \
-          --shields-up=false \
-          --ssh=true
+          --shields-up=false
       fi
 
       ${tailscaleServiceCommands}
