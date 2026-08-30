@@ -196,11 +196,19 @@ in {
       alias fetch-unifi="fetch-unifi-keys"
       alias fetch-ubiquiti="fetch-unifi-keys"
 
+      function fetch-tailscale-key() {
+          op-ensure-session my.1password.com || return $?
+
+          local api_key
+          api_key=$(op --account my.1password.com item get "tailscale.com" --fields apikey --reveal) || return $?
+          export TAILSCALE_API_KEY="$api_key"
+      }
+
       function fetch-home-assistant() {
           op-ensure-session my.1password.com || return $?
 
           local server token
-          server="http://192.168.1.80:8123"
+          server=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --format json | jq -er '.urls[] | select(.label == "website") | .href') || return $?
           token=$(op --account my.1password.com item get --vault Private "5ggad4sew5hun2qpppoiu47xvu" --fields apikey --reveal) || return $?
 
           export HOME_ASSISTANT_URL="$server"
@@ -262,6 +270,12 @@ in {
           export DATABASE_ROOT_CERT_PATH="${config.home.homeDirectory}/.cockroach/ca.crt"
       }
 
+      function vault-login() {
+          op-ensure-session kittycadinc.1password.com || return $?
+          export VAULT_ADDR="http://vault.hawk-dinosaur.ts.net"
+          export GITHUB_VAULT_TOKEN=$(op --account kittycadinc.1password.com item get --vault Employee "GitHub Token Vault" --fields credential --reveal)
+          echo $GITHUB_VAULT_TOKEN | vault login -method=github token=-
+      }
     '';
 
     # Fix for https://github.com/nix-community/home-manager/issues/5997

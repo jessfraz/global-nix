@@ -144,6 +144,12 @@
   };
 
   services = {
+    tailscale = {
+      enable = true;
+
+      extraUpFlags = ["--ssh"];
+    };
+
     openssh = {
       enable = true;
       settings = {

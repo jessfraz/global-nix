@@ -355,6 +355,7 @@
         ])
         ++ switchboardClis
         ++ (with pkgs; [
+          tailscale
           tree
           uv
           vault
