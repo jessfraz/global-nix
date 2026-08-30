@@ -1,12 +1,10 @@
 {
-  homeAssistantGreenAddress,
-  homeAssistantPort,
-}: {
   lib,
   pkgs,
   hostname,
   ...
 }: let
+  retiredHomeAssistantPort = 8123;
   ratgdoDevices = {
     ratgdo-big-garage = "192.168.1.58";
     ratgdo-small-garage = "192.168.1.12";
@@ -14,18 +12,8 @@
   };
   ratgdoRoutes = lib.mapAttrsToList (_: address: "${address}/32") ratgdoDevices;
   serviceHostTag = "tag:home-server";
-  homeAssistantService =
-    if homeAssistantGreenAddress == null
-    then {}
-    else {
-      ha = {
-        protocol = "tls-terminated-tcp";
-        destination = "${homeAssistantGreenAddress}:${toString homeAssistantPort}";
-      };
-    };
   tailscaleServiceDefinitions =
-    homeAssistantService
-    // lib.mapAttrs (_: address: {
+    lib.mapAttrs (_: address: {
       protocol = "tls-terminated-tcp";
       destination = "${address}:80";
     })
@@ -51,9 +39,7 @@
   advertisedRoutes = lib.concatStringsSep "," ratgdoRoutes;
   jq = lib.getExe pkgs.jq;
   tailscale = lib.getExe pkgs.tailscale;
-  retiredTailscaleServices =
-    ["svc:hb" "svc:matterbridge" "svc:scrypted"]
-    ++ lib.optional (homeAssistantGreenAddress == null) "svc:ha";
+  retiredTailscaleServices = ["svc:ha" "svc:hb" "svc:matterbridge" "svc:scrypted"];
   tailscaleRetiredServiceCommands =
     lib.concatMapStringsSep "\n" (service: ''
       # ${service}
@@ -124,7 +110,7 @@
     '')
     tailscaleServices);
   retiredLegacyServePorts = {
-    homeAssistant = homeAssistantPort;
+    homeAssistant = retiredHomeAssistantPort;
     homebridge = 8581;
     matterbridge = 8283;
     scrypted = 10443;
@@ -248,11 +234,14 @@ in {
           --shields-up=false
       fi
 
-      ${tailscaleServiceCommands}
-
-      # Retired Service cleanup is best-effort and independent of whether all
-      # active Service advertisements have reached the control plane yet.
+      # Retired cleanup is best-effort and independent of active Service
+      # configuration, advertisement, approval, or control-plane health.
       ${tailscaleRetiredServiceCommands}
+
+      # Legacy node-level cleanup remains exact and scoped.
+      ${tailscaleRetiredLegacyServeCleanupCommands}
+
+      ${tailscaleServiceCommands}
 
       # Local config readback is not enough: the Services must also be defined
       # and this host approved by the tailnet control plane.
@@ -285,9 +274,6 @@ in {
         echo "Define tcp:443 for ${lib.concatStringsSep ", " tailscaleServiceNames}, then approve this host or configure service auto-approvers." >&2
         exit 1
       fi
-
-      # Legacy node-level cleanup remains exact and scoped.
-      ${tailscaleRetiredLegacyServeCleanupCommands}
     '';
 
     serviceConfig = {

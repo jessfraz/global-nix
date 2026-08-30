@@ -1,12 +1,6 @@
-{...}: let
-  # Home Assistant Green's UniFi-reserved IPv4 address.
-  homeAssistantGreenAddress = "192.168.1.80";
-  homeAssistantPort = 8123;
-in {
+{...}: {
   imports = [
-    (import ./tailscale-home-server.nix {
-      inherit homeAssistantGreenAddress homeAssistantPort;
-    })
+    ./tailscale-home-server.nix
     ./coredns.nix
     ./containers/certbot-renew.nix
     ./containers/nginx.nix
