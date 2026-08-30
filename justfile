@@ -49,9 +49,6 @@ apply-macmini-nix-limits:
 update-codex:
     python3 scripts/update-pins.py codex
 
-update-scrypted:
-    python3 scripts/update-pins.py scrypted
-
 update-mole:
     python3 scripts/update-pins.py mole
 

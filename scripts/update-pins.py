@@ -7,16 +7,12 @@ import sys
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from shutil import which
-from urllib.request import urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
 FLAKE_LOCK_PATH = REPO_ROOT / "flake.lock"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
 RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
-SCRYPTED_PATH = REPO_ROOT / "pkgs" / "scrypted.nix"
-
-FAKE_SRI = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 
 class UpdateError(RuntimeError):
@@ -100,11 +96,6 @@ def prefetch_sri(url: str) -> str:
         sri_result = run(["nix", "hash", "to-sri", "--type", "sha256", base32_hash])
         return sri_result.stdout.strip()
     raise UpdateError("nix or nix-prefetch-url is required to compute source hashes.")
-
-
-def fetch_json(url: str) -> dict[str, object]:
-    with urlopen(url) as response:
-        return json.load(response)
 
 
 def update_codex() -> None:
@@ -212,100 +203,6 @@ def update_zoo() -> None:
             FLAKE_LOCK_PATH.write_text(original_lock, encoding="utf-8")
 
     print(f"zoo -> {version}")
-
-
-def compute_scrypted_npm_hash() -> str:
-    if not which("nix"):
-        raise UpdateError("nix is required to compute Scrypted npmDepsHash.")
-
-    expr = (
-        "let\n"
-        "  flake = builtins.getFlake (toString ./.);\n"
-        "  pkgs = import flake.inputs.nixpkgs {\n"
-        "    system = builtins.currentSystem;\n"
-        "  };\n"
-        "in pkgs.callPackage ./pkgs/scrypted.nix {}"
-    )
-    build = subprocess.run(
-        ["nix", "build", "--impure", "--expr", expr, "--no-link"],
-        text=True,
-        capture_output=True,
-        cwd=REPO_ROOT,
-        check=False,
-    )
-    output = f"{build.stdout}\n{build.stderr}"
-    if build.returncode == 0:
-        raise UpdateError(
-            "nix build succeeded, expected Scrypted npmDepsHash mismatch."
-        )
-
-    matches = re.findall(r"sha256-[A-Za-z0-9+/=]+", output)
-    if not matches:
-        raise UpdateError("Failed to locate Scrypted npmDepsHash in nix build output.")
-    return matches[-1]
-
-
-def update_scrypted() -> None:
-    latest = fetch_json("https://registry.npmjs.org/@scrypted%2Fserver/latest")
-    latest_version = latest.get("version")
-    if not isinstance(latest_version, str) or not latest_version:
-        raise UpdateError(
-            "Could not find latest @scrypted/server version in npm registry response."
-        )
-
-    original_text = SCRYPTED_PATH.read_text(encoding="utf-8")
-
-    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
-    if not version_match:
-        raise UpdateError("Could not find Scrypted version in pkgs/scrypted.nix")
-
-    current_version = version_match.group(1)
-    if current_version == latest_version:
-        print(f"scrypted already at {latest_version}")
-        return
-
-    src_url = (
-        f"https://github.com/koush/scrypted/archive/refs/tags/v{latest_version}.tar.gz"
-    )
-    src_hash = prefetch_sri(src_url)
-
-    updated = replace_one(
-        r'^(\s*version = ")[^"]+(";)',
-        rf"\g<1>{latest_version}\g<2>",
-        original_text,
-        "scrypted version",
-    )
-    updated = replace_one(
-        r'^(\s*srcHash = ")[^"]+(";)',
-        rf"\g<1>{src_hash}\g<2>",
-        updated,
-        "scrypted srcHash",
-    )
-
-    with_fake = replace_one(
-        r"^(\s*npmDepsHash = ).*?;",
-        rf'\g<1>"{FAKE_SRI}";',
-        updated,
-        "scrypted npmDepsHash",
-    )
-
-    SCRYPTED_PATH.write_text(with_fake, encoding="utf-8")
-
-    try:
-        npm_hash = compute_scrypted_npm_hash()
-    except Exception:
-        SCRYPTED_PATH.write_text(original_text, encoding="utf-8")
-        raise
-
-    final_text = replace_one(
-        r"^(\s*npmDepsHash = ).*?;",
-        rf'\g<1>"{npm_hash}";',
-        updated,
-        "scrypted npmDepsHash",
-    )
-
-    SCRYPTED_PATH.write_text(final_text, encoding="utf-8")
-    print(f"scrypted -> {latest_version}")
 
 
 def update_mole() -> None:
@@ -418,7 +315,6 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
             "codex",
             "mole",
             "ramp",
-            "scrypted",
             "zoo",
             "all",
         ],
@@ -435,15 +331,12 @@ def main(argv: Sequence[str]) -> int:
             "codex",
             "mole",
             "ramp",
-            "scrypted",
             "zoo",
         }
 
     try:
         if "codex" in targets:
             update_codex()
-        if "scrypted" in targets:
-            update_scrypted()
         if "mole" in targets:
             update_mole()
         if "ramp" in targets:

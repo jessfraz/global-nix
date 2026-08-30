@@ -75,7 +75,7 @@ jobs:
             exit 1
           }
 
-          allowed_files='^(flake\.lock|flake\.nix|pkgs/(mole|ramp-cli|scrypted)\.nix)$'
+          allowed_files='^(flake\.lock|flake\.nix|pkgs/(mole|ramp-cli)\.nix)$'
           changed_files="$(gh api --paginate "repos/${GH_REPO}/pulls/${pr_number}/files" \
             --jq '.[].filename')"
           if [[ -z "${changed_files}" ]]; then
