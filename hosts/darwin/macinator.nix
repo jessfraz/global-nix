@@ -6,6 +6,10 @@
 }: let
   autoDndScript = pkgs.writeShellScript "auto-dnd" (builtins.readFile ./auto-dnd.sh);
 in {
+  environment.systemPackages = [
+    pkgs.wireshark
+  ];
+
   launchd.user.agents."${hostname}.auto-dnd" = {
     serviceConfig = {
       ProgramArguments = ["${autoDndScript}"];
