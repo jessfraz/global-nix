@@ -89,7 +89,6 @@
       gnome-logs
       gnome-maps
       gnome-music
-      gnome-photos
       gnome-screenshot
       gnome-system-monitor
       gnome-tour
