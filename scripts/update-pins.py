@@ -138,6 +138,27 @@ def update_codex() -> None:
         print("nix not found, skipping flake.lock update")
 
 
+def validate_zoo_vendor(package_expr: str) -> None:
+    build_command = [
+        "nix",
+        "build",
+        "--impure",
+        "--expr",
+        f"({package_expr}).cargoDeps",
+        "--no-link",
+    ]
+
+    for command, label in (
+        (build_command, "build"),
+        ([*build_command, "--rebuild"], "reproducibility validation"),
+    ):
+        vendor = run(command, check=False, cwd=REPO_ROOT)
+        if vendor.returncode != 0:
+            detail = vendor.stderr.strip().splitlines()
+            message = detail[-1] if detail else "unknown Nix build failure"
+            raise UpdateError(f"Zoo Cargo vendor {label} failed: {message}")
+
+
 def update_zoo() -> None:
     if not which("nix"):
         raise UpdateError("nix is required to update the Zoo flake input.")
@@ -163,23 +184,7 @@ def update_zoo() -> None:
                 "let flake = builtins.getFlake (toString ./.); "
                 "in flake.inputs.zoo-cli.packages.${builtins.currentSystem}.zoo"
             )
-            vendor = run(
-                [
-                    "nix",
-                    "build",
-                    "--impure",
-                    "--expr",
-                    f"({package_expr}).cargoDeps",
-                    "--no-link",
-                    "--rebuild",
-                ],
-                check=False,
-                cwd=REPO_ROOT,
-            )
-            if vendor.returncode != 0:
-                detail = vendor.stderr.strip().splitlines()
-                message = detail[-1] if detail else "unknown Nix build failure"
-                raise UpdateError(f"Zoo Cargo vendor hash validation failed: {message}")
+            validate_zoo_vendor(package_expr)
 
             version = run(
                 [
