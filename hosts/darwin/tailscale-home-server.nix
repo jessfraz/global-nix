@@ -8,7 +8,7 @@
   ratgdoDevices = {
     ratgdo-big-garage = "192.168.1.58";
     ratgdo-small-garage = "192.168.1.12";
-    ratgdo-gate = "192.168.1.190";
+    ratgdo-gate = "192.168.1.241";
   };
   ratgdoRoutes = lib.mapAttrsToList (_: address: "${address}/32") ratgdoDevices;
   serviceHostTag = "tag:home-server";
