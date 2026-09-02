@@ -393,6 +393,16 @@
       default = mkPackages system;
     });
 
+    checks.aarch64-darwin.tailscale-home-server-launch-agent = let
+      config = self.darwinConfigurations.macmini.config;
+      pkgs = nixpkgs.legacyPackages.aarch64-darwin;
+    in
+      assert builtins.hasAttr "tailscale-home-server" config.launchd.user.agents;
+      assert !(builtins.hasAttr "tailscale-home-server" config.launchd.daemons);
+        pkgs.runCommand "tailscale-home-server-launch-agent-check" {} ''
+          touch "$out"
+        '';
+
     # NixOS configurations
     nixosConfigurations = {
       system76 = nixpkgs.lib.nixosSystem {

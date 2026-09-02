@@ -1,4 +1,5 @@
 {
+  homeDir,
   lib,
   pkgs,
   hostname,
@@ -150,9 +151,12 @@ in {
   # unauthenticated nix-darwin tailscaled alongside it.
   services.tailscale.enable = false;
 
-  # Reconcile settings after the GUI-managed tailscaled is authenticated. The
-  # failed-exit keepalive lets a fresh machine wait for its one-time login.
-  launchd.daemons.tailscale-home-server = {
+  # The App Store client exposes its LocalAPI in the logged-in user's launchd
+  # domain. Keep this as a user LaunchAgent: a root LaunchDaemon (or `sudo
+  # tailscale`) looks for /var/run/tailscaled.socket and cannot reach the
+  # GUI-owned daemon. The failed-exit keepalive lets a fresh machine wait for
+  # its one-time login.
+  launchd.user.agents.tailscale-home-server = {
     script = ''
       set -euo pipefail
 
@@ -280,6 +284,8 @@ in {
       KeepAlive.SuccessfulExit = false;
       ProcessType = "Background";
       RunAtLoad = true;
+      StandardErrorPath = "${homeDir}/Library/Logs/tailscale-home-server.err";
+      StandardOutPath = "${homeDir}/Library/Logs/tailscale-home-server.log";
       StartInterval = 300;
       ThrottleInterval = 30;
     };
