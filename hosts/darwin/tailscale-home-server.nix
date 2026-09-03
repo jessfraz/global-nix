@@ -15,13 +15,15 @@
   };
   serviceHostTag = "tag:home-server";
   tailscaleServiceDefinitions = {
-    # Epson redirects plaintext HTTP to HTTPS. Proxy its self-signed HTTPS
-    # endpoint through a localhost relay so the sandboxed macOS Tailscale app
-    # does not need to reach a remote address on a non-default interface.
+    # Epson redirects plaintext HTTP to HTTPS. Let Tailscale terminate the
+    # tailnet certificate, then use a localhost relay to wrap the plaintext
+    # request in TLS for the printer. This avoids both the sandboxed app's
+    # non-default-interface limitation and the Go proxy's lack of support for
+    # the printer's legacy static-RSA TLS cipher.
     epson-tm-m30 = {
       address = epsonAddress;
       destination = "127.0.0.1:${toString epsonRelayPort}";
-      protocol = "https+insecure";
+      protocol = "tls-terminated-tcp";
     };
     ratgdo-big-garage = mkPlainHttpService "192.168.1.58";
     ratgdo-small-garage = mkPlainHttpService "192.168.1.12";
@@ -164,14 +166,15 @@ in {
 
   # The sandboxed macOS Tailscale app cannot reliably proxy to a remote target
   # reached through a non-default interface. Keep the workaround loopback-only;
-  # socat itself makes the LAN connection to the printer. Run it as a root
-  # daemon because macOS grants launchd daemons local-network access while user
-  # agents require an interactive privacy grant.
+  # socat itself makes the TLS connection to the printer while Tailscale sends
+  # it plaintext HTTP after terminating the tailnet certificate. Run it as a
+  # root daemon because macOS grants launchd daemons local-network access while
+  # user agents require an interactive privacy grant.
   launchd.daemons.epson-tm-m30-relay = {
     script = ''
       exec ${pkgs.socat}/bin/socat \
         TCP4-LISTEN:${toString epsonRelayPort},bind=127.0.0.1,reuseaddr,fork \
-        TCP4:${epsonAddress}:443
+        OPENSSL:${epsonAddress}:443,verify=0,nosni
     '';
 
     serviceConfig = {

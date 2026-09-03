@@ -396,10 +396,12 @@
       assert builtins.hasAttr "epson-tm-m30-relay" config.launchd.daemons;
       assert !(builtins.hasAttr "epson-tm-m30-relay" config.launchd.user.agents);
       assert !(builtins.hasAttr "tailscale-home-server" config.launchd.daemons);
-      assert nixpkgs.lib.hasInfix "https+insecure://127.0.0.1:19443" script;
+      assert nixpkgs.lib.hasInfix "--tls-terminated-tcp=443" script;
+      assert nixpkgs.lib.hasInfix "tcp://127.0.0.1:19443" script;
+      assert !(nixpkgs.lib.hasInfix "https+insecure://127.0.0.1:19443" script);
       assert nixpkgs.lib.hasInfix "10.42.9.7/32" script;
       assert nixpkgs.lib.hasInfix "TCP4-LISTEN:19443,bind=127.0.0.1" relayScript;
-      assert nixpkgs.lib.hasInfix "TCP4:10.42.9.7:443" relayScript;
+      assert nixpkgs.lib.hasInfix "OPENSSL:10.42.9.7:443,verify=0,nosni" relayScript;
         pkgs.runCommand "tailscale-home-server-launch-agent-check" {} ''
           touch "$out"
         '';
