@@ -40,11 +40,6 @@
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
-    googleworkspace-cli = {
-      url = "github:googleworkspace/cli";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     codex = {
       url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.151.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -72,7 +67,6 @@
     dotfiles,
     dotvim,
     zoo-cli,
-    googleworkspace-cli,
     codex,
     switchboard,
     fh,
@@ -221,7 +215,6 @@
         ];
       };
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
-      googleWorkspaceCli = googleworkspace-cli.packages.${pkgs.stdenv.hostPlatform.system}.default;
       stripeCli = pkgs."stripe-cli";
       codexRustPlatform = pkgs.makeRustPlatform {
         cargo = rustBin.minimal;
@@ -338,7 +331,7 @@
           findutils
           git
           git-lfs
-          googleWorkspaceCli
+          gws
           gnumake
           gnupg
           gnused
@@ -397,10 +390,15 @@
       config = self.darwinConfigurations.macmini.config;
       pkgs = nixpkgs.legacyPackages.aarch64-darwin;
       script = config.launchd.user.agents.tailscale-home-server.script;
+      relayScript = config.launchd.user.agents.epson-tm-m30-relay.script;
     in
       assert builtins.hasAttr "tailscale-home-server" config.launchd.user.agents;
+      assert builtins.hasAttr "epson-tm-m30-relay" config.launchd.user.agents;
       assert !(builtins.hasAttr "tailscale-home-server" config.launchd.daemons);
-      assert nixpkgs.lib.hasInfix "https+insecure://10.42.9.7:443" script;
+      assert nixpkgs.lib.hasInfix "https+insecure://127.0.0.1:19443" script;
+      assert nixpkgs.lib.hasInfix "10.42.9.7/32" script;
+      assert nixpkgs.lib.hasInfix "TCP4-LISTEN:19443,bind=127.0.0.1" relayScript;
+      assert nixpkgs.lib.hasInfix "TCP4:10.42.9.7:443" relayScript;
         pkgs.runCommand "tailscale-home-server-launch-agent-check" {} ''
           touch "$out"
         '';

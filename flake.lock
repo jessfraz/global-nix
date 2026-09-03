@@ -94,11 +94,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1788197321,
-        "narHash": "sha256-P4pjcmXkhM4/1HVsrd2DnzgglyclUonFr0+eXNljdmI=",
+        "lastModified": 1788462963,
+        "narHash": "sha256-GFBpNvK0quKvKPO8P1bUoHdb5WIUiweWFe31S5qYEFs=",
         "ref": "refs/heads/main",
-        "rev": "dd418043ca71e8fa8e47aad2192fbd403d35b29d",
-        "revCount": 870,
+        "rev": "1ff7068e170273e419cfd843738f20a3820f373b",
+        "revCount": 871,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
@@ -209,24 +209,6 @@
         "type": "github"
       }
     },
-    "flake-utils": {
-      "inputs": {
-        "systems": "systems_2"
-      },
-      "locked": {
-        "lastModified": 1731533236,
-        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "type": "github"
-      }
-    },
     "flakeCompat": {
       "flake": false,
       "locked": {
@@ -263,27 +245,6 @@
       "original": {
         "owner": "ghostty-org",
         "repo": "ghostty",
-        "type": "github"
-      }
-    },
-    "googleworkspace-cli": {
-      "inputs": {
-        "flake-utils": "flake-utils",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1774983075,
-        "narHash": "sha256-YyNIHbyZrLlXYtWxZY8Um19MsnLharmS+nWGWO89fsA=",
-        "owner": "googleworkspace",
-        "repo": "cli",
-        "rev": "a3768d0e82ad83cca2da97724e46bea4ff0e6dbd",
-        "type": "github"
-      },
-      "original": {
-        "owner": "googleworkspace",
-        "repo": "cli",
         "type": "github"
       }
     },
@@ -513,7 +474,6 @@
         "dotvim": "dotvim",
         "fh": "fh",
         "ghostty": "ghostty",
-        "googleworkspace-cli": "googleworkspace-cli",
         "home-manager": "home-manager_4",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs_4",
@@ -599,11 +559,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1784091390,
-        "narHash": "sha256-aILAwrBQPhKldL98N8lmsbfst3OPtbMM4vT2VXn40/Y=",
+        "lastModified": 1788456718,
+        "narHash": "sha256-TxHC0sBjV2pmsBLKAX02JTXlye/EOLt6Do+WNtGofGw=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "a7887636a3959168bd1ba7ef24a8a70b168dcb56",
+        "rev": "0b20a18e84d9164464739189c2b2a1b00f6f0e4b",
         "type": "github"
       },
       "original": {
@@ -664,11 +624,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787724240,
-        "narHash": "sha256-7hknYvePJJ7eqqu1DcYb239KfucCqyZVR40tGOekyls=",
+        "lastModified": 1788462979,
+        "narHash": "sha256-6lO/sFcA6ze2OxsJAFkA3QMEc54b6Xl5YqMYqpP+9Ko=",
         "owner": "jessfraz",
         "repo": "switchboard",
-        "rev": "97738b171c5201cf488c9cd59ea74a9ad45ca20a",
+        "rev": "4e71a919ebde806c602f4d10c5466f6668894b50",
         "type": "github"
       },
       "original": {
@@ -679,21 +639,6 @@
     },
     "systems": {
       "flake": false,
-      "locked": {
-        "lastModified": 1681028828,
-        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
-        "owner": "nix-systems",
-        "repo": "default",
-        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-systems",
-        "repo": "default",
-        "type": "github"
-      }
-    },
-    "systems_2": {
       "locked": {
         "lastModified": 1681028828,
         "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",

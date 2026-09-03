@@ -5,20 +5,23 @@
   hostname,
   ...
 }: let
+  epsonAddress = "10.42.9.7";
+  epsonRelayPort = 19443;
   retiredHomeAssistantPort = 8123;
   mkPlainHttpService = address: {
     inherit address;
+    destination = "${address}:80";
     protocol = "tls-terminated-tcp";
-    port = 80;
   };
   serviceHostTag = "tag:home-server";
   tailscaleServiceDefinitions = {
     # Epson redirects plaintext HTTP to HTTPS. Proxy its self-signed HTTPS
-    # endpoint so the public Tailscale URL does not redirect back to itself.
+    # endpoint through a localhost relay so the sandboxed macOS Tailscale app
+    # does not need to reach a remote address on a non-default interface.
     epson-tm-m30 = {
-      address = "10.42.9.7";
+      address = epsonAddress;
+      destination = "127.0.0.1:${toString epsonRelayPort}";
       protocol = "https+insecure";
-      port = 443;
     };
     ratgdo-big-garage = mkPlainHttpService "192.168.1.58";
     ratgdo-small-garage = mkPlainHttpService "192.168.1.12";
@@ -29,7 +32,7 @@
     lib.mapAttrs (
       name: definition: let
         serviceName = "svc:${name}";
-        destination = "${definition.address}:${toString definition.port}";
+        inherit (definition) destination;
         configFile = pkgs.writeText "tailscale-service-${name}.json" (builtins.toJSON {
           version = "0.0.1";
           endpoints."tcp:443" = "${definition.protocol}://${destination}";
@@ -49,7 +52,7 @@
   advertisedRoutes = lib.concatStringsSep "," httpDeviceRoutes;
   jq = lib.getExe pkgs.jq;
   tailscale = lib.getExe pkgs.tailscale;
-  retiredTailscaleServices = ["svc:ha" "svc:hb" "svc:matterbridge" "svc:scrypted"];
+  retiredTailscaleServices = ["svc:ha" "svc:hb" "svc:matterbridge"];
   tailscaleRetiredServiceCommands =
     lib.concatMapStringsSep "\n" (service: ''
       # ${service}
@@ -123,7 +126,6 @@
     homeAssistant = retiredHomeAssistantPort;
     homebridge = 8581;
     matterbridge = 8283;
-    scrypted = 10443;
   };
   legacyServeCleanupCommands = ports:
     lib.concatStringsSep "\n" (lib.mapAttrsToList (name: port: ''
@@ -159,6 +161,26 @@ in {
   # The sandboxed GUI owns this Mac's tailnet identity. Do not start a second,
   # unauthenticated nix-darwin tailscaled alongside it.
   services.tailscale.enable = false;
+
+  # The sandboxed macOS Tailscale app cannot reliably proxy to a remote target
+  # reached through a non-default interface. Keep the workaround loopback-only;
+  # socat itself makes the LAN connection to the printer.
+  launchd.user.agents.epson-tm-m30-relay = {
+    script = ''
+      exec ${pkgs.socat}/bin/socat \
+        TCP4-LISTEN:${toString epsonRelayPort},bind=127.0.0.1,reuseaddr,fork \
+        TCP4:${epsonAddress}:443
+    '';
+
+    serviceConfig = {
+      KeepAlive = true;
+      ProcessType = "Background";
+      RunAtLoad = true;
+      StandardErrorPath = "${homeDir}/Library/Logs/epson-tm-m30-relay.err";
+      StandardOutPath = "${homeDir}/Library/Logs/epson-tm-m30-relay.log";
+      ThrottleInterval = 30;
+    };
+  };
 
   # The App Store client exposes its LocalAPI in the logged-in user's launchd
   # domain. Keep this as a user LaunchAgent: a root LaunchDaemon (or `sudo
