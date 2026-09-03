@@ -6,19 +6,20 @@
   ...
 }: let
   retiredHomeAssistantPort = 8123;
-  ratgdoDevices = {
+  httpDevices = {
+    epson-tm-m30 = "10.42.9.7";
     ratgdo-big-garage = "192.168.1.58";
     ratgdo-small-garage = "192.168.1.12";
     ratgdo-gate = "192.168.1.241";
   };
-  ratgdoRoutes = lib.mapAttrsToList (_: address: "${address}/32") ratgdoDevices;
+  httpDeviceRoutes = lib.mapAttrsToList (_: address: "${address}/32") httpDevices;
   serviceHostTag = "tag:home-server";
   tailscaleServiceDefinitions =
     lib.mapAttrs (_: address: {
       protocol = "tls-terminated-tcp";
       destination = "${address}:80";
     })
-    ratgdoDevices;
+    httpDevices;
   tailscaleServices =
     lib.mapAttrs (
       name: definition: let
@@ -37,7 +38,7 @@
     )
     tailscaleServiceDefinitions;
   tailscaleServiceNames = lib.mapAttrsToList (_: service: service.serviceName) tailscaleServices;
-  advertisedRoutes = lib.concatStringsSep "," ratgdoRoutes;
+  advertisedRoutes = lib.concatStringsSep "," httpDeviceRoutes;
   jq = lib.getExe pkgs.jq;
   tailscale = lib.getExe pkgs.tailscale;
   retiredTailscaleServices = ["svc:ha" "svc:hb" "svc:matterbridge" "svc:scrypted"];
@@ -222,7 +223,7 @@ in {
       fi
       if ! printf '%s' "$prefs_json" | ${jq} -e \
         --arg hostname ${lib.escapeShellArg hostname} \
-        --argjson routes ${lib.escapeShellArg (builtins.toJSON ratgdoRoutes)} \
+        --argjson routes ${lib.escapeShellArg (builtins.toJSON httpDeviceRoutes)} \
         '."advertise-exit-node" == false
           and ."shields-up" == false
           and .hostname == $hostname
