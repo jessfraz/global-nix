@@ -4,7 +4,9 @@ import json
 import re
 import subprocess
 import sys
-from collections.abc import Iterable, Sequence
+import tomllib
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from shutil import which
 
@@ -17,6 +19,13 @@ RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
 
 class UpdateError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class CargoGitDependency:
+    package_key: str
+    url: str
+    revision: str
 
 
 def run(
@@ -98,47 +107,82 @@ def prefetch_sri(url: str) -> str:
     raise UpdateError("nix or nix-prefetch-url is required to compute source hashes.")
 
 
-def update_codex() -> None:
-    tags = get_tags("https://github.com/openai/codex.git")
-    latest_tag = select_latest_tag(tags, preferred_prefixes=("rust-v",))
+def codex_git_dependencies(lock_text: str) -> list[CargoGitDependency]:
+    lock = tomllib.loads(lock_text)
+    packages = lock.get("package")
+    if not isinstance(packages, list):
+        raise UpdateError("Codex Cargo.lock has no package list.")
 
-    flake_text = FLAKE_PATH.read_text(encoding="utf-8")
-    if f"ref=refs/tags/{latest_tag}" in flake_text:
-        print(f"codex already at {latest_tag}")
-        return
+    dependencies_by_revision: dict[str, CargoGitDependency] = {}
+    for package in packages:
+        if not isinstance(package, dict):
+            raise UpdateError("Codex Cargo.lock contains an invalid package entry.")
 
-    pattern = (
-        r"(git\+https://github\.com/openai/codex\?ref=refs/tags/)([^&\"]+)([^\"]*)"
-    )
-    updated = replace_one(
-        pattern,
-        rf"\g<1>{latest_tag}\g<3>",
-        flake_text,
-        "codex tag",
-    )
+        source = package.get("source")
+        if not isinstance(source, str) or not source.startswith("git+"):
+            continue
 
-    FLAKE_PATH.write_text(updated, encoding="utf-8")
-    print(f"codex -> {latest_tag}")
+        location, separator, revision = source[4:].rpartition("#")
+        if not separator or not re.fullmatch(r"[0-9a-f]{40}", revision):
+            raise UpdateError(f"Unsupported Codex Cargo git source: {source}")
 
-    if which("nix"):
-        subprocess.run(
-            [
-                "nix",
-                "flake",
-                "update",
-                "codex",
-                "--option",
-                "warn-dirty",
-                "false",
-            ],
-            check=True,
-            cwd=REPO_ROOT,
+        url = location.partition("?")[0]
+        name = package.get("name")
+        version = package.get("version")
+        if not url or not isinstance(name, str) or not isinstance(version, str):
+            raise UpdateError(f"Invalid Codex Cargo git package: {package}")
+
+        dependency = CargoGitDependency(
+            package_key=f"{name}-{version}",
+            url=url,
+            revision=revision,
         )
-    else:
-        print("nix not found, skipping flake.lock update")
+        existing = dependencies_by_revision.get(revision)
+        if existing is not None and existing.url != dependency.url:
+            raise UpdateError(
+                f"Codex Cargo.lock uses revision {revision} from multiple repositories."
+            )
+        if existing is None or dependency.package_key < existing.package_key:
+            dependencies_by_revision[revision] = dependency
+
+    return sorted(dependencies_by_revision.values(), key=lambda item: item.package_key)
 
 
-def validate_zoo_vendor(package_expr: str) -> None:
+def prefetch_git_sri(dependency: CargoGitDependency) -> str:
+    expression = (
+        "builtins.fetchGit { "
+        f"url = {json.dumps(dependency.url)}; "
+        f"rev = {json.dumps(dependency.revision)}; "
+        "allRefs = true; submodules = true; }"
+    )
+    store_path = run(
+        ["nix", "eval", "--impure", "--raw", "--expr", expression]
+    ).stdout.strip()
+    if not store_path:
+        raise UpdateError(f"Nix returned no source path for {dependency.package_key}.")
+    return run(["nix", "hash", "path", store_path]).stdout.strip()
+
+
+def replace_codex_output_hashes(
+    flake_text: str, output_hashes: Mapping[str, str]
+) -> str:
+    entries = "".join(
+        f'            "{package_key}" = "{output_hashes[package_key]}";\n'
+        for package_key in sorted(output_hashes)
+    )
+    return replace_one(
+        (
+            r"(^ {10}outputHashes = \{\n)"
+            r'(?:^ {12}"[^\"]+" = "[^\"]+";\n)*'
+            r"(^ {10}\};)"
+        ),
+        rf"\g<1>{entries}\g<2>",
+        flake_text,
+        "Codex Cargo outputHashes",
+    )
+
+
+def validate_cargo_vendor(package_expr: str, package_name: str) -> None:
     build_command = [
         "nix",
         "build",
@@ -152,11 +196,97 @@ def validate_zoo_vendor(package_expr: str) -> None:
         (build_command, "build"),
         ([*build_command, "--rebuild"], "reproducibility validation"),
     ):
+        print(f"{package_name} Cargo vendor {label}", flush=True)
         vendor = run(command, check=False, cwd=REPO_ROOT)
         if vendor.returncode != 0:
             detail = vendor.stderr.strip().splitlines()
             message = detail[-1] if detail else "unknown Nix build failure"
-            raise UpdateError(f"Zoo Cargo vendor {label} failed: {message}")
+            raise UpdateError(f"{package_name} Cargo vendor {label} failed: {message}")
+
+
+def update_codex() -> None:
+    if not which("nix"):
+        raise UpdateError("nix is required to update Codex.")
+
+    tags = get_tags("https://github.com/openai/codex.git")
+    latest_tag = select_latest_tag(tags, preferred_prefixes=("rust-v",))
+    original_flake = FLAKE_PATH.read_text(encoding="utf-8")
+    original_lock = FLAKE_LOCK_PATH.read_text(encoding="utf-8")
+    tag_changed = f"ref=refs/tags/{latest_tag}" not in original_flake
+    succeeded = False
+    try:
+        if tag_changed:
+            updated = replace_one(
+                (
+                    r"(git\+https://github\.com/openai/codex\?"
+                    r"ref=refs/tags/)([^&\"]+)([^\"]*)"
+                ),
+                rf"\g<1>{latest_tag}\g<3>",
+                original_flake,
+                "codex tag",
+            )
+            FLAKE_PATH.write_text(updated, encoding="utf-8")
+            run(
+                [
+                    "nix",
+                    "flake",
+                    "update",
+                    "codex",
+                    "--option",
+                    "warn-dirty",
+                    "false",
+                ],
+                cwd=REPO_ROOT,
+            )
+
+        codex_path = run(
+            [
+                "nix",
+                "eval",
+                "--impure",
+                "--raw",
+                "--expr",
+                (
+                    "let flake = builtins.getFlake (toString ./.); "
+                    "in flake.inputs.codex.outPath"
+                ),
+            ],
+            cwd=REPO_ROOT,
+        ).stdout.strip()
+        cargo_lock_path = Path(codex_path) / "codex-rs" / "Cargo.lock"
+        if not cargo_lock_path.is_file():
+            raise UpdateError(f"Codex Cargo.lock not found at {cargo_lock_path}.")
+
+        output_hashes: dict[str, str] = {}
+        for dependency in codex_git_dependencies(
+            cargo_lock_path.read_text(encoding="utf-8")
+        ):
+            print(f"codex Cargo git -> {dependency.package_key}", flush=True)
+            output_hashes[dependency.package_key] = prefetch_git_sri(dependency)
+
+        flake_text = FLAKE_PATH.read_text(encoding="utf-8")
+        updated = replace_codex_output_hashes(flake_text, output_hashes)
+        if updated != flake_text:
+            FLAKE_PATH.write_text(updated, encoding="utf-8")
+
+        package_expr = (
+            "let flake = builtins.getFlake (toString ./.); "
+            "in flake.packages.${builtins.currentSystem}.codex"
+        )
+        validate_cargo_vendor(package_expr, "Codex")
+        succeeded = True
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or "unknown Nix command failure").strip()
+        raise UpdateError(f"Failed to update Codex: {detail}") from exc
+    finally:
+        if not succeeded:
+            FLAKE_PATH.write_text(original_flake, encoding="utf-8")
+            FLAKE_LOCK_PATH.write_text(original_lock, encoding="utf-8")
+
+    if tag_changed:
+        print(f"codex -> {latest_tag}")
+    else:
+        print(f"codex already at {latest_tag}")
 
 
 def update_zoo() -> None:
@@ -184,7 +314,7 @@ def update_zoo() -> None:
                 "let flake = builtins.getFlake (toString ./.); "
                 "in flake.inputs.zoo-cli.packages.${builtins.currentSystem}.zoo"
             )
-            validate_zoo_vendor(package_expr)
+            validate_cargo_vendor(package_expr, "Zoo")
 
             version = run(
                 [

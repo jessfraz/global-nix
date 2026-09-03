@@ -227,6 +227,7 @@
         cargoLock = {
           lockFile = "${codexSrc}/Cargo.lock";
           outputHashes = {
+            "appcontainer_common-0.8.0" = "sha256-XUkT2R+RYk9WIqgKnmIAagNW4xOTyp4bWHmQL1iznHw=";
             "crossterm-0.29.0" = "sha256-cQxQQuV+YEutuQiPurXVISq6F/99vCEk8qe5PU8BCSo=";
             "nucleo-0.5.0" = "sha256-Hm4SxtTSBrcWpXrtSqeO0TACbUxq3gizg1zD/6Yw/sI=";
             "nucleo-matcher-0.3.1" = "sha256-Hm4SxtTSBrcWpXrtSqeO0TACbUxq3gizg1zD/6Yw/sI=";
@@ -375,16 +376,16 @@
             mole
             pinentry_mac
           ];
-    in
-      pkgs.buildEnv {
+    in {
+      codex = codexCli;
+      default = pkgs.buildEnv {
         name = "home-packages";
         paths = commonPackages ++ (builtins.filter (p: p != null) systemSpecificPackages);
       };
+    };
   in {
     # Generate packages for all supported systems
-    packages = forAllSystems (system: {
-      default = mkPackages system;
-    });
+    packages = forAllSystems mkPackages;
 
     checks.aarch64-darwin.tailscale-home-server-launch-agent = let
       config = self.darwinConfigurations.macmini.config;
