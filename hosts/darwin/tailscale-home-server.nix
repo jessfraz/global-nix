@@ -164,8 +164,10 @@ in {
 
   # The sandboxed macOS Tailscale app cannot reliably proxy to a remote target
   # reached through a non-default interface. Keep the workaround loopback-only;
-  # socat itself makes the LAN connection to the printer.
-  launchd.user.agents.epson-tm-m30-relay = {
+  # socat itself makes the LAN connection to the printer. Run it as a root
+  # daemon because macOS grants launchd daemons local-network access while user
+  # agents require an interactive privacy grant.
+  launchd.daemons.epson-tm-m30-relay = {
     script = ''
       exec ${pkgs.socat}/bin/socat \
         TCP4-LISTEN:${toString epsonRelayPort},bind=127.0.0.1,reuseaddr,fork \
@@ -176,8 +178,8 @@ in {
       KeepAlive = true;
       ProcessType = "Background";
       RunAtLoad = true;
-      StandardErrorPath = "${homeDir}/Library/Logs/epson-tm-m30-relay.err";
-      StandardOutPath = "${homeDir}/Library/Logs/epson-tm-m30-relay.log";
+      StandardErrorPath = "/Library/Logs/epson-tm-m30-relay.err";
+      StandardOutPath = "/Library/Logs/epson-tm-m30-relay.log";
       ThrottleInterval = 30;
     };
   };

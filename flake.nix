@@ -41,7 +41,7 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.151.0&submodules=1";
+      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.153.0&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -390,10 +390,11 @@
       config = self.darwinConfigurations.macmini.config;
       pkgs = nixpkgs.legacyPackages.aarch64-darwin;
       script = config.launchd.user.agents.tailscale-home-server.script;
-      relayScript = config.launchd.user.agents.epson-tm-m30-relay.script;
+      relayScript = config.launchd.daemons.epson-tm-m30-relay.script;
     in
       assert builtins.hasAttr "tailscale-home-server" config.launchd.user.agents;
-      assert builtins.hasAttr "epson-tm-m30-relay" config.launchd.user.agents;
+      assert builtins.hasAttr "epson-tm-m30-relay" config.launchd.daemons;
+      assert !(builtins.hasAttr "epson-tm-m30-relay" config.launchd.user.agents);
       assert !(builtins.hasAttr "tailscale-home-server" config.launchd.daemons);
       assert nixpkgs.lib.hasInfix "https+insecure://127.0.0.1:19443" script;
       assert nixpkgs.lib.hasInfix "10.42.9.7/32" script;
