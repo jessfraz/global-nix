@@ -4,11 +4,12 @@ import json
 import re
 import subprocess
 import sys
-import tomllib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import which
+
+import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
@@ -266,14 +267,16 @@ def update_codex() -> None:
 
         flake_text = FLAKE_PATH.read_text(encoding="utf-8")
         updated = replace_codex_output_hashes(flake_text, output_hashes)
-        if updated != flake_text:
+        hashes_changed = updated != flake_text
+        if hashes_changed:
             FLAKE_PATH.write_text(updated, encoding="utf-8")
 
-        package_expr = (
-            "let flake = builtins.getFlake (toString ./.); "
-            "in flake.packages.${builtins.currentSystem}.codex"
-        )
-        validate_cargo_vendor(package_expr, "Codex")
+        if tag_changed or hashes_changed:
+            package_expr = (
+                "let flake = builtins.getFlake (toString ./.); "
+                "in flake.packages.${builtins.currentSystem}.codex"
+            )
+            validate_cargo_vendor(package_expr, "Codex")
         succeeded = True
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or "unknown Nix command failure").strip()
@@ -314,7 +317,9 @@ def update_zoo() -> None:
                 "let flake = builtins.getFlake (toString ./.); "
                 "in flake.inputs.zoo-cli.packages.${builtins.currentSystem}.zoo"
             )
-            validate_cargo_vendor(package_expr, "Zoo")
+            lock_changed = FLAKE_LOCK_PATH.read_text(encoding="utf-8") != original_lock
+            if lock_changed:
+                validate_cargo_vendor(package_expr, "Zoo")
 
             version = run(
                 [
@@ -337,7 +342,10 @@ def update_zoo() -> None:
         if not succeeded:
             FLAKE_LOCK_PATH.write_text(original_lock, encoding="utf-8")
 
-    print(f"zoo -> {version}")
+    if lock_changed:
+        print(f"zoo -> {version}")
+    else:
+        print(f"zoo already at {version}")
 
 
 def update_mole() -> None:

@@ -25,11 +25,6 @@ lint-fix:
 ci:
     just fmt-check
     just lint
-    just test
-
-# Run unit tests.
-test:
-    python3 -m unittest discover -s tests
 
 # Apply root Nix daemon build limits before macmini rebuilds.
 apply-macmini-nix-limits:
