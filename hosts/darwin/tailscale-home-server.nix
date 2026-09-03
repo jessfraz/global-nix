@@ -6,31 +6,39 @@
   ...
 }: let
   retiredHomeAssistantPort = 8123;
-  httpDevices = {
-    epson-tm-m30 = "10.42.9.7";
-    ratgdo-big-garage = "192.168.1.58";
-    ratgdo-small-garage = "192.168.1.12";
-    ratgdo-gate = "192.168.1.241";
+  mkPlainHttpService = address: {
+    inherit address;
+    protocol = "tls-terminated-tcp";
+    port = 80;
   };
-  httpDeviceRoutes = lib.mapAttrsToList (_: address: "${address}/32") httpDevices;
   serviceHostTag = "tag:home-server";
-  tailscaleServiceDefinitions =
-    lib.mapAttrs (_: address: {
-      protocol = "tls-terminated-tcp";
-      destination = "${address}:80";
-    })
-    httpDevices;
+  tailscaleServiceDefinitions = {
+    # Epson redirects plaintext HTTP to HTTPS. Proxy its self-signed HTTPS
+    # endpoint so the public Tailscale URL does not redirect back to itself.
+    epson-tm-m30 = {
+      address = "10.42.9.7";
+      protocol = "https+insecure";
+      port = 443;
+    };
+    ratgdo-big-garage = mkPlainHttpService "192.168.1.58";
+    ratgdo-small-garage = mkPlainHttpService "192.168.1.12";
+    ratgdo-gate = mkPlainHttpService "192.168.1.241";
+  };
+  httpDeviceRoutes = lib.mapAttrsToList (_: definition: "${definition.address}/32") tailscaleServiceDefinitions;
   tailscaleServices =
     lib.mapAttrs (
       name: definition: let
         serviceName = "svc:${name}";
+        destination = "${definition.address}:${toString definition.port}";
         configFile = pkgs.writeText "tailscale-service-${name}.json" (builtins.toJSON {
           version = "0.0.1";
-          endpoints."tcp:443" = "${definition.protocol}://${definition.destination}";
+          endpoints."tcp:443" = "${definition.protocol}://${destination}";
         });
         configureCommand =
           if definition.protocol == "tls-terminated-tcp"
-          then "${tailscale} serve --service=${lib.escapeShellArg serviceName} --tls-terminated-tcp=443 ${lib.escapeShellArg "tcp://${definition.destination}"}"
+          then "${tailscale} serve --service=${lib.escapeShellArg serviceName} --tls-terminated-tcp=443 ${lib.escapeShellArg "tcp://${destination}"}"
+          else if definition.protocol == "https+insecure"
+          then "${tailscale} serve --service=${lib.escapeShellArg serviceName} --https=443 ${lib.escapeShellArg "https+insecure://${destination}"}"
           else "${tailscale} serve set-config --service=${lib.escapeShellArg serviceName} ${lib.escapeShellArg configFile}";
       in {
         inherit serviceName configFile configureCommand;

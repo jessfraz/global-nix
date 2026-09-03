@@ -396,9 +396,11 @@
     checks.aarch64-darwin.tailscale-home-server-launch-agent = let
       config = self.darwinConfigurations.macmini.config;
       pkgs = nixpkgs.legacyPackages.aarch64-darwin;
+      script = config.launchd.user.agents.tailscale-home-server.script;
     in
       assert builtins.hasAttr "tailscale-home-server" config.launchd.user.agents;
       assert !(builtins.hasAttr "tailscale-home-server" config.launchd.daemons);
+      assert nixpkgs.lib.hasInfix "https+insecure://10.42.9.7:443" script;
         pkgs.runCommand "tailscale-home-server-launch-agent-check" {} ''
           touch "$out"
         '';
