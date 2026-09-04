@@ -310,6 +310,10 @@
         switchboardPackages.schwab
       ];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      kicadPackage =
+        if pkgs.stdenv.hostPlatform.isDarwin
+        then pkgs.callPackage ./pkgs/kicad-bin.nix {}
+        else pkgs.kicad;
 
       # Common packages for all systems
       commonPackages =
@@ -337,6 +341,7 @@
           gnused
           jq
           just
+          kicadPackage
           ncurses
           nodejs_22
           pinentry-tty

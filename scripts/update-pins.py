@@ -8,12 +8,15 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import which
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
 FLAKE_LOCK_PATH = REPO_ROOT / "flake.lock"
+KICAD_BIN_PATH = REPO_ROOT / "pkgs" / "kicad-bin.nix"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
 RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
 
@@ -65,6 +68,31 @@ def get_tags(repo_url: str) -> list[str]:
     return tags
 
 
+def get_latest_github_release(repository: str) -> str:
+    request = Request(
+        f"https://api.github.com/repos/{repository}/releases/latest",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "global-nix-update-pins",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            payload = json.load(response)
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise UpdateError(
+            f"Could not read the latest GitHub release for {repository}: {exc}"
+        ) from exc
+
+    if not isinstance(payload, dict):
+        raise UpdateError(f"Invalid GitHub release response for {repository}.")
+    tag_name = payload.get("tag_name")
+    if not isinstance(tag_name, str) or not tag_name:
+        raise UpdateError(f"GitHub returned no latest release tag for {repository}.")
+    return tag_name
+
+
 def version_key(tag: str) -> tuple[int, int, int, str]:
     match = re.search(r"(\d+)\.(\d+)\.(\d+)", tag)
     if not match:
@@ -89,10 +117,14 @@ def select_latest_tag(tags: Iterable[str], preferred_prefixes: Sequence[str]) ->
     return tags_list[-1]
 
 
-def prefetch_sri(url: str) -> str:
+def prefetch_sri(url: str, *, unpack: bool = True) -> str:
     if which("nix"):
+        command = ["nix", "store", "prefetch-file", "--json"]
+        if unpack:
+            command.append("--unpack")
+        command.append(url)
         result = subprocess.run(
-            ["nix", "store", "prefetch-file", "--json", "--unpack", url],
+            command,
             text=True,
             capture_output=True,
             check=False,
@@ -101,7 +133,11 @@ def prefetch_sri(url: str) -> str:
             data = json.loads(result.stdout)
             return data["hash"]
     if which("nix-prefetch-url"):
-        hash_result = run(["nix-prefetch-url", "--unpack", url])
+        command = ["nix-prefetch-url"]
+        if unpack:
+            command.append("--unpack")
+        command.append(url)
+        hash_result = run(command)
         base32_hash = hash_result.stdout.strip()
         sri_result = run(["nix", "hash", "to-sri", "--type", "sha256", base32_hash])
         return sri_result.stdout.strip()
@@ -348,6 +384,44 @@ def update_zoo() -> None:
         print(f"zoo already at {version}")
 
 
+def update_kicad() -> None:
+    latest_tag = get_latest_github_release("KiCad/kicad-source-mirror")
+    if not re.fullmatch(r"\d+\.\d+\.\d+(?:\.\d+)?", latest_tag):
+        raise UpdateError(f"Unexpected KiCad release tag: {latest_tag}")
+
+    original_text = KICAD_BIN_PATH.read_text(encoding="utf-8")
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
+    if not version_match:
+        raise UpdateError("Could not find KiCad version in pkgs/kicad-bin.nix")
+
+    current_version = version_match.group(1)
+    if current_version == latest_tag:
+        print(f"kicad already at {latest_tag}")
+        return
+
+    src_url = (
+        "https://github.com/KiCad/kicad-source-mirror/releases/download/"
+        f"{latest_tag}/kicad-unified-universal-{latest_tag}.dmg"
+    )
+    src_hash = prefetch_sri(src_url, unpack=False)
+
+    updated = replace_one(
+        r'^(\s*version = ")[^"]+(";)',
+        rf"\g<1>{latest_tag}\g<2>",
+        original_text,
+        "KiCad version",
+    )
+    updated = replace_one(
+        r'^(\s*hash = ")[^"]+(";)',
+        rf"\g<1>{src_hash}\g<2>",
+        updated,
+        "KiCad hash",
+    )
+
+    KICAD_BIN_PATH.write_text(updated, encoding="utf-8")
+    print(f"kicad -> {latest_tag}")
+
+
 def update_mole() -> None:
     tags = get_tags("https://github.com/tw93/Mole.git")
     latest_tag = select_latest_tag(tags, preferred_prefixes=("V", "v"))
@@ -456,6 +530,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         nargs="+",
         choices=[
             "codex",
+            "kicad",
             "mole",
             "ramp",
             "zoo",
@@ -472,6 +547,7 @@ def main(argv: Sequence[str]) -> int:
     if "all" in targets:
         targets = {
             "codex",
+            "kicad",
             "mole",
             "ramp",
             "zoo",
@@ -480,6 +556,8 @@ def main(argv: Sequence[str]) -> int:
     try:
         if "codex" in targets:
             update_codex()
+        if "kicad" in targets:
+            update_kicad()
         if "mole" in targets:
             update_mole()
         if "ramp" in targets:

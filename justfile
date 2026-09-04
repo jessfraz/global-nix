@@ -49,6 +49,9 @@ apply-macmini-nix-limits:
 update-codex:
     python3 scripts/update-pins.py codex
 
+update-kicad:
+    python3 scripts/update-pins.py kicad
+
 update-mole:
     python3 scripts/update-pins.py mole
 
