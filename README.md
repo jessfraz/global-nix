@@ -29,6 +29,14 @@ If nix is already installed, you can just do:
 
 To cleanup the world run `nix store gc`
 
+## Build checks and caching
+
+Run `just ci` for formatting and lint, and `nix flake check --all-systems --no-build --no-update-lock-file` to evaluate the configurations.
+
+CI also builds the native Home Manager configuration on Linux and both host configurations on macOS. The public cache receives only the packages selected by `packages.<system>.ci-cache`; generated host configurations and Home Manager generations stay out of it. Weekly automated merges explicitly dispatch a main-branch build to populate that cache.
+
+The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
+
 # My personal opinon on how to get started.
 
 Don't start here. Start with a flake that just installs some packages on your host. Drink a bit of that koolaid, install more things, uninstall things. Make flakes in specific repos to use `nix develop` devShells or package binaries in a repo. THEN, if you are thinking this is neat and want to go deeper, start looking into nixOS and darwin-nix for configuring your machines. This was how I went about it.

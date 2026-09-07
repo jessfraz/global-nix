@@ -1,5 +1,6 @@
 {
   pkgs,
+  inputs,
   homeDir,
   hostname,
   ...
@@ -8,6 +9,7 @@
 in {
   environment.systemPackages = [
     pkgs.wireshark
+    inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.kicad
   ];
 
   launchd.user.agents."${hostname}.auto-dnd" = {

@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -18,8 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
 
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
@@ -29,22 +27,19 @@ jobs:
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: jessfraz-global-nix
-          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
-          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          skipPush: true
 
       - name: Check formatting and lint
         run: nix shell nixpkgs#just nixpkgs#alejandra nixpkgs#ruff --command just ci
 
       - name: nix flake check for all platforms
         run: |
-          nix flake check --all-systems
+          nix flake check --all-systems --no-build --no-update-lock-file
 
   nix-build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
 
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
@@ -54,18 +49,26 @@ jobs:
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: jessfraz-global-nix
-          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
-          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          skipPush: true
 
-      - name: nix build . for x86_64-linux
-        run: nix build .
+      - name: Build Linux packages
+        run: nix build .#ci-cache --out-link result-ci-cache --no-update-lock-file
+
+      - name: Build Linux Home Manager configuration
+        run: nix build .#nixosConfigurations.system76.config.home-manager.users.jessfraz.home.activationPackage --no-link --no-update-lock-file
+
+      - name: Publish package cache
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        # Host and Home Manager outputs contain private configuration. Only
+        # publish the explicitly selected package closure, never the whole store.
+        run: cachix push jessfraz-global-nix "$(readlink result-ci-cache)"
 
   nix-build-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
 
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
@@ -75,8 +78,22 @@ jobs:
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: jessfraz-global-nix
-          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
-          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          skipPush: true
 
-      - name: nix build . for aarch64-darwin
-        run: nix build .
+      - name: Build macOS packages
+        run: nix build .#ci-cache --out-link result-ci-cache --no-update-lock-file
+
+      - name: Build macOS host configurations
+        run: |
+          nix build --no-link --no-update-lock-file \
+            .#darwinConfigurations.macinator.system \
+            .#darwinConfigurations.macmini.system \
+            .#checks.aarch64-darwin.package-selection \
+            .#checks.aarch64-darwin.tailscale-home-server-launch-agent
+
+      - name: Publish package cache
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        # Keep generated host and Home Manager configurations out of the cache.
+        run: cachix push jessfraz-global-nix "$(readlink result-ci-cache)"

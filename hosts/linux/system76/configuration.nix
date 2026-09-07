@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  inputs,
   hostname,
   ...
 }: {
@@ -27,6 +28,10 @@
   networking = {
     hostName = hostname;
   };
+
+  environment.systemPackages = [
+    inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.kicad
+  ];
 
   # Load nvidia driver for Xorg and Wayland
   services.xserver.videoDrivers = ["nvidia"];

@@ -27,11 +27,14 @@
     dotfiles = {
       url = "github:jessfraz/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
     };
 
     dotvim = {
       url = "git+https://github.com/jessfraz/.vim";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+      inputs.rust-overlay.follows = "rust-overlay";
     };
 
     zoo-cli = {
@@ -43,6 +46,7 @@
     codex = {
       url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.153.4&submodules=1";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
     };
 
     switchboard = {
@@ -89,18 +93,8 @@
       slackCli = prev.callPackage ./pkgs/slack-cli.nix {};
     };
 
-    # Provide a compatibility alias for removed attributes in recent nixpkgs.
-    # dotvim still references `rust-analyzer-nightly` on Linux.
-    overlayCompatRust = final: prev: {
-      rust-analyzer-nightly =
-        if prev ? rust-analyzer-nightly
-        then prev.rust-analyzer-nightly
-        else prev.rust-analyzer;
-    };
-
     commonOverlays = [
       overlay
-      overlayCompatRust
       rust-overlay.overlays.default
     ];
 
@@ -207,7 +201,7 @@
           ''
         else null;
       rustBin = pkgs.rust-bin.stable.latest;
-      rustToolchain = rustBin.default.override {
+      rustToolchain = rustBin.minimal.override {
         extensions = [
           "rust-src"
           "clippy"
@@ -215,6 +209,7 @@
         ];
       };
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};
       stripeCli = pkgs."stripe-cli";
       codexRustPlatform = pkgs.makeRustPlatform {
         cargo = rustBin.minimal;
@@ -324,6 +319,7 @@
           bash
           bash-completion
           claude-code
+          cliCompletions
           codexCli
           coreutils
           curl
@@ -341,7 +337,6 @@
           gnused
           jq
           just
-          kicadPackage
           ncurses
           nodejs_22
           pinentry-tty
@@ -380,16 +375,28 @@
             mole
             pinentry_mac
           ];
+      packageBundle = pkgs.buildEnv {
+        name = "home-packages";
+        paths = commonPackages ++ systemSpecificPackages;
+      };
     in {
       codex = codexCli;
-      default = pkgs.buildEnv {
-        name = "home-packages";
-        paths = commonPackages ++ (builtins.filter (p: p != null) systemSpecificPackages);
-      };
+      cli-completions = cliCompletions;
+      kicad = kicadPackage;
+      default = packageBundle;
+      # Only package outputs belong in the public cache, never generated host
+      # configurations or Home Manager generations.
+      ci-cache = pkgs.linkFarmFromDrvs "ci-cache" [
+        packageBundle
+        dotvim.packages.${system}.editor-tools
+        kicadPackage
+      ];
     };
   in {
     # Generate packages for all supported systems
     packages = forAllSystems mkPackages;
+
+    checks.aarch64-darwin.package-selection = nixpkgs.legacyPackages.aarch64-darwin.callPackage ./tests/package-selection.nix {inherit self;};
 
     checks.aarch64-darwin.tailscale-home-server-launch-agent = let
       config = self.darwinConfigurations.macmini.config;
