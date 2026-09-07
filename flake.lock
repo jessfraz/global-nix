@@ -50,11 +50,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788801205,
-        "narHash": "sha256-Uka4agkiznfjTrYDcfB6XjwwgK44DcHck+b8VmWIY6k=",
+        "lastModified": 1788808847,
+        "narHash": "sha256-PoXLaBdMVrN125bmCFqeYjG2jHQ7Xw/6qwPPJ3OfDjw=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "be7c29cc58551a4b2b2eeaee9ca2454dc4a930d9",
+        "rev": "8eb1110fcfb359b5ab91203e4d01ace507653afc",
         "type": "github"
       },
       "original": {
@@ -77,11 +77,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788803109,
-        "narHash": "sha256-ppGnTd9DgOIOLsqY1VX9zjGxeynOGYww8DJH3dU06wM=",
+        "lastModified": 1788808859,
+        "narHash": "sha256-XeuYCPPM8i2kDqLp1WHum/2wN5tAwC3LnMvtyj1j4OU=",
         "ref": "refs/heads/main",
-        "rev": "edcab88d475e9d50bb38097b75123a36302b0a07",
-        "revCount": 879,
+        "rev": "b0ee931af9fd7cf5b9050060a9de6da14e7b1439",
+        "revCount": 880,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
