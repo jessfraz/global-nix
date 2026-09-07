@@ -386,11 +386,16 @@
       default = packageBundle;
       # Only package outputs belong in the public cache, never generated host
       # configurations or Home Manager generations.
-      ci-cache = pkgs.linkFarmFromDrvs "ci-cache" [
-        packageBundle
-        dotvim.packages.${system}.editor-tools
-        kicadPackage
-      ];
+      ci-cache = pkgs.linkFarmFromDrvs "ci-cache" (
+        [
+          packageBundle
+          dotvim.packages.${system}.editor-tools
+          kicadPackage
+        ]
+        ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+          ghostty.packages.${system}.default
+        ]
+      );
     };
   in {
     # Generate packages for all supported systems
