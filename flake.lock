@@ -32,17 +32,17 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1788396766,
-        "narHash": "sha256-dSuFpqsMH248F+fdvN0wxMyhqFRHN92FLF7ufUpe0WE=",
-        "ref": "refs/tags/rust-v0.153.0",
-        "rev": "41e22fee981a63b3698df7ed36bad393cda24715",
-        "revCount": 10128,
+        "lastModified": 1788561664,
+        "narHash": "sha256-lHiDj5SodaM3mh8goMm6esfejeAT+Y3JJWrRnyj6sJo=",
+        "ref": "refs/tags/rust-v0.153.4",
+        "rev": "3d2ee51ca2d5db578f328aa75e20aa22c0197c9a",
+        "revCount": 10135,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/openai/codex"
       },
       "original": {
-        "ref": "refs/tags/rust-v0.153.0",
+        "ref": "refs/tags/rust-v0.153.4",
         "submodules": true,
         "type": "git",
         "url": "https://github.com/openai/codex"
@@ -714,11 +714,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788482730,
-        "narHash": "sha256-BjzG8q8TWb51xnbMPZbc/AhhqMg1hNnvIWWiipHAQiQ=",
+        "lastModified": 1788756219,
+        "narHash": "sha256-b3S5gxqngKAMJkq8IPW876OfTidu/PXxenk7ork2XTw=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "b75e0560a82fc4400336fd0aef00c8a88ed22dd7",
+        "rev": "8d822e488b9391cab3e68ad0b330a175023cb53f",
         "type": "github"
       },
       "original": {
