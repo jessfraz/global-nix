@@ -26,6 +26,12 @@ ci:
     just fmt-check
     just lint
 
+# Evaluate every platform without building packages or changing the lockfile.
+eval:
+    # Flake check's read-only mode cannot materialize source paths in a cold store.
+    nix eval .#packages --json --no-update-lock-file --option allow-import-from-derivation false --apply 'builtins.mapAttrs (_: packages: builtins.mapAttrs (_: package: package.drvPath) packages)' > /dev/null
+    nix flake check --all-systems --no-build --no-update-lock-file
+
 # Apply root Nix daemon build limits before macmini rebuilds.
 apply-macmini-nix-limits:
     #!/usr/bin/env bash

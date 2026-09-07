@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -29,12 +29,8 @@ jobs:
           name: jessfraz-global-nix
           skipPush: true
 
-      - name: Check formatting and lint
-        run: nix shell nixpkgs#just nixpkgs#alejandra nixpkgs#ruff --command just ci
-
-      - name: nix flake check for all platforms
-        run: |
-          nix flake check --all-systems --no-build --no-update-lock-file
+      - name: Check formatting, lint, and all-platform evaluation
+        run: nix shell nixpkgs#just nixpkgs#alejandra nixpkgs#ruff --command just ci eval
 
   nix-build-linux:
     runs-on: ubuntu-latest

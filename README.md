@@ -31,7 +31,7 @@ To cleanup the world run `nix store gc`
 
 ## Build checks and caching
 
-Run `just ci` for formatting and lint, and `nix flake check --all-systems --no-build --no-update-lock-file` to evaluate the configurations.
+Run `just ci` for formatting and lint, and `just eval` to evaluate all platforms without building packages or changing the lockfile. The evaluation first materializes package derivations and their sources so the flake check also works with an empty Nix store.
 
 CI also builds the native Home Manager configuration on Linux and both host configurations on macOS. The public cache receives only the packages selected by `packages.<system>.ci-cache`; generated host configurations and Home Manager generations stay out of it. Weekly automated merges explicitly dispatch a main-branch build to populate that cache.
 
