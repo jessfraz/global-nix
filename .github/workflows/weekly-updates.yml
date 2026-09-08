@@ -40,6 +40,8 @@ jobs:
           skipPush: true
 
       - name: Update pins and flake inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           {
             nix shell nixpkgs#just --command just update-pins

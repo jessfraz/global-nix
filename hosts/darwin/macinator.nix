@@ -10,6 +10,7 @@ in {
   environment.systemPackages = [
     pkgs.wireshark
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.kicad
+    inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.orca-slicer
   ];
 
   launchd.user.agents."${hostname}.auto-dnd" = {

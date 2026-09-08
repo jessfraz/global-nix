@@ -35,7 +35,9 @@ Run `just ci` for formatting and lint, and `just eval` to evaluate all platforms
 
 CI also builds the native Home Manager configuration on Linux and both host configurations on macOS. The public cache receives only the packages selected by `packages.<system>.ci-cache`; generated host configurations and Home Manager generations stay out of it. Linux CI can read Ghostty's upstream cache and includes the unconfigured terminal package in the selected outputs. Weekly automated merges explicitly dispatch a main-branch build to populate that cache.
 
-The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
+The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
+
+The macOS OrcaSlicer package uses the official universal release. Run `just update-orcaslicer` to update its version and source hash, or `just update-pins` to include it with the other pins. The weekly dependency workflow uses the same updater.
 
 # My personal opinon on how to get started.
 

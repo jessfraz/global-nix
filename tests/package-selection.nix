@@ -4,6 +4,7 @@
   runCommand,
 }: let
   hasKiCad = lib.any (package: lib.hasPrefix "kicad" (package.pname or package.name));
+  hasOrcaSlicer = lib.any (package: lib.hasPrefix "orca-slicer" (package.pname or package.name));
   sharedPackages = self.packages.aarch64-darwin.default.paths;
   laptopPackages = self.darwinConfigurations.macinator.config.environment.systemPackages;
   serverPackages = self.darwinConfigurations.macmini.config.environment.systemPackages;
@@ -13,6 +14,10 @@ in
   assert hasKiCad laptopPackages;
   assert !hasKiCad serverPackages;
   assert hasKiCad linuxPackages;
+  assert !hasOrcaSlicer sharedPackages;
+  assert hasOrcaSlicer laptopPackages;
+  assert !hasOrcaSlicer serverPackages;
+  assert !hasOrcaSlicer linuxPackages;
     runCommand "package-selection-check" {} ''
       touch "$out"
     ''

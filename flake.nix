@@ -309,6 +309,10 @@
         if pkgs.stdenv.hostPlatform.isDarwin
         then pkgs.callPackage ./pkgs/kicad-bin.nix {}
         else pkgs.kicad;
+      orcaSlicerPackage =
+        if pkgs.stdenv.hostPlatform.isDarwin
+        then pkgs.callPackage ./pkgs/orca-slicer-bin.nix {}
+        else pkgs.orca-slicer;
 
       # Common packages for all systems
       commonPackages =
@@ -383,6 +387,7 @@
       codex = codexCli;
       cli-completions = cliCompletions;
       kicad = kicadPackage;
+      orca-slicer = orcaSlicerPackage;
       default = packageBundle;
       # Only package outputs belong in the public cache, never generated host
       # configurations or Home Manager generations.
@@ -394,6 +399,9 @@
         ]
         ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
           ghostty.packages.${system}.default
+        ]
+        ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+          orcaSlicerPackage
         ]
       );
     };

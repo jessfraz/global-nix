@@ -8,8 +8,6 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import which
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 import tomllib
 
@@ -18,6 +16,7 @@ FLAKE_PATH = REPO_ROOT / "flake.nix"
 FLAKE_LOCK_PATH = REPO_ROOT / "flake.lock"
 KICAD_BIN_PATH = REPO_ROOT / "pkgs" / "kicad-bin.nix"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
+ORCA_SLICER_BIN_PATH = REPO_ROOT / "pkgs" / "orca-slicer-bin.nix"
 RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
 
 
@@ -69,18 +68,16 @@ def get_tags(repo_url: str) -> list[str]:
 
 
 def get_latest_github_release(repository: str) -> str:
-    request = Request(
-        f"https://api.github.com/repos/{repository}/releases/latest",
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "global-nix-update-pins",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
-    )
     try:
-        with urlopen(request, timeout=30) as response:
-            payload = json.load(response)
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{repository}/releases/latest"],
+            check=True,
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+        payload = json.loads(result.stdout)
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
         raise UpdateError(
             f"Could not read the latest GitHub release for {repository}: {exc}"
         ) from exc
@@ -483,6 +480,44 @@ def update_mole() -> None:
     print(f"mole -> {version}")
 
 
+def update_orcaslicer() -> None:
+    latest_tag = get_latest_github_release("OrcaSlicer/OrcaSlicer")
+    if not re.fullmatch(r"v\d+\.\d+\.\d+", latest_tag):
+        raise UpdateError(f"Unexpected OrcaSlicer release tag: {latest_tag}")
+
+    version = latest_tag[1:]
+    original_text = ORCA_SLICER_BIN_PATH.read_text(encoding="utf-8")
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
+    if not version_match:
+        raise UpdateError(
+            "Could not find OrcaSlicer version in pkgs/orca-slicer-bin.nix"
+        )
+
+    if version_match.group(1) == version:
+        print(f"orcaslicer already at {version}")
+        return
+
+    src_url = (
+        "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/"
+        f"{latest_tag}/OrcaSlicer_Mac_universal_V{version}.dmg"
+    )
+    src_hash = prefetch_sri(src_url, unpack=False)
+    updated = replace_one(
+        r'^(\s*version = ")[^"]+(";)',
+        rf"\g<1>{version}\g<2>",
+        original_text,
+        "OrcaSlicer version",
+    )
+    updated = replace_one(
+        r'^(\s*hash = ")[^"]+(";)',
+        rf"\g<1>{src_hash}\g<2>",
+        updated,
+        "OrcaSlicer hash",
+    )
+    ORCA_SLICER_BIN_PATH.write_text(updated, encoding="utf-8")
+    print(f"orcaslicer -> {version}")
+
+
 def update_ramp() -> None:
     tags = get_tags("https://github.com/ramp-public/ramp-cli.git")
     latest_tag = select_latest_tag(tags, preferred_prefixes=("v",))
@@ -532,6 +567,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
             "codex",
             "kicad",
             "mole",
+            "orcaslicer",
             "ramp",
             "zoo",
             "all",
@@ -549,6 +585,7 @@ def main(argv: Sequence[str]) -> int:
             "codex",
             "kicad",
             "mole",
+            "orcaslicer",
             "ramp",
             "zoo",
         }
@@ -560,6 +597,8 @@ def main(argv: Sequence[str]) -> int:
             update_kicad()
         if "mole" in targets:
             update_mole()
+        if "orcaslicer" in targets:
+            update_orcaslicer()
         if "ramp" in targets:
             update_ramp()
         if "zoo" in targets:

@@ -61,6 +61,9 @@ update-kicad:
 update-mole:
     python3 scripts/update-pins.py mole
 
+update-orcaslicer:
+    python3 scripts/update-pins.py orcaslicer
+
 update-ramp:
     python3 scripts/update-pins.py ramp
 
