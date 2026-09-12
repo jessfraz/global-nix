@@ -358,6 +358,7 @@
           vault
           watch
           yarn
+          yubikey-manager
           zooCli
         ]);
 
