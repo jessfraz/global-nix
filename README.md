@@ -33,11 +33,13 @@ To cleanup the world run `nix store gc`
 
 Run `just ci` for formatting and lint, and `just eval` to evaluate all platforms without building packages or changing the lockfile. The evaluation first materializes package derivations and their sources so the flake check also works with an empty Nix store.
 
-CI also builds the native Home Manager configuration on Linux and both host configurations on macOS. The public cache receives only the packages selected by `packages.<system>.ci-cache`; generated host configurations and Home Manager generations stay out of it. Linux CI can read Ghostty's upstream cache and includes the unconfigured terminal package in the selected outputs. Weekly automated merges explicitly dispatch a main-branch build to populate that cache.
+CI also builds the native Home Manager configuration on Linux and both host configurations on macOS. The public cache receives only the packages selected by `packages.<system>.ci-cache`; generated host configurations and Home Manager generations stay out of it. Linux CI can read Ghostty's upstream cache and includes the unconfigured terminal package in the selected outputs. Automated dependency merges explicitly dispatch a main-branch build to populate that cache.
+
+Dependency updates run every three days at 17:17 UTC for both the Nix pins/flake inputs and Dependabot's GitHub Actions checks. The cron schedule runs on days 1, 4, 7, and so on each month, so month-boundary gaps can be shorter than three days. Nix updates merge only after **Test Nix Flake** succeeds and never deploy a host.
 
 The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
 
-The macOS OrcaSlicer package uses the official universal release. Run `just update-orcaslicer` to update its version and source hash, or `just update-pins` to include it with the other pins. The weekly dependency workflow uses the same updater.
+The macOS OrcaSlicer package uses the official universal release. Run `just update-orcaslicer` to update its version and source hash, or `just update-pins` to include it with the other pins. The dependency workflow uses the same updater.
 
 # My personal opinon on how to get started.
 

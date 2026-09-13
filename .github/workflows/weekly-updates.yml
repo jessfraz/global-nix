@@ -1,8 +1,9 @@
-name: Weekly Dependency Updates
+name: Dependency Updates
 
 on:
   schedule:
-    - cron: "17 17 * * 1"
+    # Every third day of the month at 17:17 UTC; resets on the first.
+    - cron: "17 17 */3 * *"
   workflow_dispatch:
 
 concurrency:
@@ -16,7 +17,7 @@ permissions:
 
 env:
   UPDATE_BRANCH: automation/weekly-updates
-  UPDATE_TITLE: "chore: weekly dependency updates"
+  UPDATE_TITLE: "chore: dependency updates"
 
 jobs:
   update:
@@ -58,7 +59,7 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "has_changes=false" >> "${GITHUB_OUTPUT}"
-            echo "## Weekly dependency updates" >> "${GITHUB_STEP_SUMMARY}"
+            echo "## Dependency updates" >> "${GITHUB_STEP_SUMMARY}"
             echo "Everything is already current." >> "${GITHUB_STEP_SUMMARY}"
             exit 0
           fi
@@ -91,13 +92,13 @@ jobs:
             -f "head=${owner}:${UPDATE_BRANCH}")"
           count="$(jq 'length' <<< "${pulls}")"
           if [[ "${count}" -gt 1 ]]; then
-            echo "Expected at most one open weekly update PR, found ${count}." >&2
+            echo "Expected at most one open dependency update PR, found ${count}." >&2
             exit 1
           fi
 
           body="${RUNNER_TEMP}/weekly-update-body.md"
           {
-            echo "Automated weekly dependency refresh."
+            echo "Automated dependency refresh, scheduled every three days."
             echo
             echo "This PR updates the repository pins and all flake inputs, then merges only after the existing **Test Nix Flake** workflow succeeds. It never deploys a host."
             echo
@@ -140,7 +141,7 @@ jobs:
             "repos/${GH_REPO}/actions/workflows/nix.yml/dispatches" \
             -f "ref=${UPDATE_BRANCH}"
           {
-            echo "## Weekly dependency updates"
+            echo "## Dependency updates"
             echo "Opened or refreshed the automated update PR and dispatched **Test Nix Flake**."
             echo "No host deployment was attempted."
           } >> "${GITHUB_STEP_SUMMARY}"

@@ -3,7 +3,8 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every week
-      interval: "weekly"
+      # Every third day of the month at 17:17 UTC; resets on the first.
+      interval: "cron"
+      cronjob: "17 17 */3 * *"
     reviewers:
       - jessfraz

@@ -1,4 +1,4 @@
-name: Merge Weekly Updates
+name: Merge Dependency Updates
 
 on:
   workflow_run:
@@ -39,7 +39,7 @@ jobs:
 
           count="$(jq 'length' <<< "${pulls}")"
           if [[ "${count}" -ne 1 ]]; then
-            echo "Expected exactly one open weekly update PR, found ${count}." >&2
+            echo "Expected exactly one open dependency update PR, found ${count}." >&2
             exit 1
           fi
 
@@ -135,7 +135,7 @@ jobs:
           fi
 
           {
-            echo "## Weekly dependency updates"
+            echo "## Dependency updates"
             echo "Squash-merged PR #${pr_number} after **Test Nix Flake** succeeded at \`${EXPECTED_HEAD_SHA}\`."
           } >> "${GITHUB_STEP_SUMMARY}"
 
