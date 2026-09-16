@@ -39,6 +39,12 @@ Dependency updates run every three days at 17:17 UTC for both the Nix pins/flake
 
 The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
 
+The Switchboard CLI bundle includes `phone`. Its Nix package carries the locked
+voice-worker source and Python interpreter; the worker environment and private
+namespace settings are prepared locally using the
+[phone setup guide](https://github.com/jessfraz/switchboard/blob/main/docs/phone.md).
+Provider credentials and transcript decryption keys stay outside this repository.
+
 The macOS OrcaSlicer package uses the official universal release. Run `just update-orcaslicer` to update its version and source hash, or `just update-pins` to include it with the other pins. The dependency workflow uses the same updater.
 
 # My personal opinon on how to get started.

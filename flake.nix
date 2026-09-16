@@ -301,6 +301,7 @@
         switchboardPackages.mychart
         switchboardPackages.mindbody
         switchboardPackages.momence
+        switchboardPackages.phone
         switchboardPackages.plaid
         switchboardPackages.schwab
       ];
