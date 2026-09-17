@@ -37,6 +37,15 @@ CI also builds the native Home Manager configuration on Linux and both host conf
 
 Dependency updates run every three days at 17:17 UTC for both the Nix pins/flake inputs and Dependabot's GitHub Actions checks. The cron schedule runs on days 1, 4, 7, and so on each month, so month-boundary gaps can be shorter than three days. Nix updates merge only after **Test Nix Flake** succeeds and never deploy a host.
 
+The Nix updater uses the private `jessfraz-global-nix-updater` GitHub App,
+installed only on this repository with Contents and Pull requests read/write
+permissions. Actions needs the `DEPENDENCY_APP_CLIENT_ID` repository variable
+and `DEPENDENCY_APP_PRIVATE_KEY` repository secret. The private key is backed up
+in 1Password, never in this repository. App-authored updates run normal PR CI,
+so build jobs appear on the PR without a workflow-approval step. The merge job
+still verifies the bot identity, tested commit, changed-file allowlist, and
+current base before merging.
+
 The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
 
 The Switchboard CLI bundle includes `phone`. Its Nix package carries the locked

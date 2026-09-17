@@ -20,7 +20,8 @@ jobs:
         id: merge
         env:
           EXPECTED_BRANCH: automation/weekly-updates
-          EXPECTED_HEAD_SHA: ${{ github.sha }}
+          EXPECTED_BOT: jessfraz-global-nix-updater[bot]
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -44,8 +45,8 @@ jobs:
           base_branch="$(jq -r '.[0].base.ref' <<< "${pulls}")"
           draft="$(jq -r '.[0].draft' <<< "${pulls}")"
 
-          [[ "${pr_author}" == "github-actions[bot]" ]] || {
-            echo "PR #${pr_number} is owned by ${pr_author}, not github-actions[bot]." >&2
+          [[ "${pr_author}" == "${EXPECTED_BOT}" ]] || {
+            echo "PR #${pr_number} is owned by ${pr_author}, not ${EXPECTED_BOT}." >&2
             exit 1
           }
           [[ "${head_repo}" == "${GH_REPO}" ]] || {
@@ -101,10 +102,12 @@ jobs:
           committer_email="$(jq -r '.[0].commit.committer.email' <<< "${commits}")"
           parent_count="$(jq '.[0].parents | length' <<< "${commits}")"
           parent_sha="$(jq -r '.[0].parents[0].sha' <<< "${commits}")"
-          if [[ "${commit_author}" != "github-actions[bot]" || \
-                "${commit_committer}" != "github-actions[bot]" || \
-                "${commit_email}" != "41898282+github-actions[bot]@users.noreply.github.com" || \
-                "${committer_email}" != "41898282+github-actions[bot]@users.noreply.github.com" ]]; then
+          bot_id="$(gh api "users/${EXPECTED_BOT}" --jq '.id')"
+          expected_email="${bot_id}+${EXPECTED_BOT}@users.noreply.github.com"
+          if [[ "${commit_author}" != "${EXPECTED_BOT}" || \
+                "${commit_committer}" != "${EXPECTED_BOT}" || \
+                "${commit_email}" != "${expected_email}" || \
+                "${committer_email}" != "${expected_email}" ]]; then
             echo "PR #${pr_number} contains a commit not authored by the update bot." >&2
             exit 1
           fi

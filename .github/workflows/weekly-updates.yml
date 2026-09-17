@@ -11,13 +11,12 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  actions: write
-  contents: write
-  pull-requests: write
+  contents: read
 
 env:
   UPDATE_BRANCH: automation/weekly-updates
   UPDATE_TITLE: "chore: dependency updates"
+  UPDATE_BOT: jessfraz-global-nix-updater[bot]
 
 jobs:
   update:
@@ -28,6 +27,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
+          persist-credentials: false
 
       - name: Install Nix
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
@@ -49,11 +49,24 @@ jobs:
             nix flake update --option warn-dirty false
           } 2>&1 | tee "${RUNNER_TEMP}/update-output.txt"
 
+      # Installation tokens expire after an hour; mint after the long refresh.
+      - name: Create dependency updater token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DEPENDENCY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDENCY_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Commit generated updates
         id: commit
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bot_id="$(gh api "users/${UPDATE_BOT}" --jq '.id')"
+          git config user.name "${UPDATE_BOT}"
+          git config user.email "${bot_id}+${UPDATE_BOT}@users.noreply.github.com"
           git switch -c "${UPDATE_BRANCH}"
           git add --all
 
@@ -64,14 +77,15 @@ jobs:
             exit 0
           fi
 
-          # The explicit workflow_dispatch below runs full CI and gates merging.
-          # Skip the duplicate PR-triggered run that requires bot-run approval.
-          git commit -m "${UPDATE_TITLE} [skip ci]"
+          git commit -m "${UPDATE_TITLE}"
           echo "has_changes=true" >> "${GITHUB_OUTPUT}"
 
       - name: Push update branch
         if: steps.commit.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          gh auth setup-git
           remote_sha="$(git ls-remote origin "refs/heads/${UPDATE_BRANCH}" | cut -f1)"
           if [[ -n "${remote_sha}" ]]; then
             git push \
@@ -84,7 +98,7 @@ jobs:
       - name: Open or refresh update pull request
         if: steps.commit.outputs.has_changes == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           owner="${GH_REPO%%/*}"
@@ -120,7 +134,7 @@ jobs:
           if [[ "${count}" -eq 1 ]]; then
             pr_number="$(jq -r '.[0].number' <<< "${pulls}")"
             pr_author="$(jq -r '.[0].user.login' <<< "${pulls}")"
-            if [[ "${pr_author}" != "github-actions[bot]" ]]; then
+            if [[ "${pr_author}" != "${UPDATE_BOT}" ]]; then
               echo "Refusing to update PR #${pr_number}, owned by ${pr_author}." >&2
               exit 1
             fi
@@ -133,17 +147,8 @@ jobs:
               --body-file "${body}"
           fi
 
-      - name: Run the existing Nix test workflow
-        if: steps.commit.outputs.has_changes == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh api --method POST \
-            "repos/${GH_REPO}/actions/workflows/nix.yml/dispatches" \
-            -f "ref=${UPDATE_BRANCH}"
           {
             echo "## Dependency updates"
-            echo "Opened or refreshed the automated update PR and dispatched **Test Nix Flake**."
+            echo "Opened or refreshed the automated update PR for **Test Nix Flake** pull request CI."
             echo "No host deployment was attempted."
           } >> "${GITHUB_STEP_SUMMARY}"

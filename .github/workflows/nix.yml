@@ -98,9 +98,11 @@ jobs:
   merge-dependency-updates:
     needs: [nix-flake-check, nix-build-linux, nix-build-macos]
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/automation/weekly-updates' &&
-      github.actor == 'github-actions[bot]'
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.ref == 'automation/weekly-updates' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.user.login == 'jessfraz-global-nix-updater[bot]'
     permissions:
       actions: write
       contents: write
