@@ -1,9 +1,7 @@
 name: Merge Dependency Updates
 
 on:
-  workflow_run:
-    workflows: ["Test Nix Flake"]
-    types: [completed]
+  workflow_call:
 
 concurrency:
   group: merge-weekly-dependency-updates
@@ -16,18 +14,13 @@ permissions:
 
 jobs:
   merge:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'workflow_dispatch' &&
-      github.event.workflow_run.head_branch == 'automation/weekly-updates' &&
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      github.event.workflow_run.actor.login == 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Validate and merge the bot update
+        id: merge
         env:
           EXPECTED_BRANCH: automation/weekly-updates
-          EXPECTED_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          EXPECTED_HEAD_SHA: ${{ github.sha }}
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -122,8 +115,12 @@ jobs:
 
           current_main_sha="$(gh api "repos/${GH_REPO}/git/ref/heads/main" --jq '.object.sha')"
           if [[ "${parent_sha}" != "${current_main_sha}" ]]; then
-            echo "main changed after PR #${pr_number} was generated; refresh and retest it." >&2
-            exit 1
+            gh workflow run weekly-updates.yml --ref main
+            {
+              echo "## Dependency updates"
+              echo "main changed after PR #${pr_number} was generated. Dispatched a fresh update and CI run before merging."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
           fi
 
           result="$(gh api --method PUT "repos/${GH_REPO}/pulls/${pr_number}/merge" \
@@ -133,6 +130,7 @@ jobs:
             jq -r '.message' <<< "${result}" >&2
             exit 1
           fi
+          echo "merged=true" >> "${GITHUB_OUTPUT}"
 
           {
             echo "## Dependency updates"
@@ -140,6 +138,7 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Build trusted main and populate the package cache
+        if: steps.merge.outputs.merged == 'true'
         env:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}

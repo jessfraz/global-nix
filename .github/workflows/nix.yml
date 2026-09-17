@@ -94,3 +94,15 @@ jobs:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
         # Keep generated host and Home Manager configurations out of the cache.
         run: cachix push jessfraz-global-nix "$(readlink result-ci-cache)"
+
+  merge-dependency-updates:
+    needs: [nix-flake-check, nix-build-linux, nix-build-macos]
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/automation/weekly-updates' &&
+      github.actor == 'github-actions[bot]'
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/merge-weekly-updates.yml
