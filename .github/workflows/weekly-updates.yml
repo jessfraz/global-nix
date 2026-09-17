@@ -64,7 +64,9 @@ jobs:
             exit 0
           fi
 
-          git commit -m "${UPDATE_TITLE}"
+          # The explicit workflow_dispatch below runs full CI and gates merging.
+          # Skip the duplicate PR-triggered run that requires bot-run approval.
+          git commit -m "${UPDATE_TITLE} [skip ci]"
           echo "has_changes=true" >> "${GITHUB_OUTPUT}"
 
       - name: Push update branch
