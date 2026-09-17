@@ -4,6 +4,8 @@ set -euo pipefail
 ORG="KittyCAD"
 BOT_AUTHOR_LEGACY="zoo-github-actions-auth[bot]"
 BOT_AUTHOR_APP="app/zoo-github-actions-auth"
+MODELING_BOT_AUTHOR_LEGACY="modeling-app-github-app[bot]"
+MODELING_BOT_AUTHOR_APP="app/modeling-app-github-app"
 DEPENDABOT_AUTHOR="dependabot[bot]"
 IGNORED_REPO="${ORG}/engine"
 
@@ -82,6 +84,13 @@ Approves and enables auto-merge for:
    - Update engine-api spec
    - Update text-to-cad spec
    - Update proprietary-to-kcl spec
+4) "Update KCL docs" PRs (update-kcl-docs branch) in KittyCAD/documentation
+   from the modeling-app GitHub App
+5) SDK-generated spec docs PRs in KittyCAD/website from the Zoo GitHub App:
+   - Rust: update-spec-rust / "Update rust lang spec docs for <version>"
+   - Go: update-spec-go / "Update go lang spec docs for <version>"
+   - Python: update-spec-python / "Update lang spec docs for python"
+   - TypeScript: update-spec-typescript / "Update lang spec docs for typescript"
 EOF
 }
 
@@ -415,21 +424,33 @@ process_update_spec_repo_prs() {
   local pr_number=""
   local title=""
 
-  log "scanning update-spec PRs in target repos..."
+  log "scanning spec and SDK docs sync PRs in target repos..."
   for repo_short in "${TARGET_REPOS[@]}"; do
     repo="${ORG}/${repo_short}"
     prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,headRefName,author,isDraft,url)"
     while IFS= read -r row; do
       pr_number="$(jq -r '.number' <<<"$row")"
       title="$(jq -r '.title' <<<"$row")"
-      process_pr "$repo" "$pr_number" "$title" "repo spec sync"
+      process_pr "$repo" "$pr_number" "$title" "repo spec/docs sync"
     done < <(
-      jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" '
+      jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" \
+        --arg repo "$repo" --arg website "${ORG}/website" '
         .[]
         | select(.isDraft == false)
-        | select(.title == "Update api spec")
-        | select(.headRefName == "update-spec")
         | select(.author.login == $bot_legacy or .author.login == $bot_app)
+        | select(
+            (.title == "Update api spec" and .headRefName == "update-spec")
+            or ($repo == $website and (
+              (.headRefName == "update-spec-rust"
+                and (.title | startswith("Update rust lang spec docs for ")))
+              or (.headRefName == "update-spec-go"
+                and (.title | startswith("Update go lang spec docs for ")))
+              or (.headRefName == "update-spec-python"
+                and .title == "Update lang spec docs for python")
+              or (.headRefName == "update-spec-typescript"
+                and .title == "Update lang spec docs for typescript")
+            ))
+          )
       ' <<<"$prs_json"
     )
   done
@@ -481,6 +502,30 @@ process_dependabot_prs() {
       process_pr "$repo" "$pr_number" "$title" "dependabot (CI not green)"
     fi
   done < <(jq -c '.[] | select(.isDraft == false)' <<<"$prs_json")
+}
+
+process_kcl_docs_prs() {
+  local repo="${ORG}/documentation"
+  local prs_json=""
+  local row=""
+  local pr_number=""
+  local title=""
+
+  log "scanning open KCL docs sync PRs..."
+  prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,headRefName,author,isDraft,url)"
+  while IFS= read -r row; do
+    pr_number="$(jq -r '.number' <<<"$row")"
+    title="$(jq -r '.title' <<<"$row")"
+    process_pr "$repo" "$pr_number" "$title" "KCL docs sync"
+  done < <(
+    jq -c --arg bot_legacy "$MODELING_BOT_AUTHOR_LEGACY" --arg bot_app "$MODELING_BOT_AUTHOR_APP" '
+      .[]
+      | select(.isDraft == false)
+      | select(.title == "Update KCL docs")
+      | select(.headRefName == "update-kcl-docs")
+      | select(.author.login == $bot_legacy or .author.login == $bot_app)
+    ' <<<"$prs_json"
+  )
 }
 
 process_api_inbound_spec_prs() {
@@ -535,6 +580,7 @@ ensure_github_token
 process_update_spec_repo_prs
 process_dependabot_prs
 process_api_inbound_spec_prs
+process_kcl_docs_prs
 
 log "done. processed=$processed skipped=$skipped errors=$errors dry_run=$DRY_RUN"
 if [ "$errors" -gt 0 ]; then
