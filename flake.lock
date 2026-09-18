@@ -436,11 +436,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789701980,
-        "narHash": "sha256-kkwIK9POfnDWLRsUsEb0+Q+CTdDIHC1bCPyOl/OuEEA=",
+        "lastModified": 1789702517,
+        "narHash": "sha256-Q7mwlpFyRUy5YITBdHiO500mwA3Nr1E4f9BSHXjLiaA=",
         "owner": "jessfraz",
         "repo": "switchboard",
-        "rev": "402a2270e2bec37dcf2c2c55d1d10894d22663f9",
+        "rev": "ac107a2580df416d3e1b16e8a8e0c592c045e93f",
         "type": "github"
       },
       "original": {
