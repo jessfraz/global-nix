@@ -1,0 +1,239 @@
+"""Real repository regressions for destructive cleanup boundaries."""
+
+import json
+import os
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+SCRIPT = Path(
+    os.environ.get(
+        "GIT_CLEANUP_SCRIPT",
+        Path(__file__).resolve().parents[1] / "scripts/git-cleanup",
+    )
+)
+
+
+class CleanupTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.primary = self.root / "primary"
+        self.remote = self.root / "remote.git"
+        self.target = self.root / "feature space"
+        self.env = dict(
+            os.environ,
+            GIT_CONFIG_GLOBAL="/dev/null",
+            GIT_CONFIG_NOSYSTEM="1",
+            GIT_ALLOW_PROTOCOL="file",
+            GIT_TERMINAL_PROMPT="0",
+        )
+        self.git(self.root, "init", "--bare", "--initial-branch=main", str(self.remote))
+        self.git(self.root, "clone", str(self.remote), str(self.primary))
+        self.git(self.primary, "config", "user.name", "Test")
+        self.git(self.primary, "config", "user.email", "test@example.invalid")
+        self.git(self.primary, "config", "commit.gpgsign", "false")
+        self.git(self.primary, "config", "core.hooksPath", "/dev/null")
+        (self.primary / "file").write_text("original\n")
+        (self.primary / ".gitignore").write_text("ignored\n")
+        self.git(self.primary, "add", ".")
+        self.git(self.primary, "commit", "-m", "base")
+        self.git(self.primary, "push", "origin", "main")
+        self.git(self.primary, "remote", "set-head", "origin", "main")
+        self.git(self.primary, "worktree", "add", "-b", "feature", str(self.target))
+        (self.target / "file").write_text("changed\n")
+        self.git(self.target, "commit", "-am", "feature")
+
+    def git(self, root: Path, *args: str) -> str:
+        return subprocess.run(
+            ["git", "-C", str(root), *args],
+            env=self.env,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+
+    def run_cleanup(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(SCRIPT), *args],
+            cwd=self.target,
+            env=self.env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def merge(self, squash: bool = False) -> None:
+        self.git(
+            self.primary, "merge", "--squash" if squash else "--ff-only", "feature"
+        )
+        if squash:
+            self.git(self.primary, "commit", "-m", "squashed")
+        self.git(self.primary, "push", "origin", "main")
+
+    def plan(self, *args: str) -> Path:
+        result = self.run_cleanup(*args)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        path = self.root / "plan.json"
+        path.write_text(result.stdout)
+        return path
+
+    def test_untracked_file_survives_cleanup(self) -> None:
+        self.merge()
+        marker = self.target / "unsaved"
+        marker.write_text("irreplaceable")
+        result = self.run_cleanup()
+        self.assertTrue(marker.exists(), result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_fetch_failure_preserves_worktree(self) -> None:
+        self.merge()
+        self.git(
+            self.primary, "remote", "set-url", "origin", str(self.root / "missing")
+        )
+        result = self.run_cleanup()
+        self.assertTrue(self.target.exists(), result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_missing_remote_branch_is_not_merge_evidence(self) -> None:
+        self.git(self.target, "push", "-u", "origin", "feature")
+        self.git(self.primary, "push", "origin", "--delete", "feature")
+        result = self.run_cleanup()
+        self.assertTrue(self.target.exists(), result.stderr)
+        self.assertEqual(
+            self.git(self.primary, "rev-parse", "feature"),
+            self.git(self.target, "rev-parse", "HEAD"),
+        )
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_plan_then_execute_merged_worktree(self) -> None:
+        self.merge()
+        plan = self.plan()
+        self.assertTrue(self.target.exists())
+        self.assertEqual(json.loads(plan.read_text())["evidence"], "ancestor")
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertNotIn("refs/heads/feature", self.git(self.primary, "show-ref"))
+
+    def test_squash_proof_survives_unrelated_later_commit(self) -> None:
+        self.merge(squash=True)
+        (self.primary / "unrelated").write_text("later")
+        self.git(self.primary, "add", "unrelated")
+        self.git(self.primary, "commit", "-m", "later")
+        self.git(self.primary, "push", "origin", "main")
+        plan = self.plan()
+        self.assertEqual(
+            json.loads(plan.read_text())["evidence"], "squash-patch-and-content"
+        )
+        self.assertEqual(self.run_cleanup("--execute", str(plan)).returncode, 0)
+
+    def test_stale_head_rejects_execution(self) -> None:
+        self.merge()
+        plan = self.plan()
+        self.git(self.target, "commit", "--allow-empty", "-m", "new work")
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.target.exists())
+
+    def test_stale_base_rejects_execution(self) -> None:
+        self.merge()
+        plan = self.plan()
+        self.git(self.primary, "commit", "--allow-empty", "-m", "base advanced")
+        self.git(self.primary, "push", "origin", "main")
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.target.exists())
+
+    def test_force_never_discards_ignored_files(self) -> None:
+        marker = self.target / "ignored"
+        marker.write_text("local")
+        result = self.run_cleanup("--force")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(marker.exists())
+
+    def test_explicit_force_plan_requires_explicit_force_execution(self) -> None:
+        plan = self.plan("--force")
+        self.assertNotEqual(self.run_cleanup("--execute", str(plan)).returncode, 0)
+        result = self.run_cleanup("--execute", str(plan), "--force")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_locked_worktree_is_preserved(self) -> None:
+        self.merge()
+        plan = self.plan()
+        self.git(self.primary, "worktree", "lock", str(self.target))
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.target.exists())
+
+    def test_symlinked_submodule_storage_is_preserved(self) -> None:
+        submodule = self.root / "submodule"
+        self.git(self.root, "clone", str(self.remote), str(submodule))
+        self.git(self.target, "submodule", "add", str(submodule), "sub")
+        self.git(self.target, "commit", "-am", "submodule")
+        self.merge()
+        git_dir = Path(self.git(self.target, "rev-parse", "--absolute-git-dir"))
+        storage = git_dir / "modules"
+        relocated = git_dir / "relocated-modules"
+        storage.rename(relocated)
+        storage.symlink_to(relocated, target_is_directory=True)
+        result = self.run_cleanup()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(relocated.is_dir())
+        self.assertTrue(self.target.exists())
+        self.assertIn("symlink", result.stderr)
+
+    def test_populated_submodule_is_checked_before_removal(self) -> None:
+        submodule = self.root / "submodule"
+        self.git(self.root, "clone", str(self.remote), str(submodule))
+        self.git(self.target, "submodule", "add", str(submodule), "sub")
+        self.git(self.target, "commit", "-am", "submodule")
+        self.merge()
+        marker = self.target / "sub" / "ignored"
+        marker.write_text("local")
+        self.assertNotEqual(self.run_cleanup().returncode, 0)
+        self.assertTrue(marker.exists())
+        marker.unlink()
+        self.git(self.target / "sub", "config", "user.name", "Test")
+        self.git(self.target / "sub", "config", "user.email", "test@example.invalid")
+        original = self.git(self.target / "sub", "rev-parse", "HEAD")
+        self.git(self.target / "sub", "switch", "-c", "unique-local-work")
+        self.git(self.target / "sub", "commit", "--allow-empty", "-m", "only local")
+        unique = self.git(self.target / "sub", "rev-parse", "HEAD")
+        self.git(self.target / "sub", "checkout", "--detach", original)
+        plan = self.plan()
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+        archive = Path(json.loads(result.stdout)["retained_submodules"])
+        self.assertEqual(
+            self.git(
+                self.primary,
+                "--git-dir",
+                str(archive / "modules/sub"),
+                "--work-tree",
+                str(self.primary),
+                "rev-parse",
+                "unique-local-work",
+            ),
+            unique,
+        )
+        self.assertEqual(
+            self.git(
+                self.primary,
+                "--git-dir",
+                str(archive / "modules/sub"),
+                "--work-tree",
+                str(self.primary),
+                "cat-file",
+                "-t",
+                unique,
+            ),
+            "commit",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

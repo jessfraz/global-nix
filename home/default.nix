@@ -25,6 +25,7 @@
 in {
   imports = [
     ./programs/bash.nix
+    ./programs/credentials.nix
     ./programs/git.nix
     ./programs/gpg.nix
     ./programs/starship.nix

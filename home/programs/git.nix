@@ -209,14 +209,8 @@
         patchit = "!f() { echo $1.patch | sed s_pull/[0-9]*/commits_commit_ | xargs curl -L | git am --whitespace=fix; }; f";
         patchit-please = "!f() { echo $1.patch | sed s_pull/[0-9]*/commits_commit_ | xargs curl -L | git am -3 --whitespace=fix; }; f";
 
-        # Clean up local branch after it is merged upstream.
-        # Usage: git cleanup [-f|--force] [-r|--remote <name>] [-b|--base <branch>] [--no-gc]
-        # - Detects default branch from remote HEAD (e.g. origin/HEAD), falling back to main/master.
-        # - Switches to the base branch, deletes the previous branch (safe by default, force with -f),
-        # - Fetches, prunes, updates base, prunes worktrees, and runs a light GC.
-        # - If run inside a linked worktree, removes it (and its branch), then prints
-        #   the main worktree path to return to.
-        cleanup = "!f() { bash \"$HOME/.config/git/scripts/git-cleanup\" \"$@\"; }; f";
+        # Plan first, then execute exactly the reviewed, revalidated target.
+        cleanup = "!f() { with-credentials ssh -- python3 \"$HOME/.config/git/scripts/git-cleanup\" \"$@\"; }; f";
       };
     };
   };

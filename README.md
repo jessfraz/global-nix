@@ -62,6 +62,80 @@ Don't start here. Start with a flake that just installs some packages on your ho
 
 The reason I mention this is THERE IS A LOT OF CONTENT ON NIX out there and SO MANY different ways to do things. If you start with a big goal its too much information overhead all at once. _First_, dip your toes into just flakes. (Of course some people will say fuck flakes but I like them, personally. This is the type of information overhead and opinions I'm talking about).
 
+## Command credentials and cleanup
+
+`with-credentials` runs a child command with the required credentials. It works
+from noninteractive Bash, Zsh, and GUI jobs without loading shell functions.
+Credentials stay in the child environment or private temporary files; the
+launcher never prints exports. It resolves every required credential before
+starting the command and preserves the command's exit status.
+
+```sh
+with-credentials axiom -- axiom query "['corp-kubernetes'] | take 5"
+fetch-axiom-key axiom query "['corp-kubernetes'] | take 5"
+with-credentials google.personal -- gws gmail users getProfile --params '{"userId":"me"}'
+with-credentials --doctor
+with-credentials ssh -- git fetch origin
+```
+
+The `fetch-*` names are executable compatibility wrappers, with a new
+command-scoped interface. Replace `fetch-axiom-key; axiom query ...` with
+`fetch-axiom-key axiom query ...`. A bare wrapper fails before authentication.
+They no longer modify the parent shell, `.netrc`, or Nix configuration.
+
+Configured namespaces are read from Switchboard's config and dispatched through
+its CLI, including `github.personal`, `google.personal`, `google.work`, and
+`schwab.personal` when configured. Use `--draft` to prepare a provider write or
+`--apply` to explicitly approve and execute the selected command. Successful
+reads/applications return native provider output; drafts return the Switchboard
+receipt. An uncertain write returns exit 70 and must be reconciled before retry.
+
+Other profiles are declared in `home/programs/credentials.nix`. Existing cached
+files are read first; vault lookup is bounded to a single 60-second window per
+invocation and stops on its first failure. Home Assistant reads its endpoint from
+the vault item's `website` field or `~/.config/home-assistant/url`, alongside the
+cached token at `~/.config/home-assistant/token`. The SSH profile uses the socket from
+`gpgconf`, correcting a stale inherited socket only for the child. Doctor checks
+configuration, executable availability, and socket reachability without reading
+credentials or unlocking the agent. Neither check proves a particular key is
+inserted or that remote authorization succeeds.
+
+Local `kittycad-pr-automerge` calls use Switchboard and share a run identifier.
+An explicitly supplied CI token keeps its existing direct `gh` path. Unknown
+write outcomes stop the command, including its merge-method fallback loop.
+
+`git cleanup` now prints a JSON plan and performs no deletion by default:
+
+```sh
+git cleanup > /tmp/cleanup-plan.json
+git cleanup --execute /tmp/cleanup-plan.json
+```
+
+Keep the plan outside the target worktree. Execution fetches again, compares the
+reviewed refs and evidence, and checks tracked, untracked, ignored, and recursive
+submodule content. It accepts ancestry or matching squash patch plus exact
+touched-file content. A missing remote branch is not proof of a merge. Locked
+worktrees, failed fetches, changed plans, and Git removal refusals stop cleanup.
+Only the named local worktree/branch is removed; it does not pull, garbage
+collect, or delete remote branches. When run in the primary worktree it switches
+to the existing local base branch before deleting the reviewed feature branch.
+Populated or deinitialized submodule Git stores are retained intact under the
+primary Git directory's `cleanup-submodules/`, including local branches, stashes,
+objects, and reflogs. The execution receipt names that archive; inspect it before
+any manual deletion. For example, inspect retained refs with
+`git --git-dir "$archive/modules/sub" --work-tree "$PWD" show-ref`; the explicit
+worktree overrides the original checkout path retained in the archived config.
+Stores with symlinks or alternate-object dependencies need
+manual preservation and are refused. `gcleanup --execute` also returns the shell
+to the primary worktree after a successful linked-worktree removal.
+
+`--force` permits deleting an unmerged branch only after reviewing a force plan
+and repeating `--force` during execution. It never discards local file changes.
+Remove disposable ignored build output yourself before planning cleanup.
+
+Run `just test-tools` for real disposable-repository and credential-child
+regressions. `just ci` includes these tests.
+
 ## Other tips
 
 - Claude and OpenAI are decent at Nix files. But you have to know what to ask for or else they will fuck it all up. It's almost better to be like "deep research X nix specific thing and tell me your findings". This will eliminate the overhead (all us nerds do) of learning something new and going super deep on blogs.

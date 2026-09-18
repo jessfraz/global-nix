@@ -12,10 +12,11 @@ fmt:
 fmt-check:
     alejandra --check .
     ruff format --check .
+    ruff format --check scripts/git-cleanup
 
 # Lint Python files.
 lint:
-    ruff check --output-format=concise .
+    ruff check --output-format=concise . scripts/git-cleanup
 
 # Lint and apply automatic fixes (use with care).
 lint-fix:
@@ -25,6 +26,12 @@ lint-fix:
 ci:
     just fmt-check
     just lint
+    just test-tools
+
+# Run executable-tool regressions against disposable local repositories/files.
+test-tools:
+    python3 -m unittest discover -s tests -p 'test_*.py'
+    bash -n scripts/kittycad-pr-automerge
 
 # Evaluate every platform without building packages or changing the lockfile.
 eval:
