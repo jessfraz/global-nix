@@ -80,6 +80,11 @@ class CleanupTests(unittest.TestCase):
         path.write_text(result.stdout)
         return path
 
+    def use_primary_checkout(self) -> None:
+        self.git(self.target, "switch", "--detach")
+        self.git(self.primary, "switch", "feature")
+        self.target = self.primary
+
     def test_untracked_file_survives_cleanup(self) -> None:
         self.merge()
         marker = self.target / "unsaved"
@@ -152,7 +157,80 @@ class CleanupTests(unittest.TestCase):
         marker.write_text("local")
         result = self.run_cleanup("--force")
         self.assertNotEqual(result.returncode, 0)
-        self.assertTrue(marker.exists())
+        self.assertEqual(marker.read_text(), "local")
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "feature")
+        self.assertIn("!! ignored", result.stderr)
+
+    def test_ignored_file_created_after_plan_preserves_linked_worktree(self) -> None:
+        self.merge()
+        plan = self.plan()
+        marker = self.target / "ignored"
+        marker.write_text("local")
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(), "local")
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "feature")
+
+    def test_primary_cleanup_preserves_ignored_files(self) -> None:
+        self.merge()
+        self.use_primary_checkout()
+        marker = self.target / "ignored"
+        marker.write_text("local")
+        plan = self.plan()
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(marker.read_text(), "local")
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "main")
+        self.assertNotIn("refs/heads/feature", self.git(self.target, "show-ref"))
+
+    def test_primary_cleanup_preserves_ignored_file_created_after_plan(self) -> None:
+        self.merge()
+        self.use_primary_checkout()
+        plan = self.plan()
+        marker = self.target / "ignored"
+        marker.write_text("local")
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(marker.read_text(), "local")
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "main")
+        self.assertNotIn("refs/heads/feature", self.git(self.target, "show-ref"))
+
+    def test_primary_cleanup_refuses_to_overwrite_ignored_file(self) -> None:
+        self.merge()
+        (self.primary / "ignored").write_text("upstream")
+        self.git(self.primary, "add", "--force", "ignored")
+        self.git(self.primary, "commit", "-m", "track formerly ignored file")
+        self.git(self.primary, "push", "origin", "main")
+        self.use_primary_checkout()
+        marker = self.target / "ignored"
+        marker.write_text("local")
+        plan = self.plan()
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(), "local")
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "feature")
+
+    def test_primary_cleanup_preserves_submodule_replaced_by_base_file(self) -> None:
+        submodule = self.root / "submodule"
+        self.git(self.root, "clone", str(self.remote), str(submodule))
+        self.git(self.target, "submodule", "add", str(submodule), "sub")
+        self.git(self.target, "commit", "-am", "submodule")
+        self.merge()
+        self.git(self.primary, "rm", "sub")
+        (self.primary / "sub").write_text("replacement")
+        self.git(self.primary, "add", "sub")
+        self.git(self.primary, "commit", "-am", "replace submodule on main")
+        self.git(self.primary, "push", "origin", "main")
+        self.use_primary_checkout()
+        self.git(self.target, "submodule", "update", "--init")
+        self.git(self.target, "config", "submodule.recurse", "true")
+        plan = self.plan()
+        marker = self.target / "sub" / "ignored"
+        marker.write_text("local")
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(), "local")
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "feature")
 
     def test_explicit_force_plan_requires_explicit_force_execution(self) -> None:
         plan = self.plan("--force")
@@ -193,8 +271,17 @@ class CleanupTests(unittest.TestCase):
         self.merge()
         marker = self.target / "sub" / "ignored"
         marker.write_text("local")
-        self.assertNotEqual(self.run_cleanup().returncode, 0)
+        result = self.run_cleanup()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("sub\n!! ignored", json.loads(result.stderr)["error"])
         self.assertTrue(marker.exists())
+        marker.unlink()
+        plan = self.plan()
+        marker.write_text("created after planning")
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(), "created after planning")
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "feature")
         marker.unlink()
         self.git(self.target / "sub", "config", "user.name", "Test")
         self.git(self.target / "sub", "config", "user.email", "test@example.invalid")

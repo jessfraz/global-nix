@@ -74,38 +74,44 @@ class Plan:
         return cls(**data)
 
 
-def clean(root: Path) -> None:
-    # Ignored files would also be destroyed when the worktree is removed.
+def clean(root: Path, *, remove_worktree: bool) -> None:
+    # Ignored files are safe to keep when switching branches, not removing a tree.
+    ignored = "--ignored=traditional" if remove_worktree else "--ignored=no"
     status = git(
         root,
         "status",
         "--porcelain=v1",
-        "-z",
         "--untracked-files=all",
-        "--ignored",
+        ignored,
         "--ignore-submodules=none",
     ).stdout
     if status:
         raise CleanupError(
-            f"Worktree has tracked, untracked, ignored, or submodule changes: {root}"
+            f"Worktree has local files or changes: {root}\n{status.rstrip()}"
         )
     submodules = git(root, "submodule", "status", "--recursive").stdout
     if any(line and line[0] in "+U" for line in submodules.splitlines()):
         raise CleanupError(
             f"Submodule checkout does not match its recorded commit: {root}"
         )
-    # Parent status does not report ignored files inside submodules.
+    # Parent status hides ignored submodule files. Even a branch switch can
+    # delete them when the destination replaces a gitlink with a regular file.
     result = git(
         root,
         "submodule",
         "foreach",
         "--quiet",
         "--recursive",
-        'test -z "$(git status --porcelain=v1 --untracked-files=all --ignored --ignore-submodules=none)"',
+        "status=$(git status --porcelain=v1 --untracked-files=all --ignored "
+        "--ignore-submodules=none) || exit; "
+        'if test -n "$status"; then printf "%s\\n%s\\n" "$displaypath" "$status"; exit 1; fi',
         check=False,
     )
     if result.returncode:
-        raise CleanupError(f"Submodule has local files or changes: {root}")
+        raise CleanupError(
+            f"Submodule has local files or changes: {root}\n"
+            f"{result.stdout.rstrip() or result.stderr.rstrip()}"
+        )
 
 
 def patch_id(patch: str) -> str | None:
@@ -236,7 +242,7 @@ def prepare(root: Path, remote: str, base: str | None, force: bool) -> Plan:
         raise CleanupError("Invalid base branch")
     if branch_name == base:
         raise CleanupError("Refusing to clean up the base branch")
-    clean(root)
+    clean(root, remove_worktree=root != primary)
     head = value(root, "rev-parse", "HEAD")
     base_head = value(
         root, "rev-parse", "--verify", f"refs/remotes/{remote}/{base}^{{commit}}"
@@ -284,7 +290,7 @@ def execute(plan: Plan, force: bool) -> str | None:
         raise CleanupError("Cleanup evidence changed; generate and review a new plan")
     root = Path(plan.worktree)
     primary = Path(plan.primary_worktree)
-    clean(root)
+    clean(root, remove_worktree=plan.remove_worktree)
     archive: Path | None = None
     if plan.remove_worktree:
         # Git requires --force for populated submodules. Their tracked, untracked,
@@ -314,7 +320,8 @@ def execute(plan: Plan, force: bool) -> str | None:
                     ) from error
             raise
     else:
-        git(root, "switch", plan.base)
+        # A normal switch can overwrite ignored files tracked by the destination.
+        git(root, "switch", "--no-overwrite-ignore", plan.base)
     # Compare-and-delete protects a branch updated by another process.
     try:
         git(primary, "update-ref", "-d", f"refs/heads/{plan.branch}", plan.head)

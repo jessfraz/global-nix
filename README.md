@@ -112,13 +112,18 @@ git cleanup --execute /tmp/cleanup-plan.json
 ```
 
 Keep the plan outside the target worktree. Execution fetches again, compares the
-reviewed refs and evidence, and checks tracked, untracked, ignored, and recursive
-submodule content. It accepts ancestry or matching squash patch plus exact
-touched-file content. A missing remote branch is not proof of a merge. Locked
-worktrees, failed fetches, changed plans, and Git removal refusals stop cleanup.
+reviewed refs and evidence, and checks tracked, untracked, and recursive
+submodule content. Ignored files also block linked-worktree removal, with the
+blocking paths included in the error. It accepts ancestry or matching squash
+patch plus exact touched-file content. A missing remote branch is not proof of a
+merge. Locked worktrees, failed fetches, changed plans, and Git removal refusals
+stop cleanup.
 Only the named local worktree/branch is removed; it does not pull, garbage
 collect, or delete remote branches. When run in the primary worktree it switches
 to the existing local base branch before deleting the reviewed feature branch.
+Ignored files outside submodules are kept in a primary worktree, and the switch
+refuses ignored-file collisions. Ignored files inside populated submodules still
+block cleanup because a branch switch can replace an entire submodule directory.
 Populated or deinitialized submodule Git stores are retained intact under the
 primary Git directory's `cleanup-submodules/`, including local branches, stashes,
 objects, and reflogs. The execution receipt names that archive; inspect it before
@@ -131,7 +136,8 @@ to the primary worktree after a successful linked-worktree removal.
 
 `--force` permits deleting an unmerged branch only after reviewing a force plan
 and repeating `--force` during execution. It never discards local file changes.
-Remove disposable ignored build output yourself before planning cleanup.
+Remove disposable ignored build output yourself before planning linked-worktree
+removal.
 
 Run `just test-tools` for real disposable-repository and credential-child
 regressions. `just ci` includes these tests.
