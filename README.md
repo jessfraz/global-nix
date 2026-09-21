@@ -109,7 +109,9 @@ fast-forward, and cleans up the current merged branch/worktree. It then prunes
 stale worktree metadata and runs Git garbage collection (skip with `--no-gc`).
 Running it on the base branch refreshes it without deleting the branch.
 `gcleanup` does the same and returns the shell to the primary worktree after a
-successful linked-worktree removal. Both print a readable completion message.
+successful linked-worktree removal. Both print a readable completion message in
+the terminal. Captured `git cleanup` output remains a JSON receipt so existing
+shell functions keep working after an update; `--json` explicitly requests it.
 
 Both accept `--plan` for a non-destructive preview. To inspect a plan before
 executing it:

@@ -418,7 +418,8 @@ def main() -> int:
             summary += f"\nWorktree removed: {plan.worktree}\nPrimary worktree: {plan.primary_worktree}"
         if retained_submodules:
             summary += f"\nSubmodule Git storage retained: {retained_submodules}"
-        if args.json:
+        # Older loaded gcleanup functions capture stdout and expect a JSON receipt.
+        if args.json or not sys.stdout.isatty():
             print(
                 json.dumps(
                     {

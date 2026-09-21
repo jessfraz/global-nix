@@ -2,6 +2,8 @@
 
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -13,6 +15,24 @@ SCRIPT = Path(
         Path(__file__).resolve().parents[1] / "scripts/git-cleanup",
     )
 )
+
+# Frozen from 6b6c80a^: existing shells can retain this receipt-consuming function.
+LEGACY_GCLEANUP = r"""
+function gcleanup() {
+    local receipt primary argument
+    for argument in "$@"; do
+        case "$argument" in
+            -h|--help) git cleanup "$@"; return $? ;;
+        esac
+    done
+    receipt=$(git cleanup "$@") || return $?
+    printf '%s\n' "$receipt"
+    primary=$(printf '%s' "$receipt" | python3 -c 'import json,sys; result=json.load(sys.stdin); print(result["primary_worktree"] if result.get("status") == "completed" and result.get("worktree_removed") else "")') || return $?
+    if [ -n "$primary" ]; then
+        cd "$primary" || return $?
+    fi
+}
+"""
 
 
 class CleanupTests(unittest.TestCase):
@@ -65,6 +85,30 @@ class CleanupTests(unittest.TestCase):
             check=False,
         )
 
+    def run_legacy_gcleanup(
+        self, shell: str = "bash"
+    ) -> subprocess.CompletedProcess[str]:
+        self.git(
+            self.primary, "config", "alias.cleanup", f"!{shlex.quote(str(SCRIPT))}"
+        )
+        startup = ["--noprofile", "--norc"] if shell == "bash" else ["-f"]
+        return subprocess.run(
+            [
+                shell,
+                *startup,
+                "-c",
+                LEGACY_GCLEANUP
+                + '\ngcleanup\ncleanup_status=$?\npwd -P > "$1"\nexit "$cleanup_status"\n',
+                "legacy-gcleanup",
+                str(self.root / "shell-cwd"),
+            ],
+            cwd=self.target,
+            env=self.env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
     def merge(self, squash: bool = False) -> None:
         self.git(
             self.primary, "merge", "--squash" if squash else "--ff-only", "feature"
@@ -103,6 +147,83 @@ class CleanupTests(unittest.TestCase):
         result = self.run_cleanup()
         self.assertTrue(marker.exists(), result.stderr)
         self.assertNotEqual(result.returncode, 0)
+
+    def test_legacy_gcleanup_preserves_primary_ignored_files(self) -> None:
+        self.merge()
+        self.use_primary_checkout()
+        marker = self.primary / "ignored"
+        marker.write_text("local")
+        result = self.run_legacy_gcleanup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("JSONDecodeError", result.stderr)
+        self.assertEqual(marker.read_text(), "local")
+        self.assertEqual(self.git(self.primary, "branch", "--show-current"), "main")
+        self.assertNotIn("refs/heads/feature", self.git(self.primary, "show-ref"))
+        self.assertEqual(
+            (self.root / "shell-cwd").read_text().strip(), str(self.primary.resolve())
+        )
+
+    def test_legacy_gcleanup_relocates_shell_after_worktree_removal(self) -> None:
+        self.merge()
+        result = self.run_legacy_gcleanup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("JSONDecodeError", result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertNotIn("refs/heads/feature", self.git(self.primary, "show-ref"))
+        self.assertEqual(
+            (self.root / "shell-cwd").read_text().strip(), str(self.primary.resolve())
+        )
+
+    @unittest.skipUnless(shutil.which("zsh"), "zsh is not installed")
+    def test_legacy_gcleanup_relocates_zsh_after_worktree_removal(self) -> None:
+        self.merge()
+        result = self.run_legacy_gcleanup("zsh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("JSONDecodeError", result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertNotIn("refs/heads/feature", self.git(self.primary, "show-ref"))
+        self.assertEqual(
+            (self.root / "shell-cwd").read_text().strip(), str(self.primary.resolve())
+        )
+
+    def test_legacy_gcleanup_preserves_dirty_worktree_and_shell_directory(self) -> None:
+        self.merge()
+        marker = self.target / "unsaved"
+        marker.write_text("local")
+        result = self.run_legacy_gcleanup()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("JSONDecodeError", result.stderr)
+        self.assertEqual(marker.read_text(), "local")
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "feature")
+        self.assertEqual(
+            (self.root / "shell-cwd").read_text().strip(), str(self.target.resolve())
+        )
+
+    def test_terminal_cleanup_prints_readable_completion(self) -> None:
+        self.merge()
+        self.git(
+            self.primary, "config", "alias.cleanup", f"!{shlex.quote(str(SCRIPT))}"
+        )
+        master, slave = os.openpty()
+        try:
+            with os.fdopen(slave, "w") as terminal:
+                result = subprocess.run(
+                    ["git", "cleanup"],
+                    cwd=self.target,
+                    env=self.env,
+                    text=True,
+                    stdout=terminal,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                os.set_blocking(master, False)
+                output = os.read(master, 65536).decode()
+        finally:
+            os.close(master)
+        self.assertTrue(output.startswith("Cleanup complete:"), output)
+        self.assertFalse(self.target.exists())
+        self.assertNotIn("refs/heads/feature", self.git(self.primary, "show-ref"))
 
     def test_fetch_failure_preserves_worktree(self) -> None:
         self.merge()
