@@ -67,8 +67,8 @@
                   -h|--help) git cleanup "$@"; return $? ;;
               esac
           done
-          receipt=$(git cleanup "$@") || return $?
-          printf '%s\n' "$receipt"
+          receipt=$(git cleanup --json "$@") || return $?
+          printf '%s' "$receipt" | python3 -c 'import json,sys; result=json.load(sys.stdin); print(result.get("summary", json.dumps(result, indent=2)))' || return $?
           primary=$(printf '%s' "$receipt" | python3 -c 'import json,sys; result=json.load(sys.stdin); print(result["primary_worktree"] if result.get("status") == "completed" and result.get("worktree_removed") else "")') || return $?
           if [ -n "$primary" ]; then
               cd "$primary" || return $?

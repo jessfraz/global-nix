@@ -104,38 +104,46 @@ Local `kittycad-pr-automerge` calls use Switchboard and share a run identifier.
 An explicitly supplied CI token keeps its existing direct `gh` path. Unknown
 write outcomes stop the command, including its merge-method fallback loop.
 
-`git cleanup` now prints a JSON plan and performs no deletion by default:
+`git cleanup` fetches and prunes the remote, updates the local base branch with a
+fast-forward, and cleans up the current merged branch/worktree. It then prunes
+stale worktree metadata and runs Git garbage collection (skip with `--no-gc`).
+Running it on the base branch refreshes it without deleting the branch.
+`gcleanup` does the same and returns the shell to the primary worktree after a
+successful linked-worktree removal. Both print a readable completion message.
+
+Both accept `--plan` for a non-destructive preview. To inspect a plan before
+executing it:
 
 ```sh
-git cleanup > /tmp/cleanup-plan.json
+git cleanup --plan > /tmp/cleanup-plan.json
 git cleanup --execute /tmp/cleanup-plan.json
 ```
 
-Keep the plan outside the target worktree. Execution fetches again, compares the
-reviewed refs and evidence, and checks tracked, untracked, and recursive
+Keep saved plans outside the target worktree. Execution fetches again, compares
+the planned refs and evidence, and checks tracked, untracked, and recursive
 submodule content. Ignored files also block linked-worktree removal, with the
 blocking paths included in the error. It accepts ancestry or matching squash
 patch plus exact touched-file content. A missing remote branch is not proof of a
 merge. Locked worktrees, failed fetches, changed plans, and Git removal refusals
 stop cleanup.
-Only the named local worktree/branch is removed; it does not pull, garbage
-collect, or delete remote branches. When run in the primary worktree it switches
-to the existing local base branch before deleting the reviewed feature branch.
+Only the named local worktree/branch is removed; remote branches are never
+deleted. The base update completes before the feature branch/worktree is
+removed. When cleaning a linked worktree, a dirty primary checkout is left
+untouched and its base update is skipped with a warning.
 Ignored files outside submodules are kept in a primary worktree, and the switch
 refuses ignored-file collisions. Ignored files inside populated submodules still
 block cleanup because a branch switch can replace an entire submodule directory.
 Populated or deinitialized submodule Git stores are retained intact under the
 primary Git directory's `cleanup-submodules/`, including local branches, stashes,
-objects, and reflogs. The execution receipt names that archive; inspect it before
+objects, and reflogs. The completion output names that archive; inspect it before
 any manual deletion. For example, inspect retained refs with
 `git --git-dir "$archive/modules/sub" --work-tree "$PWD" show-ref`; the explicit
 worktree overrides the original checkout path retained in the archived config.
-Stores with symlinks or alternate-object dependencies need
-manual preservation and are refused. `gcleanup --execute` also returns the shell
-to the primary worktree after a successful linked-worktree removal.
+Stores with symlinks or alternate-object dependencies need manual preservation
+and are refused.
 
-`--force` permits deleting an unmerged branch only after reviewing a force plan
-and repeating `--force` during execution. It never discards local file changes.
+`--force` permits deleting an unmerged branch. When executing a saved force plan,
+repeat `--force` during execution. It never discards local file changes.
 Remove disposable ignored build output yourself before planning linked-worktree
 removal.
 

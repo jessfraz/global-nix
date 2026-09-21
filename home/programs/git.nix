@@ -209,7 +209,7 @@
         patchit = "!f() { echo $1.patch | sed s_pull/[0-9]*/commits_commit_ | xargs curl -L | git am --whitespace=fix; }; f";
         patchit-please = "!f() { echo $1.patch | sed s_pull/[0-9]*/commits_commit_ | xargs curl -L | git am -3 --whitespace=fix; }; f";
 
-        # Plan first, then execute exactly the reviewed, revalidated target.
+        # Clean up by default; --plan previews without removing anything.
         cleanup = "!f() { with-credentials ssh -- python3 \"$HOME/.config/git/scripts/git-cleanup\" \"$@\"; }; f";
       };
     };

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan and perform cleanup of one clean, merged local branch/worktree."""
+"""Clean up one clean, merged local branch/worktree; use --plan to preview."""
 
 import argparse
 import hashlib
@@ -230,36 +230,55 @@ def prepare(root: Path, remote: str, base: str | None, force: bool) -> Plan:
     if remote not in value(root, "remote").splitlines():
         raise CleanupError(f"Unknown remote: {remote}")
     # Fetch must succeed before any removal or merge decision.
-    git(root, "fetch", "--prune", "--no-tags", remote)
+    git(root, "fetch", "--prune", "--tags", remote)
     if base is None:
         head = git(
             root, "symbolic-ref", "--quiet", f"refs/remotes/{remote}/HEAD", check=False
         )
-        if head.returncode:
-            raise CleanupError("Remote default branch is unknown; pass --base")
-        base = head.stdout.strip().removeprefix(f"refs/remotes/{remote}/")
+        if head.returncode == 0:
+            base = head.stdout.strip().removeprefix(f"refs/remotes/{remote}/")
+        else:
+            for candidate in ("main", "master"):
+                if (
+                    git(
+                        root,
+                        "show-ref",
+                        "--verify",
+                        "--quiet",
+                        f"refs/heads/{candidate}",
+                        check=False,
+                    ).returncode
+                    == 0
+                ):
+                    base = candidate
+                    break
+            if base is None:
+                raise CleanupError("Remote default branch is unknown; pass --base")
     if git(root, "check-ref-format", f"refs/heads/{base}", check=False).returncode:
         raise CleanupError("Invalid base branch")
-    if branch_name == base:
-        raise CleanupError("Refusing to clean up the base branch")
+    if branch_name == base and root != primary:
+        raise CleanupError("Refusing to remove a worktree containing the base branch")
     clean(root, remove_worktree=root != primary)
     head = value(root, "rev-parse", "HEAD")
     base_head = value(
         root, "rev-parse", "--verify", f"refs/remotes/{remote}/{base}^{{commit}}"
     )
-    evidence, commit = merged(root, head, base_head)
+    evidence, commit = (
+        ("base-branch", head) if branch_name == base else merged(root, head, base_head)
+    )
     if evidence == "unmerged" and not force:
         raise CleanupError(
             "Branch is not merged or squash-equivalent; --force waives only this check"
         )
-    local_base_head = ""
-    if root == primary:
-        local_base_head = value(
-            root, "rev-parse", "--verify", f"refs/heads/{base}^{{commit}}"
-        )
-        for worktree in worktrees:
-            if worktree.get("branch") == f"refs/heads/{base}":
-                raise CleanupError("Base branch is checked out in another worktree")
+    local_base_head = value(
+        root, "rev-parse", "--verify", f"refs/heads/{base}^{{commit}}"
+    )
+    for worktree in worktrees:
+        if (
+            worktree.get("branch") == f"refs/heads/{base}"
+            and Path(worktree["worktree"]).resolve() != primary
+        ):
+            raise CleanupError("Base branch is checked out in another worktree")
     storage, fingerprint = submodule_storage(root) if root != primary else ("", "")
     return Plan(
         1,
@@ -282,7 +301,24 @@ def prepare(root: Path, remote: str, base: str | None, force: bool) -> Plan:
     )
 
 
-def execute(plan: Plan, force: bool) -> str | None:
+def update_base(plan: Plan) -> None:
+    primary = Path(plan.primary_worktree)
+    try:
+        clean(primary, remove_worktree=False)
+    except CleanupError as error:
+        if not plan.remove_worktree:
+            raise
+        print(
+            f"Primary worktree is not clean; skipping base update: {error}",
+            file=sys.stderr,
+        )
+        return
+    # Both transitions must preserve ignored files, including newly tracked upstream paths.
+    git(primary, "switch", "--no-overwrite-ignore", plan.base)
+    git(primary, "merge", "--ff-only", "--no-overwrite-ignore", plan.base_head)
+
+
+def execute(plan: Plan, force: bool, *, no_gc: bool = False) -> str | None:
     if plan.force != force:
         raise CleanupError("Execution --force must match the reviewed plan")
     current = prepare(Path(plan.worktree), plan.remote, plan.base, force)
@@ -290,9 +326,11 @@ def execute(plan: Plan, force: bool) -> str | None:
         raise CleanupError("Cleanup evidence changed; generate and review a new plan")
     root = Path(plan.worktree)
     primary = Path(plan.primary_worktree)
-    clean(root, remove_worktree=plan.remove_worktree)
+    # Finish the potentially failing base update before removing the current checkout.
+    update_base(plan)
     archive: Path | None = None
     if plan.remove_worktree:
+        clean(root, remove_worktree=True)
         # Git requires --force for populated submodules. Their tracked, untracked,
         # and ignored content was checked recursively immediately before removal.
         has_submodules = bool(git(root, "submodule", "status", "--recursive").stdout)
@@ -319,27 +357,37 @@ def execute(plan: Plan, force: bool) -> str | None:
                         f"{error}; submodule storage retained at {archive}: {restore_error}"
                     ) from error
             raise
-    else:
-        # A normal switch can overwrite ignored files tracked by the destination.
-        git(root, "switch", "--no-overwrite-ignore", plan.base)
     # Compare-and-delete protects a branch updated by another process.
-    try:
-        git(primary, "update-ref", "-d", f"refs/heads/{plan.branch}", plan.head)
-    except CleanupError as error:
-        retained = f"; submodule storage retained at {archive}" if archive else ""
-        raise CleanupError(
-            f"Worktree cleanup completed; branch was retained: {error}{retained}"
-        ) from error
-    git(primary, "config", "--remove-section", f"branch.{plan.branch}", check=False)
+    if plan.branch != plan.base:
+        try:
+            git(primary, "update-ref", "-d", f"refs/heads/{plan.branch}", plan.head)
+        except CleanupError as error:
+            retained = f"; submodule storage retained at {archive}" if archive else ""
+            raise CleanupError(
+                f"Worktree cleanup completed; branch was retained: {error}{retained}"
+            ) from error
+        git(primary, "config", "--remove-section", f"branch.{plan.branch}", check=False)
+    # Maintenance failures must not strand gcleanup inside a removed directory.
+    maintenance = [("worktree", "prune")]
+    if not no_gc:
+        maintenance.append(("gc",))
+    for command in maintenance:
+        result = git(primary, *command, check=False)
+        if result.returncode:
+            print(
+                f"Cleanup completed, but git {' '.join(command)} failed: {result.stderr.strip()}",
+                file=sys.stderr,
+            )
     return str(archive) if archive else None
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--plan", action="store_true", help="Print a JSON plan (the default)"
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--plan", action="store_true", help="Print a JSON plan without cleaning up"
     )
-    parser.add_argument(
+    mode.add_argument(
         "--execute", type=Path, metavar="PLAN", help="Execute a reviewed JSON plan"
     )
     parser.add_argument("-r", "--remote", default="origin")
@@ -350,33 +398,46 @@ def main() -> int:
         action="store_true",
         help="Allow unmerged commits; never discard local file changes",
     )
-    parser.add_argument("--no-gc", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--no-gc", action="store_true", help="Skip garbage collection")
+    parser.add_argument("--json", action="store_true", help="Print a JSON receipt")
     args = parser.parse_args()
     try:
-        if args.execute:
-            plan = Plan.read(args.execute)
-            retained_submodules = execute(plan, args.force)
+        plan = (
+            Plan.read(args.execute)
+            if args.execute
+            else prepare(Path.cwd(), args.remote, args.base, args.force)
+        )
+        if args.plan:
+            print(json.dumps(asdict(plan), indent=2))
+            return 0
+        retained_submodules = execute(plan, args.force, no_gc=args.no_gc)
+        summary = f"Cleanup complete: base={plan.base} remote={plan.remote}"
+        if plan.branch != plan.base:
+            summary += f"\nBranch deleted: {plan.branch}"
+        if plan.remove_worktree:
+            summary += f"\nWorktree removed: {plan.worktree}\nPrimary worktree: {plan.primary_worktree}"
+        if retained_submodules:
+            summary += f"\nSubmodule Git storage retained: {retained_submodules}"
+        if args.json:
             print(
                 json.dumps(
                     {
                         "status": "completed",
                         "worktree_removed": plan.remove_worktree,
-                        "branch_deleted": plan.branch,
+                        "branch_deleted": plan.branch
+                        if plan.branch != plan.base
+                        else None,
                         "primary_worktree": plan.primary_worktree,
                         "retained_submodules": retained_submodules,
+                        "summary": summary,
                     }
                 )
             )
         else:
-            print(
-                json.dumps(
-                    asdict(prepare(Path.cwd(), args.remote, args.base, args.force)),
-                    indent=2,
-                )
-            )
+            print(summary)
         return 0
     except (CleanupError, OSError, ValueError, subprocess.SubprocessError) as error:
-        print(json.dumps({"status": "blocked", "error": str(error)}), file=sys.stderr)
+        print(str(error), file=sys.stderr)
         return 1
 
 
