@@ -127,8 +127,13 @@ gh() {
 
 stop_if_uncertain() {
   local status="$1"
+  local context="$2"
+  local output="$3"
   if [ "$status" -eq 70 ]; then
-    warn "provider write outcome is unknown; stopping without retrying or proceeding to another write"
+    warn "$context: provider write outcome is unknown; stopping without retrying or proceeding to another write"
+    if [ -n "$output" ]; then
+      printf '%s\n' "$output" >&2
+    fi
     exit 70
   fi
 }
@@ -207,7 +212,7 @@ enable_auto_merge() {
       return 0
     }
     rc=$?
-    stop_if_uncertain "$rc"
+    stop_if_uncertain "$rc" "enable auto-merge ($method) for $repo#$pr" "$output"
     if printf '%s' "$output" | grep -qiE 'already.*auto-merge|auto-merge.*already|already queued'; then
       log "auto-merge already enabled: $repo#$pr"
       return 0
@@ -239,7 +244,7 @@ approve_pr() {
     return 0
   }
 
-  stop_if_uncertain "$?"
+  stop_if_uncertain "$?" "approve $repo#$pr" "$output"
 
   # Approval failures are non-fatal, e.g. already reviewed or self-approval rules.
   warn "approval skipped for $repo#$pr: $output"
@@ -341,7 +346,7 @@ request_dependabot_rebase() {
     return 0
   }
 
-  stop_if_uncertain "$?"
+  stop_if_uncertain "$?" "request dependabot rebase for $repo#$pr" "$output"
 
   warn "failed to request dependabot rebase for $repo#$pr: $output"
   return 0
@@ -382,7 +387,7 @@ rerun_failed_ci_jobs() {
       continue
     }
 
-    stop_if_uncertain "$?"
+    stop_if_uncertain "$?" "rerun failed CI jobs for $repo#$pr run $run_id" "$output"
 
     warn "failed to rerun failed CI jobs for $repo#$pr run $run_id: $output"
   done < <(

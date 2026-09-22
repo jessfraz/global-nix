@@ -262,22 +262,37 @@ class CredentialsTests(unittest.TestCase):
         executable = shutil.which("bash")
         self.assertIsNotNone(executable)
         script = SCRIPT.parent / "kittycad-pr-automerge"
-        result = subprocess.run(
-            [
-                executable,
-                "-c",
-                'source "$1"; stop_if_uncertain 70; touch "$2"',
-                "test",
-                str(script),
-                str(self.marker),
-            ],
-            env=self.env,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 70, result.stderr)
-        self.assertFalse(self.marker.exists())
+        context = "rerun failed CI jobs for KittyCAD/cli#123 run 456"
+        detail = "operation op_unknown has an unknown remote outcome\nrun op verify before retrying"
+        for status in (1, 70):
+            with self.subTest(status=status):
+                self.marker.unlink(missing_ok=True)
+                result = subprocess.run(
+                    [
+                        executable,
+                        "-c",
+                        'source "$1"; stop_if_uncertain "$3" "$4" "$5"; printf continued > "$2"',
+                        "test",
+                        str(script),
+                        str(self.marker),
+                        str(status),
+                        context,
+                        detail,
+                    ],
+                    env=self.env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if status == 70:
+                    self.assertEqual(result.returncode, 70, result.stderr)
+                    self.assertFalse(self.marker.exists())
+                    self.assertIn(context, result.stderr)
+                    self.assertIn(detail, result.stderr)
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertTrue(self.marker.exists())
+                    self.assertEqual(result.stderr, "")
 
     def test_ssh_launcher_repairs_socket_with_an_empty_isolated_agent(self) -> None:
         executable = shutil.which("gpgconf")
