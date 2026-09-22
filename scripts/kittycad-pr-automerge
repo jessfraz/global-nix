@@ -84,8 +84,9 @@ Approves and enables auto-merge for:
    - Update engine-api spec
    - Update text-to-cad spec
    - Update proprietary-to-kcl spec
-4) "Update KCL docs" PRs (update-kcl-docs branch) in KittyCAD/documentation
-   from the modeling-app GitHub App
+4) Generated docs PRs in KittyCAD/documentation:
+   - Modeling-app GitHub App: "Update KCL docs" / update-kcl-docs
+   - Zoo GitHub App: "Update CLI docs for <version>" / update-docs-<version>
 5) SDK-generated spec docs PRs in KittyCAD/website from the Zoo GitHub App:
    - Rust: update-spec-rust / "Update rust lang spec docs for <version>"
    - Go: update-spec-go / "Update go lang spec docs for <version>"
@@ -501,28 +502,36 @@ process_dependabot_prs() {
   done < <(jq -c '.[] | select(.isDraft == false)' <<<"$prs_json")
 }
 
-process_kcl_docs_prs() {
+select_documentation_sync_prs() {
+  jq -c --arg modeling_legacy "$MODELING_BOT_AUTHOR_LEGACY" --arg modeling_app "$MODELING_BOT_AUTHOR_APP" \
+    --arg zoo_legacy "$BOT_AUTHOR_LEGACY" --arg zoo_app "$BOT_AUTHOR_APP" '
+    .[]
+    | select(.isDraft == false)
+    | select(
+        ((.author.login == $modeling_legacy or .author.login == $modeling_app)
+          and .title == "Update KCL docs" and .headRefName == "update-kcl-docs")
+        or ((.author.login == $zoo_legacy or .author.login == $zoo_app)
+          and (.title | startswith("Update CLI docs for "))
+          and (.title | ltrimstr("Update CLI docs for ") | length > 0)
+          and .headRefName == ("update-docs-" + (.title | ltrimstr("Update CLI docs for "))))
+      )
+  '
+}
+
+process_documentation_prs() {
   local repo="${ORG}/documentation"
   local prs_json=""
   local row=""
   local pr_number=""
   local title=""
 
-  log "scanning open KCL docs sync PRs..."
+  log "scanning open KCL and CLI docs sync PRs..."
   prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,headRefName,author,isDraft,url)"
   while IFS= read -r row; do
     pr_number="$(jq -r '.number' <<<"$row")"
     title="$(jq -r '.title' <<<"$row")"
-    process_pr "$repo" "$pr_number" "$title" "KCL docs sync"
-  done < <(
-    jq -c --arg bot_legacy "$MODELING_BOT_AUTHOR_LEGACY" --arg bot_app "$MODELING_BOT_AUTHOR_APP" '
-      .[]
-      | select(.isDraft == false)
-      | select(.title == "Update KCL docs")
-      | select(.headRefName == "update-kcl-docs")
-      | select(.author.login == $bot_legacy or .author.login == $bot_app)
-    ' <<<"$prs_json"
-  )
+    process_pr "$repo" "$pr_number" "$title" "documentation sync"
+  done < <(select_documentation_sync_prs <<<"$prs_json")
 }
 
 process_api_inbound_spec_prs() {
@@ -578,7 +587,7 @@ main() {
   process_update_spec_repo_prs
   process_dependabot_prs
   process_api_inbound_spec_prs
-  process_kcl_docs_prs
+  process_documentation_prs
 
   log "done. processed=$processed skipped=$skipped errors=$errors dry_run=$DRY_RUN"
   if [ "$errors" -gt 0 ]; then
