@@ -92,6 +92,8 @@ Approves and enables auto-merge for:
    - Go: update-spec-go / "Update go lang spec docs for <version>"
    - Python: update-spec-python / "Update lang spec docs for python"
    - TypeScript: update-spec-typescript / "Update lang spec docs for typescript"
+6) Homebrew formula PRs in KittyCAD/homebrew-kittycad from the Zoo GitHub App:
+   - "Update tap formula" / update-tap-formula
 EOF
 }
 
@@ -534,6 +536,31 @@ process_documentation_prs() {
   done < <(select_documentation_sync_prs <<<"$prs_json")
 }
 
+select_homebrew_formula_prs() {
+  jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" '
+    .[]
+    | select(.isDraft == false)
+    | select(.author.login == $bot_legacy or .author.login == $bot_app)
+    | select(.title == "Update tap formula" and .headRefName == "update-tap-formula")
+  '
+}
+
+process_homebrew_prs() {
+  local repo="${ORG}/homebrew-kittycad"
+  local prs_json=""
+  local row=""
+  local pr_number=""
+  local title=""
+
+  log "scanning open Homebrew formula sync PRs..."
+  prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,headRefName,author,isDraft,url)"
+  while IFS= read -r row; do
+    pr_number="$(jq -r '.number' <<<"$row")"
+    title="$(jq -r '.title' <<<"$row")"
+    process_pr "$repo" "$pr_number" "$title" "Homebrew formula sync"
+  done < <(select_homebrew_formula_prs <<<"$prs_json")
+}
+
 process_api_inbound_spec_prs() {
   local repo="${ORG}/api"
   local prs_json=""
@@ -588,6 +615,7 @@ main() {
   process_dependabot_prs
   process_api_inbound_spec_prs
   process_documentation_prs
+  process_homebrew_prs
 
   log "done. processed=$processed skipped=$skipped errors=$errors dry_run=$DRY_RUN"
   if [ "$errors" -gt 0 ]; then

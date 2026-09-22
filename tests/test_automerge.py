@@ -55,15 +55,42 @@ class AutomergeTests(unittest.TestCase):
             ),
             replace(kcl, number=13, headRefName="unrelated"),
         ]
+        self.assertEqual(
+            self.select_prs("select_documentation_sync_prs", prs), [1056, 2, 3, 4]
+        )
+
+    def test_homebrew_formula_sync_requires_matching_bot_title_and_branch(self) -> None:
+        formula = PullRequest(
+            113,
+            "Update tap formula",
+            "update-tap-formula",
+            Author("app/zoo-github-actions-auth"),
+        )
+        prs = [
+            formula,
+            replace(formula, number=2, author=Author("zoo-github-actions-auth[bot]")),
+            replace(formula, number=3, author=Author("someone-else")),
+            replace(formula, number=4, author=Author("app/modeling-app-github-app")),
+            replace(formula, number=5, isDraft=True),
+            replace(formula, number=6, title="Update tap formula for 0.2.198"),
+            replace(formula, number=7, headRefName="update-tap-formula-0.2.198"),
+            replace(
+                formula, number=8, title="Update api spec", headRefName="update-spec"
+            ),
+        ]
+        self.assertEqual(self.select_prs("select_homebrew_formula_prs", prs), [113, 2])
+
+    def select_prs(self, selector: str, prs: list[PullRequest]) -> list[int]:
         executable = shutil.which("bash")
         self.assertIsNotNone(executable)
         result = subprocess.run(
             [
                 executable,
                 "-c",
-                'source "$1"; select_documentation_sync_prs',
+                'source "$1"; "$2"',
                 "test",
                 str(SCRIPT),
+                selector,
             ],
             input=json.dumps([asdict(pr) for pr in prs]),
             capture_output=True,
@@ -71,10 +98,7 @@ class AutomergeTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(
-            [json.loads(line)["number"] for line in result.stdout.splitlines()],
-            [1056, 2, 3, 4],
-        )
+        return [json.loads(line)["number"] for line in result.stdout.splitlines()]
 
 
 if __name__ == "__main__":
