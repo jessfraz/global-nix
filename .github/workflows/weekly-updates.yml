@@ -41,6 +41,8 @@ jobs:
           skipPush: true
 
       - name: Update pins and flake inputs
+        # Explicit bash enables pipefail so tee cannot hide an updater failure.
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
