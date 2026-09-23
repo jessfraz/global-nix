@@ -44,10 +44,11 @@ installed only on this repository with Contents and Pull requests read/write
 permissions. Actions needs the `DEPENDENCY_APP_CLIENT_ID` repository variable
 and `DEPENDENCY_APP_PRIVATE_KEY` repository secret. The private key is backed up
 in 1Password, never in this repository. App-authored updates run normal PR CI,
-so build jobs appear on the PR without a workflow-approval step. The merge job
-still verifies the bot identity, tested commit, changed-file allowlist, and
-current base before merging. Human-pushed repairs run CI but skip the bot's
-automatic merge job.
+so build jobs appear on the PR without a workflow-approval step. Updates on
+`automation/weekly-updates`, including human-pushed repairs, merge automatically
+after all three CI jobs pass. The merge job verifies the PR's repository, branch,
+tested head, and tested base. If `main` changes during CI, rebase and rerun CI;
+the merge job will not regenerate the branch and discard repairs.
 
 The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
 
