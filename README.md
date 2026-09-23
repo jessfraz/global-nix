@@ -35,6 +35,8 @@ Run `just ci` for formatting and lint, and `just eval` to evaluate all platforms
 
 CI also builds the native Home Manager configuration on Linux and both host configurations on macOS. The public cache receives only the packages selected by `packages.<system>.ci-cache`; generated host configurations and Home Manager generations stay out of it. Linux CI can read Ghostty's upstream cache and includes the unconfigured terminal package in the selected outputs. Automated dependency merges explicitly dispatch a main-branch build to populate that cache.
 
+macOS CI configures `127.0.0.2` as a loopback alias so CoreDNS's cache/ACL regression test can use separate allowed and blocked clients. A local source build of CoreDNS 1.14.7 needs the same alias (`sudo ifconfig lo0 alias 127.0.0.2 netmask 255.255.255.255 up`). The test remains enabled.
+
 Dependency updates run every three days at 17:17 UTC for both the Nix pins/flake inputs and Dependabot's GitHub Actions checks. The cron schedule runs on days 1, 4, 7, and so on each month, so month-boundary gaps can be shorter than three days. Nix updates merge only after **Test Nix Flake** succeeds and never deploy a host.
 
 The Nix updater uses the private `jessfraz-global-nix-updater` GitHub App,
@@ -44,7 +46,8 @@ and `DEPENDENCY_APP_PRIVATE_KEY` repository secret. The private key is backed up
 in 1Password, never in this repository. App-authored updates run normal PR CI,
 so build jobs appear on the PR without a workflow-approval step. The merge job
 still verifies the bot identity, tested commit, changed-file allowlist, and
-current base before merging.
+current base before merging. Human-pushed repairs run CI but skip the bot's
+automatic merge job.
 
 The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
 

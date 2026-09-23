@@ -71,6 +71,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Configure loopback for CoreDNS ACL tests
+        # macOS needs an explicit alias for the second client address used by
+        # TestCacheACLAuthorization. Keep the full test enabled.
+        run: sudo ifconfig lo0 alias 127.0.0.2 netmask 255.255.255.255 up
+
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
@@ -103,6 +108,7 @@ jobs:
     needs: [nix-flake-check, nix-build-linux, nix-build-macos]
     if: >-
       github.event_name == 'pull_request' &&
+      github.actor == 'jessfraz-global-nix-updater[bot]' &&
       github.event.pull_request.head.ref == 'automation/weekly-updates' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.base.ref == 'main' &&
