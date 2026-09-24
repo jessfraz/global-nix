@@ -5,6 +5,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -267,6 +268,166 @@ class CleanupTests(unittest.TestCase):
         self.assertEqual(
             (self.primary / "upstream-only").read_text(), "remote update\n"
         )
+
+    def test_previous_plan_format_remains_executable(self) -> None:
+        self.merge()
+        path = self.plan()
+        plan = json.loads(path.read_text())
+        plan["version"] = 1
+        del plan["build_directories"]
+        del plan["build_bytes"]
+        path.write_text(json.dumps(plan))
+        result = self.run_cleanup("--execute", str(path))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+
+    def add_build_cache(self) -> Path:
+        (self.target / "Cargo.toml").write_text('[package]\nname = "fixture"\n')
+        (self.target / ".gitignore").write_text("ignored\ntarget/\n")
+        self.git(self.target, "add", "Cargo.toml", ".gitignore")
+        self.git(self.target, "commit", "-m", "build configuration")
+        cache = self.target / "target"
+        cache.mkdir()
+        (cache / "artifact").write_bytes(b"rebuildable" * 1024)
+        return cache
+
+    def test_merged_worktree_cleanup_reclaims_ignored_build_cache(self) -> None:
+        cache = self.add_build_cache()
+        self.merge()
+        plan = self.plan()
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertFalse(cache.exists())
+        receipt = json.loads(result.stdout)
+        self.assertEqual(receipt["build_directories_removed"], [str(cache.resolve())])
+        self.assertGreater(receipt["build_bytes_estimate"], 0)
+
+    def add_nested_build_caches(self) -> list[Path]:
+        project = self.target / "dashboard/app"
+        project.mkdir(parents=True)
+        (project / "package.json").write_text('{"name":"fixture"}\n')
+        (project / ".gitignore").write_text("node_modules/\ndist/\n")
+        self.git(self.target, "add", "dashboard/app")
+        self.git(self.target, "commit", "-m", "nested package configuration")
+        caches = [project / "node_modules", project / "dist"]
+        for cache in caches:
+            cache.mkdir()
+            (cache / "artifact").write_text("rebuildable")
+        return caches
+
+    def test_nested_package_build_caches_are_removed_with_merged_worktree(self) -> None:
+        caches = self.add_nested_build_caches()
+        self.merge()
+        plan = self.plan()
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+        receipt = json.loads(result.stdout)
+        self.assertEqual(
+            receipt["build_directories_removed"],
+            sorted(str(cache.resolve()) for cache in caches),
+        )
+        self.assertEqual(
+            (self.primary / "dashboard/app/package.json").read_text(),
+            '{"name":"fixture"}\n',
+        )
+
+    def test_nested_repository_build_caches_are_preserved(self) -> None:
+        caches = self.add_nested_build_caches()
+        self.merge()
+        self.git(self.target, "init", "dashboard/app")
+        result = self.run_cleanup()
+        self.assertNotEqual(result.returncode, 0)
+        for cache in caches:
+            self.assertEqual((cache / "artifact").read_text(), "rebuildable")
+
+    def test_build_cache_does_not_allow_neighboring_ignored_data_to_be_deleted(
+        self,
+    ) -> None:
+        cache = self.add_build_cache()
+        self.merge()
+        (self.target / "ignored").write_text("local credentials")
+        result = self.run_cleanup()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((cache / "artifact").exists())
+        self.assertEqual((self.target / "ignored").read_text(), "local credentials")
+
+    def test_primary_checkout_keeps_its_build_cache(self) -> None:
+        self.add_build_cache()
+        self.merge()
+        self.target = self.primary
+        cache = self.primary / "target"
+        cache.mkdir()
+        (cache / "artifact").write_text("keep")
+        result = self.run_cleanup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((cache / "artifact").read_text(), "keep")
+
+    def test_build_cache_symlink_replacement_preserves_destination(self) -> None:
+        cache = self.add_build_cache()
+        self.merge()
+        plan = self.plan()
+        outside = self.root / "outside"
+        cache.rename(outside)
+        cache.symlink_to(outside, target_is_directory=True)
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((outside / "artifact").exists())
+        self.assertTrue(self.target.exists())
+
+    def test_mixed_tracked_and_ignored_build_directory_is_preserved(self) -> None:
+        cache = self.add_build_cache()
+        self.git(self.target, "add", "--force", "target/artifact")
+        self.git(self.target, "commit", "-m", "tracked artifact")
+        self.merge()
+        (cache / "other-build-output").write_text("ignored build")
+        result = self.run_cleanup()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((cache / "artifact").exists())
+
+    def test_nested_bare_repository_is_preserved(self) -> None:
+        cache = self.add_build_cache()
+        self.merge()
+        nested = cache / "local-history.git"
+        self.git(self.root, "init", "--bare", str(nested))
+        self.git(self.target, "push", str(nested), "HEAD:refs/heads/saved")
+        result = self.run_cleanup()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(nested.exists())
+        self.assertEqual(
+            self.git(nested, "rev-parse", "saved"),
+            self.git(self.target, "rev-parse", "HEAD"),
+        )
+
+    @unittest.skipUnless(shutil.which("lsof"), "lsof is not installed")
+    def test_busy_build_cache_skips_checkout_without_failing(self) -> None:
+        cache = self.add_build_cache()
+        self.merge()
+        with subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "import sys; f=open(sys.argv[1]); print('ready', flush=True); sys.stdin.read()",
+                str(cache / "artifact"),
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+        ) as reader:
+            self.assertEqual(reader.stdout.readline().strip(), "ready")
+            try:
+                result = self.run_cleanup()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                receipt = json.loads(result.stdout)
+                self.assertEqual(receipt["status"], "skipped")
+                self.assertIn("is using build cache", receipt["summary"])
+                self.assertTrue((cache / "artifact").exists())
+            finally:
+                reader.communicate(timeout=10)
+        result = self.run_cleanup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
 
     def test_cleanup_already_on_base_updates_to_remote(self) -> None:
         self.merge()

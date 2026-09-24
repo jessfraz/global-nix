@@ -342,6 +342,7 @@
           gnused
           jq
           just
+          lsof
           ncurses
           nodejs_22
           pinentry-tty

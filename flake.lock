@@ -50,11 +50,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790031563,
-        "narHash": "sha256-ZaR4JphiS+QvH15DU0s93G+nciPoSQWXtmEtlclmT/o=",
+        "lastModified": 1790270635,
+        "narHash": "sha256-m7M/u1DYJHniOtNUBDwjuvH05ckMeKECI3wnUE9w5V4=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "3bcfe7fa3444f25d96974a63a7c9191a164c1ffd",
+        "rev": "17a252573ac884ead32816d5d06bab348caf6e89",
         "type": "github"
       },
       "original": {
@@ -436,11 +436,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790269476,
-        "narHash": "sha256-KvIFTaQew6AFEkZJfpWEWdwuLsGJD1E7lmdVUJCgkiI=",
+        "lastModified": 1790270420,
+        "narHash": "sha256-1CPPv80LKQye1gCtpfRZNFm5+bYZ+oB6esaDM8PrHI0=",
         "owner": "jessfraz",
         "repo": "switchboard",
-        "rev": "8a925902eb0b727baac315cd2105b40ad360eac6",
+        "rev": "3d07f66428a6a738f845d21f74acb5965649ba3c",
         "type": "github"
       },
       "original": {

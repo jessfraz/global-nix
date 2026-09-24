@@ -148,8 +148,11 @@ git cleanup --execute /tmp/cleanup-plan.json
 
 Keep saved plans outside the target worktree. Execution fetches again, compares
 the planned refs and evidence, and checks tracked, untracked, and recursive
-submodule content. Ignored files also block linked-worktree removal, with the
-blocking paths included in the error. It accepts ancestry or matching squash
+submodule content. Conventional ignored build directories beside their project
+manifest (Rust targets, JavaScript dependencies/builds, and Python environments
+and tool caches) are included in the plan and deleted with the linked worktree.
+Other ignored files still block removal, with the paths included in the error.
+It accepts ancestry or matching squash
 patch plus exact touched-file content. A missing remote branch is not proof of a
 merge. Locked worktrees, failed fetches, changed plans, and Git removal refusals
 stop cleanup.
@@ -171,8 +174,12 @@ and are refused.
 
 `--force` permits deleting an unmerged branch. When executing a saved force plan,
 repeat `--force` during execution. It never discards local file changes.
-Remove disposable ignored build output yourself before planning linked-worktree
-removal.
+The receipt reports removed build directories and their estimated size. Active
+cache users cause that worktree to be kept with a successful `skipped` receipt,
+so cleanup can be retried after the build finishes. Build output is never moved
+into a preservation directory. Primary-checkout caches remain in place.
+Plain `cleanup` handles inactive build caches across projects and Codex tasks;
+use `cleanup --dry-run` to preview that sweep.
 
 Run `just test-tools` for real disposable-repository and credential-child
 regressions. `just ci` includes these tests.
