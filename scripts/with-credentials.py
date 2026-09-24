@@ -338,8 +338,15 @@ def resolve(
                     f"Credential recovery exceeded 60 seconds for {profile}"
                 )
             try:
+                # Closing stdin alone still lets op prompt through /dev/tty.
                 response = subprocess.run(
-                    args, capture_output=True, text=True, timeout=remaining, check=False
+                    args,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=remaining,
+                    check=False,
                 )
             except (OSError, subprocess.SubprocessError) as error:
                 raise CredentialError(

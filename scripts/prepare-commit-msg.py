@@ -144,7 +144,12 @@ def ensure_api_key() -> str:
         ]
         dbg("fetching OPENAI_API_KEY via 1Password CLI")
         with suppress(Exception):
-            out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
+            out = subprocess.check_output(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
             key = out.decode().strip()
             if key:
                 os.environ["OPENAI_API_KEY"] = key
@@ -180,17 +185,21 @@ def ensure_op_session(account: str) -> None:
 
 
 def run(args_or_cmd: str | Sequence[str]) -> subprocess.CompletedProcess[str]:
-    """Run a command; accepts a list[str] or str; returns CompletedProcess."""
+    """Capture a command without stdin or a controlling terminal."""
     if isinstance(args_or_cmd, str):
         return subprocess.run(
             args_or_cmd,
             shell=True,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
             capture_output=True,
             text=True,
             check=False,
         )
     return subprocess.run(
         args_or_cmd,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
         capture_output=True,
         text=True,
         check=False,
