@@ -1,12 +1,17 @@
 """Exercise the executable with real cached files and child processes."""
 
+import base64
+import http.server
 import importlib.util
 import json
+import netrc
 import os
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -51,6 +56,338 @@ class CredentialsTests(unittest.TestCase):
             capture_output=True,
             check=False,
         )
+
+    def run_shell(
+        self, shell: str, code: str, *args: str
+    ) -> subprocess.CompletedProcess[str]:
+        executable = shutil.which(shell)
+        if executable is None:
+            self.skipTest(f"{shell} unavailable")
+        directory = self.root / "bin"
+        directory.mkdir(exist_ok=True)
+        launcher = directory / "with-credentials"
+        launcher.write_text(
+            f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(SCRIPT))} "$@"\n'
+        )
+        launcher.chmod(0o700)
+        return subprocess.run(
+            [
+                executable,
+                "-f",
+                "-c",
+                'source "$1"; shift; function fetch-fixture() { _fetch_credentials fixture "$@"; }; '
+                + code,
+                "test",
+                str(SCRIPT.parent / "credentials.sh"),
+                *args,
+            ],
+            env={**self.env, "PATH": str(directory)},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_shell_exports_quote_values_and_clear_conflicting_overrides(self) -> None:
+        value = "test-only 'quotes' \"double\"; $(touch started) `touch started` $HOME\nsecond line"
+        self.cache.write_text(value)
+        self.set_profiles(
+            {
+                "fixture": {
+                    "unset": ["STALE_CREDENTIAL"],
+                    "secrets": [
+                        {
+                            "cache_file": str(self.cache),
+                            "env": ["TEST_CREDENTIAL", "ALIAS"],
+                        }
+                    ],
+                }
+            }
+        )
+        self.env["STALE_CREDENTIAL"] = "old-value"
+        exports = self.run_cli("--shell", "fixture")
+        self.assertEqual(exports.returncode, 0, exports.stderr)
+        for shell in ("bash", "zsh"):
+            executable = shutil.which(shell)
+            if executable is None:
+                continue
+            with self.subTest(shell=shell):
+                result = subprocess.run(
+                    [
+                        executable,
+                        "-c",
+                        'eval "$1"; exec "$2" -c "$3"',
+                        "test",
+                        exports.stdout,
+                        sys.executable,
+                        "import os,json; print(json.dumps([os.environ['TEST_CREDENTIAL'],os.environ['ALIAS'],'STALE_CREDENTIAL' in os.environ]))",
+                    ],
+                    env=self.env,
+                    cwd=self.root,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout), [value, value, False])
+                self.assertFalse(self.marker.exists())
+
+    def test_bare_shell_helper_exports_without_trace_leaks_and_preserves_command_mode(
+        self,
+    ) -> None:
+        self.env["OP_BIOMETRIC_UNLOCK_ENABLED"] = "false"
+        for shell in ("bash", "zsh"):
+            with self.subTest(shell=shell):
+                result = self.run_shell(
+                    shell,
+                    "set -x; fetch-fixture || exit $?; case $- in *x*) ;; *) exit 1;; esac; set +x; "
+                    '"$1" -c \'import os; assert os.environ["TEST_CREDENTIAL"] == "test-only-fixture-value"\'',
+                    sys.executable,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertNotIn("test-only-fixture-value", result.stderr)
+                result = self.run_shell(
+                    shell,
+                    'fetch-fixture "$1" -c \'import os,sys; assert os.environ["TEST_CREDENTIAL"] == "test-only-fixture-value"; assert sys.argv[1] == "argument with spaces"; raise SystemExit(17)\' "argument with spaces"; '
+                    'result=$?; [ -z "${TEST_CREDENTIAL+x}" ] || exit 1; exit "$result"',
+                    sys.executable,
+                )
+                self.assertEqual(result.returncode, 17, result.stderr)
+                self.assertNotIn(
+                    "test-only-fixture-value", result.stdout + result.stderr
+                )
+
+    def test_bare_shell_failure_keeps_callers_credentials_and_unsets_unchanged(
+        self,
+    ) -> None:
+        self.set_profiles(
+            {
+                "fixture": {
+                    "unset": ["STALE_CREDENTIAL"],
+                    "secrets": [
+                        {"cache_file": str(self.cache), "env": ["TEST_CREDENTIAL"]},
+                        {"cache_file": str(self.root / "missing"), "env": ["SECOND"]},
+                    ],
+                }
+            }
+        )
+        self.env.update(TEST_CREDENTIAL="original", STALE_CREDENTIAL="original")
+        for shell in ("bash", "zsh"):
+            with self.subTest(shell=shell):
+                result = self.run_shell(
+                    shell,
+                    "if fetch-fixture; then exit 1; fi; "
+                    '[ "$TEST_CREDENTIAL" = original ] && [ "$STALE_CREDENTIAL" = original ] && [ -z "${SECOND+x}" ]',
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertNotIn("test-only-fixture-value", result.stderr)
+
+    def test_shell_file_remains_private_and_available_after_helper(self) -> None:
+        self.cache.write_text('"first line"\n"second line"\n')
+        self.set_profiles(
+            {
+                "fixture": {
+                    "secrets": [
+                        {
+                            "cache_file": str(self.cache),
+                            "file_env": "TEST_FILE",
+                            "shell_file": "$XDG_CONFIG_HOME/certificates/ca.crt",
+                            "strip_quotes": True,
+                        }
+                    ]
+                }
+            }
+        )
+        result = self.run_shell("bash", 'fetch-fixture && printf "%s" "$TEST_FILE"')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        path = self.config / "certificates/ca.crt"
+        self.assertEqual(result.stdout, str(path))
+        self.assertEqual(path.read_text(), "first line\nsecond line")
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_accounts_skip_cached_credentials_and_use_default_config_home(self) -> None:
+        self.set_profiles(
+            {
+                "fixture": {
+                    "secrets": [
+                        {
+                            "cache_file": "$XDG_CONFIG_HOME/cached-token",
+                            "account": "fixture.example",
+                            "item": "fixture",
+                            "field": "token",
+                            "env": ["TEST_CREDENTIAL"],
+                        }
+                    ]
+                }
+            }
+        )
+        self.config.rename(self.root / ".config")
+        self.config = self.root / ".config"
+        self.env.pop("XDG_CONFIG_HOME")
+        needed = self.run_cli("--accounts", "fixture")
+        self.assertEqual(needed.returncode, 0, needed.stderr)
+        self.assertEqual(needed.stdout.strip(), "fixture.example")
+        (self.config / "cached-token").write_text("cached-fixture")
+        cached = self.run_cli("--accounts", "fixture")
+        self.assertEqual(cached.returncode, 0, cached.stderr)
+        self.assertEqual(cached.stdout.strip(), "")
+        result = self.run_cli("--shell", "fixture")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("TEST_CREDENTIAL=cached-fixture", result.stdout)
+
+    def test_github_shell_credentials_update_consumers_preserving_other_entries(
+        self,
+    ) -> None:
+        self.set_profiles(
+            {
+                "fixture": {
+                    "github_username": "fixture-user",
+                    "secrets": [
+                        {"cache_file": str(self.cache), "env": ["GITHUB_TOKEN"]}
+                    ],
+                }
+            }
+        )
+        netrc_path = self.root / ".netrc"
+        nix_path = self.config / "nix/nix.conf"
+        netrc_path.write_text(
+            "default login fallback-user password fallback-password\n"
+        )
+        first = self.run_cli("--shell", "fixture")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        for host in ("github.com", "api.github.com"):
+            self.assertEqual(
+                netrc.netrc(str(netrc_path)).authenticators(host),
+                ("fixture-user", "", self.cache.read_text()),
+            )
+        netrc_path.write_text(
+            netrc_path.read_text()
+            + 'machine other.example login "another user" password "other password"\n'
+        )
+        nix_path.write_text(
+            "max-jobs = 2\naccess-tokens = gitlab.com=other github.com=old # keep comment\n"
+        )
+        self.cache.write_text("replacement-fixture")
+        second = self.run_cli("--shell", "fixture")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        parsed = netrc.netrc(str(netrc_path))
+        self.assertEqual(
+            parsed.authenticators("github.com"),
+            ("fixture-user", "", "replacement-fixture"),
+        )
+        self.assertEqual(
+            parsed.authenticators("other.example"),
+            ("another user", "", "other password"),
+        )
+        self.assertEqual(
+            parsed.authenticators("unknown.example"),
+            ("fallback-user", "", "fallback-password"),
+        )
+        self.assertEqual(
+            nix_path.read_text(),
+            "max-jobs = 2\naccess-tokens = gitlab.com=other github.com=replacement-fixture # keep comment\n",
+        )
+        for path in (netrc_path, nix_path):
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+        curl = shutil.which("curl")
+        if curl is None:
+            self.skipTest("curl unavailable for netrc consumer check")
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(self.headers.get("Authorization", "").encode())
+
+            def log_message(self, _format: str, *args: object) -> None:
+                pass
+
+        with http.server.HTTPServer(("127.0.0.1", 0), Handler) as server:
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                for host in ("github.com", "api.github.com"):
+                    response = subprocess.run(
+                        [
+                            curl,
+                            "--disable",
+                            "--silent",
+                            "--show-error",
+                            "--max-time",
+                            "3",
+                            "--noproxy",
+                            "*",
+                            "--netrc-file",
+                            str(netrc_path),
+                            "--resolve",
+                            f"{host}:{server.server_port}:127.0.0.1",
+                            f"http://{host}:{server.server_port}/",
+                        ],
+                        env=self.env,
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        check=False,
+                    )
+                    self.assertEqual(response.returncode, 0, response.stderr)
+                    expected = base64.b64encode(
+                        b"fixture-user:replacement-fixture"
+                    ).decode()
+                    self.assertEqual(response.stdout, f"Basic {expected}", host)
+            finally:
+                server.shutdown()
+                worker.join()
+
+    def test_shell_rejects_invalid_export_names_without_output(self) -> None:
+        self.set_profiles(
+            {
+                "fixture": {
+                    "secrets": [
+                        {
+                            "cache_file": str(self.cache),
+                            "env": ["TOKEN; touch started"],
+                        }
+                    ]
+                }
+            }
+        )
+        result = self.run_cli("--shell", "fixture")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertNotIn("test-only-fixture-value", result.stderr)
+
+    def test_url_credentials_select_the_label_and_reject_ambiguous_results(
+        self,
+    ) -> None:
+        spec = importlib.util.spec_from_file_location("credential_launcher", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        secret = module.Secret.parse(
+            {
+                "account": "fixture.example",
+                "item": "fixture",
+                "url_label": "website",
+            }
+        )
+        selected = {"label": "website", "href": "https://fixture.example"}
+        self.assertEqual(
+            secret.response_value(
+                json.dumps(
+                    {
+                        "urls": [
+                            {"label": "admin", "href": "https://admin.example"},
+                            selected,
+                        ]
+                    }
+                )
+            ),
+            "https://fixture.example",
+        )
+        for urls in ([], [selected, selected]):
+            with self.subTest(urls=urls), self.assertRaises(module.CredentialError):
+                secret.response_value(json.dumps({"urls": urls}))
 
     def test_cached_credentials_reach_child_without_stdout_or_parent_exports(
         self,

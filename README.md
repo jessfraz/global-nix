@@ -70,9 +70,9 @@ The reason I mention this is THERE IS A LOT OF CONTENT ON NIX out there and SO M
 
 `with-credentials` runs a child command with the required credentials. It works
 from noninteractive Bash, Zsh, and GUI jobs without loading shell functions.
-Credentials stay in the child environment or private temporary files; the
-launcher never prints exports. It resolves every required credential before
-starting the command and preserves the command's exit status.
+In command mode, credentials stay in the child environment or private temporary
+files. It resolves every required credential before starting the command and
+preserves the command's exit status.
 
 ```sh
 with-credentials axiom -- axiom query "['corp-kubernetes'] | take 5"
@@ -82,12 +82,32 @@ with-credentials --doctor
 with-credentials ssh -- git fetch origin
 ```
 
-The `fetch-*` names are executable compatibility wrappers, with a new
-command-scoped interface. Replace `fetch-axiom-key; axiom query ...` with
-`fetch-axiom-key axiom query ...`. A bare wrapper fails before authentication.
-They no longer modify the parent shell, `.netrc`, or Nix configuration.
+The `fetch-*` helpers support both interfaces. With no arguments, the shell
+function exports credentials into the current shell, so `fetch-axiom-key; axiom
+query ...` still works. With a command, `fetch-axiom-key axiom query ...` passes
+credentials only to that command. Executable wrappers retain the command form
+for scripts and jobs that have not loaded the shell functions.
 
-Configured namespaces are read from Switchboard's config and dispatched through
+Home Manager loads the functions in Bash and in Zsh when its Zsh module is
+enabled. For an already-open shell, or an unmanaged Zsh configuration, source
+the shared fragment after applying the configuration:
+
+```sh
+source "${XDG_CONFIG_HOME:-$HOME/.config}/with-credentials/shell.sh"
+fetch-github-token
+```
+
+Bare GitHub helpers also refresh `.netrc` and the Nix GitHub access token. Google
+helpers select the personal or work config directory and clear conflicting
+token and credentials-file overrides. The Cockroach helper writes its persistent
+certificate to `~/.cockroach/ca.crt`; command mode uses a private temporary file.
+The shell functions capture the resolver's explicit `--shell PROFILE` output,
+which contains quoted exports and unsets, and apply it only after resolution
+succeeds. Run the helpers rather than printing that credential-bearing output.
+The `vault-login` shell helper retains `VAULT_ADDR` for subsequent commands and
+uses OIDC authentication. Its executable form uses the same OIDC flow.
+
+Command-mode namespaces are read from Switchboard's config and dispatched through
 its CLI, including `github.personal`, `google.personal`, `google.work`, and
 `schwab.personal` when configured. Use `--draft` to prepare a provider write or
 `--apply` to explicitly approve and execute the selected command. Successful
@@ -97,8 +117,9 @@ receipt. An uncertain write returns exit 70 and must be reconciled before retry.
 Other profiles are declared in `home/programs/credentials.nix`. Existing cached
 files are read first; vault lookup is bounded to a single 60-second window per
 invocation and stops on its first failure. Home Assistant reads its endpoint from
-the vault item's `website` field or `~/.config/home-assistant/url`, alongside the
-cached token at `~/.config/home-assistant/token`. The SSH profile uses the socket from
+the vault URL labeled `website` or `$XDG_CONFIG_HOME/home-assistant/url`, alongside
+the cached token at `$XDG_CONFIG_HOME/home-assistant/token` (`XDG_CONFIG_HOME`
+defaults to `~/.config`). The SSH profile uses the socket from
 `gpgconf`, correcting a stale inherited socket only for the child. Doctor checks
 configuration, executable availability, and socket reachability without reading
 credentials or unlocking the agent. Neither check proves a particular key is

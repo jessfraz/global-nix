@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Run one command with credentials, without exporting secrets to the caller."""
+"""Run a command with credentials, or restore credentials through a shell helper."""
 
 import argparse
 import json
+import netrc
 import os
+import re
+import shlex
 import shutil
 import socket
 import stat
@@ -19,6 +22,33 @@ import tomllib
 
 class CredentialError(Exception):
     pass
+
+
+def environment_name(name: object) -> str:
+    if (
+        not isinstance(name, str)
+        or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None
+    ):
+        raise CredentialError("Invalid credential environment variable name")
+    return name
+
+
+def credential_path(value: str) -> Path:
+    return Path(
+        os.path.expandvars(value.replace("$XDG_CONFIG_HOME", str(config_home())))
+    ).expanduser()
+
+
+def write_private(path: Path, value: str) -> None:
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as output:
+        temporary = Path(output.name)
+        try:
+            output.write(value)
+            output.close()
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
 
 def optional_string(data: dict, key: str) -> str | None:
@@ -38,6 +68,8 @@ class Secret:
     vault: str | None
     file_env: str | None
     strip_quotes: bool
+    shell_file: str | None
+    url_label: str | None
 
     @classmethod
     def parse(cls, data: object) -> "Secret":
@@ -47,7 +79,7 @@ class Secret:
         if not isinstance(env, list) or any(not isinstance(name, str) for name in env):
             raise CredentialError("Credential env must be a list of variable names")
         result = cls(
-            tuple(env),
+            tuple(environment_name(name) for name in env),
             *(
                 optional_string(data, key)
                 for key in (
@@ -60,18 +92,38 @@ class Secret:
                 )
             ),
             data.get("strip_quotes", False),
+            optional_string(data, "shell_file"),
+            optional_string(data, "url_label"),
         )
+        if result.file_env:
+            environment_name(result.file_env)
         if type(result.strip_quotes) is not bool:
             raise CredentialError("strip_quotes must be a boolean")
-        if not result.cache_file and not (
-            result.item and result.account and result.field
-        ):
+        if result.field and result.url_label:
+            raise CredentialError("Select either a credential field or a URL label")
+        if not result.cache_file and not result.item:
             raise CredentialError(
                 "Credential requires a cache file or complete 1Password reference"
             )
-        if result.item and not (result.account and result.field):
+        if result.item and not (result.account and (result.field or result.url_label)):
             raise CredentialError("Incomplete 1Password reference")
         return result
+
+    def response_value(self, output: str) -> str:
+        if self.url_label is None:
+            return output.rstrip("\n")
+        try:
+            urls = json.loads(output)["urls"]
+            matches = [
+                url["href"] for url in urls if url.get("label") == self.url_label
+            ]
+        except (ValueError, KeyError, TypeError, AttributeError) as error:
+            raise CredentialError("Invalid 1Password URL response") from error
+        if len(matches) != 1 or not isinstance(matches[0], str) or not matches[0]:
+            raise CredentialError(
+                "Expected one nonempty 1Password URL with the configured label"
+            )
+        return matches[0]
 
 
 @dataclass(frozen=True)
@@ -79,6 +131,8 @@ class Profile:
     environment: dict[str, str]
     secrets: tuple[Secret, ...]
     provider: str | None
+    unset: tuple[str, ...]
+    github_username: str | None
 
     @classmethod
     def parse(cls, data: object) -> "Profile":
@@ -95,15 +149,22 @@ class Profile:
             )
         if not isinstance(secrets, list):
             raise CredentialError("Credential sources must be a list")
+        for name in environment:
+            environment_name(name)
+        unset = data.get("unset", [])
+        if not isinstance(unset, list):
+            raise CredentialError("Credential unset must be a list of variable names")
         return cls(
             environment,
             tuple(Secret.parse(secret) for secret in secrets),
             optional_string(data, "provider"),
+            tuple(environment_name(name) for name in unset),
+            optional_string(data, "github_username"),
         )
 
 
 def config_home() -> Path:
-    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
 
 
 def namespaces() -> dict[str, str]:
@@ -245,25 +306,32 @@ def run_provider(
     return native.exit_code
 
 
-def resolve(profile: str, spec: Profile, directory: Path) -> dict[str, str]:
+def resolve(
+    profile: str, spec: Profile, directory: Path, *, shell: bool = False
+) -> dict[str, str]:
     result = dict(spec.environment)
     deadline = time.monotonic() + 60
-    for index, secret in enumerate(spec.secrets):
+    resolved = []
+    for secret in spec.secrets:
         cached = secret.cache_file
         value = ""
         if cached:
-            path = Path(os.path.expandvars(cached)).expanduser()
+            path = credential_path(cached)
             if path.exists():
                 value = path.read_text()
         if not value:
-            if not (secret.item and secret.account and secret.field):
+            if not secret.item:
                 raise CredentialError(
                     f"Required credential file is unavailable for {profile}"
                 )
             args = ["op", "--account", secret.account, "item", "get"]
             if secret.vault:
                 args.extend(["--vault", secret.vault])
-            args.extend([secret.item, "--fields", secret.field, "--reveal"])
+            args.append(secret.item)
+            if secret.url_label is not None:
+                args.extend(["--format", "json"])
+            else:
+                args.extend(["--fields", secret.field, "--reveal"])
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise CredentialError(
@@ -281,21 +349,103 @@ def resolve(profile: str, spec: Profile, directory: Path) -> dict[str, str]:
                 raise CredentialError(
                     f"Credential lookup failed for {profile} (exit {response.returncode}); command was not started"
                 )
-            value = response.stdout.rstrip("\n")
+            value = secret.response_value(response.stdout)
         if not value:
             raise CredentialError(
                 f"Empty credential for {profile}; command was not started"
             )
+        if "\0" in value:
+            raise CredentialError(f"Credential for {profile} contains a NUL byte")
+        resolved.append((secret, value))
+    for index, (secret, value) in enumerate(resolved):
+        if secret.cache_file:
+            path = credential_path(secret.cache_file)
+            if not path.exists() or not path.stat().st_size:
+                write_private(path, value)
         for name in secret.env:
             result[name] = value
         if secret.file_env:
-            path = directory / f"credential-{index}"
+            path = (
+                credential_path(secret.shell_file)
+                if shell and secret.shell_file
+                else directory / f"credential-{index}"
+            )
             if secret.strip_quotes:
-                value = value.strip('"')
-            path.write_text(value)
-            path.chmod(0o600)
+                value = "\n".join(
+                    line.removeprefix('"').removesuffix('"')
+                    for line in value.splitlines()
+                )
+            write_private(path, value)
             result[secret.file_env] = str(path)
     return result
+
+
+def github_token_files(username: str, token: str) -> None:
+    """Preserve the legacy GitHub consumers without overwriting unrelated entries."""
+    path = Path.home() / ".netrc"
+    entries = netrc.netrc(str(path)) if path.exists() else None
+    hosts = entries.hosts if entries else {}
+    macros = entries.macros if entries else {}
+    for host in ("github.com", "api.github.com"):
+        hosts[host] = (username, None, token)
+    # curl uses the first matching entry, including default.
+    if "default" in hosts:
+        hosts["default"] = hosts.pop("default")
+
+    def quote(value: str) -> str:
+        return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+    lines = []
+    for host, (login, account, password) in hosts.items():
+        lines.append("default" if host == "default" else f"machine {quote(host)}")
+        for key, value in (
+            ("login", login),
+            ("account", account),
+            ("password", password),
+        ):
+            if value:
+                lines.append(f"  {key} {quote(value)}")
+    for name, body in macros.items():
+        lines.extend([f"macdef {name}", "".join(body).rstrip("\n"), ""])
+    write_private(path, "\n".join(lines) + "\n")
+
+    path = config_home() / "nix/nix.conf"
+    lines = path.read_text().splitlines() if path.exists() else []
+    found = False
+    for index, line in enumerate(lines):
+        setting, separator, value = line.partition("=")
+        if separator and setting.strip() == "access-tokens":
+            tokens, comment, suffix = value.partition("#")
+            remaining = [
+                entry for entry in tokens.split() if not entry.startswith("github.com=")
+            ]
+            lines[index] = "access-tokens = " + " ".join(
+                [*remaining, f"github.com={token}"]
+            )
+            if comment:
+                lines[index] += f" #{suffix}"
+            found = True
+    if not found:
+        lines.append(f"access-tokens = github.com={token}")
+    write_private(path, "\n".join(lines) + "\n")
+
+
+def shell_exports(profile: str, spec: Profile) -> str:
+    directory = config_home() / "with-credentials/files" / profile
+    values = resolve(profile, spec, directory, shell=True)
+    if spec.github_username:
+        token = values.get("GITHUB_TOKEN", "")
+        if not token or any(character.isspace() for character in token):
+            raise CredentialError("Invalid GitHub token for legacy credential files")
+        try:
+            github_token_files(spec.github_username, token)
+        except netrc.NetrcParseError as error:
+            raise CredentialError("Cannot update malformed .netrc") from error
+    assignments = [f"unset {name}" for name in spec.unset]
+    assignments.extend(
+        f"export {name}={shlex.quote(value)}" for name, value in values.items()
+    )
+    return "\n".join(assignments)
 
 
 def main() -> int:
@@ -304,6 +454,17 @@ def main() -> int:
         "--doctor",
         action="store_true",
         help="Report configuration and SSH socket health without reading credentials",
+    )
+    shell_mode = parser.add_mutually_exclusive_group()
+    shell_mode.add_argument(
+        "--shell",
+        action="store_true",
+        help="Emit quoted assignments for the fetch shell functions",
+    )
+    shell_mode.add_argument(
+        "--accounts",
+        action="store_true",
+        help="List accounts needed by an uncached shell credential",
     )
     write_mode = parser.add_mutually_exclusive_group()
     write_mode.add_argument(
@@ -337,9 +498,32 @@ def main() -> int:
                 )
             )
             return 0
+        if args.shell or args.accounts:
+            if not args.profile or args.command or args.draft or args.apply:
+                parser.error(
+                    "use --shell PROFILE or --accounts PROFILE without a command or write mode"
+                )
+            spec = available.get(args.profile)
+            if spec is None:
+                raise CredentialError(f"Unknown credential profile: {args.profile}")
+            if args.accounts:
+                accounts = {
+                    secret.account
+                    for secret in spec.secrets
+                    if secret.account
+                    and not (
+                        secret.cache_file
+                        and credential_path(secret.cache_file).is_file()
+                        and credential_path(secret.cache_file).stat().st_size
+                    )
+                }
+                print("\n".join(sorted(accounts)))
+            else:
+                print(shell_exports(args.profile, spec))
+            return 0
         if not args.profile or not args.command:
             parser.error(
-                "use PROFILE -- COMMAND [ARG ...]; bare fetch aliases no longer change the parent shell"
+                "use PROFILE -- COMMAND [ARG ...]; for bare fetch helpers, source ~/.config/with-credentials/shell.sh"
             )
         command = args.command[1:] if args.command[0] == "--" else args.command
         if not command:
@@ -380,7 +564,7 @@ def main() -> int:
                 "This provider is configured in Switchboard; select its namespace instead"
             )
         # Resolve the entire set before starting the child; temporary files outlive
-        # that child only, and secrets are never emitted as shell source or JSON.
+        # that child only. Shell exports require the explicit shell-helper mode.
         with tempfile.TemporaryDirectory(prefix="with-credentials-") as temporary:
             env.update(resolve(args.profile, spec, Path(temporary)))
             return subprocess.run(command, env=env, check=False).returncode

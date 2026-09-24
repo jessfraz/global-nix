@@ -3,6 +3,7 @@
   lib,
   config,
   inputs,
+  githubUsername,
   ...
 }: let
   personal = item: field: env: {
@@ -50,6 +51,24 @@
     fetch-cockroach-license = "cockroach";
   };
 in {
+  programs.bash.bashrcExtra = ''
+    source "${config.xdg.configHome}/with-credentials/shell.sh"
+  '';
+  programs.zsh.initContent = lib.mkIf config.programs.zsh.enable ''
+    source "${config.xdg.configHome}/with-credentials/shell.sh"
+  '';
+
+  xdg.configFile."with-credentials/shell.sh".text =
+    ''
+      source ${../../scripts/credentials.sh}
+    ''
+    + lib.concatStringsSep "\n" (lib.mapAttrsToList (name: profile: ''
+        function ${name}() {
+          _fetch_credentials ${profile} "$@"
+        }
+      '')
+      aliases);
+
   home.packages =
     [launcher]
     ++ lib.mapAttrsToList (name: profile:
@@ -59,12 +78,38 @@ in {
     aliases
     ++ [
       (pkgs.writeShellScriptBin "vault-login" ''
-        exec ${launcher}/bin/with-credentials vault -- ${pkgs.bash}/bin/bash -c \
-          'printf "%s" "$GITHUB_VAULT_TOKEN" | vault login -method=github token=-'
+        exec ${launcher}/bin/with-credentials vault -- vault login -method=oidc "$@"
       '')
     ];
 
   xdg.configFile."with-credentials/profiles.json".text = builtins.toJSON {
+    "github.personal" = {
+      github_username = githubUsername;
+      secrets = [(personal "GitHub Personal Access Token" "token" ["GITHUB_TOKEN" "GITHUB_PERSONAL_ACCESS_TOKEN"])];
+    };
+    "google.personal" = {
+      environment.GOOGLE_WORKSPACE_CLI_CONFIG_DIR = "${config.home.homeDirectory}/.config/gws-personal";
+      unset = ["GOOGLE_WORKSPACE_CLI_TOKEN" "GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE"];
+      secrets = [
+        (personal "gws cli" "username" ["GOOGLE_WORKSPACE_CLI_CLIENT_ID"])
+        (personal "gws cli" "credential" ["GOOGLE_WORKSPACE_CLI_CLIENT_SECRET"])
+      ];
+    };
+    "google.work" = {
+      environment.GOOGLE_WORKSPACE_CLI_CONFIG_DIR = "${config.home.homeDirectory}/.config/gws-work";
+      unset = ["GOOGLE_WORKSPACE_CLI_TOKEN" "GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE"];
+      secrets = [
+        (work "gws cli" "username" ["GOOGLE_WORKSPACE_CLI_CLIENT_ID"])
+        (work "gws cli" "credential" ["GOOGLE_WORKSPACE_CLI_CLIENT_SECRET"])
+      ];
+    };
+    "schwab.personal" = {
+      environment.SCHWAB_CONFIG = "${config.home.homeDirectory}/.config/schwab-personal/config.json";
+      secrets = [
+        (personal "schwab cli" "username" ["SCHWAB_CLIENT_ID"])
+        (personal "schwab cli" "credential" ["SCHWAB_CLIENT_SECRET"])
+      ];
+    };
     openai = one (personal "openai.com" "apikey" ["OPENAI_API_KEY"]);
     anthropic = one (personal "claude.ai" "apikey" ["ANTHROPIC_API_KEY"]);
     google-ai = one (personal "Google AI Studio" "credential" ["GOOGLE_API_KEY"]);
@@ -82,15 +127,16 @@ in {
     tailscale = one (personal "tailscale.com" "apikey" ["TAILSCALE_API_KEY"]);
     home-assistant = {
       secrets = [
-        (personal "5ggad4sew5hun2qpppoiu47xvu" "website" ["HOME_ASSISTANT_URL" "HASS_SERVER"]
+        (personal "5ggad4sew5hun2qpppoiu47xvu" null ["HOME_ASSISTANT_URL" "HASS_SERVER"]
           // {
             vault = "Private";
-            cache_file = "${config.home.homeDirectory}/.config/home-assistant/url";
+            url_label = "website";
+            cache_file = "$XDG_CONFIG_HOME/home-assistant/url";
           })
         (personal "5ggad4sew5hun2qpppoiu47xvu" "apikey" ["HOME_ASSISTANT_TOKEN" "HASS_TOKEN"]
           // {
             vault = "Private";
-            cache_file = "${config.home.homeDirectory}/.config/home-assistant/token";
+            cache_file = "$XDG_CONFIG_HOME/home-assistant/token";
           })
       ];
     };
@@ -113,12 +159,10 @@ in {
         // {
           vault = null;
           file_env = "DATABASE_ROOT_CERT_PATH";
+          shell_file = "${config.home.homeDirectory}/.cockroach/ca.crt";
           strip_quotes = true;
         })
     ];
-    vault = {
-      environment.VAULT_ADDR = "http://vault.hawk-dinosaur.ts.net";
-      secrets = [(work "GitHub Token Vault" "credential" ["GITHUB_VAULT_TOKEN"])];
-    };
+    vault.environment.VAULT_ADDR = "http://vault.hawk-dinosaur.ts.net";
   };
 }
