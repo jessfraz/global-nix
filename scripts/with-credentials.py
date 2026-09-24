@@ -63,6 +63,7 @@ class Secret:
     env: tuple[str, ...]
     cache_file: str | None
     account: str | None
+    auth_profile: str | None
     item: str | None
     field: str | None
     vault: str | None
@@ -85,6 +86,7 @@ class Secret:
                 for key in (
                     "cache_file",
                     "account",
+                    "auth_profile",
                     "item",
                     "field",
                     "vault",
@@ -105,8 +107,20 @@ class Secret:
             raise CredentialError(
                 "Credential requires a cache file or complete 1Password reference"
             )
-        if result.item and not (result.account and (result.field or result.url_label)):
+        if result.item and not (
+            (result.account or result.auth_profile)
+            and (result.field or result.url_label)
+        ):
             raise CredentialError("Incomplete 1Password reference")
+        if result.auth_profile:
+            if not result.vault or not result.item:
+                raise CredentialError(
+                    "Scoped credentials require an explicit vault and item"
+                )
+            if result.cache_file:
+                raise CredentialError(
+                    "Scoped credentials cannot use an unbound cache file"
+                )
         return result
 
     def response_value(self, output: str) -> str:
@@ -187,6 +201,83 @@ def profiles() -> dict[str, Profile]:
     if not isinstance(result, dict):
         raise CredentialError("Invalid credential profiles")
     return {name: Profile.parse(profile) for name, profile in result.items()}
+
+
+@dataclass(frozen=True)
+class AuthProfile:
+    token_file: Path
+
+    @classmethod
+    def load(cls, name: str) -> "AuthProfile":
+        path = config_home() / "with-credentials/auth-profiles.json"
+        try:
+            configured = json.loads(path.read_text())
+        except (OSError, ValueError) as error:
+            raise CredentialError(
+                "Scoped authentication configuration is unavailable"
+            ) from error
+        if not isinstance(configured, dict) or not isinstance(
+            configured.get(name), dict
+        ):
+            raise CredentialError(f"Unknown authentication profile: {name}")
+        token_file = optional_string(configured[name], "token_file")
+        if not token_file:
+            raise CredentialError(
+                f"Authentication profile {name} requires a token file"
+            )
+        path = credential_path(token_file)
+        if not path.is_absolute():
+            raise CredentialError("Bootstrap token paths must be absolute")
+        return cls(path)
+
+    def token(self) -> str:
+        """Read a private runtime file without following a symlink or entering a TTY."""
+        try:
+            directory_fd = os.open(
+                self.token_file.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            )
+            try:
+                directory = os.fstat(directory_fd)
+                if directory.st_uid != os.getuid() or directory.st_mode & 0o077:
+                    raise CredentialError(
+                        "Bootstrap token directory must be owned and private"
+                    )
+                descriptor = os.open(
+                    self.token_file.name,
+                    os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                    dir_fd=directory_fd,
+                )
+                with os.fdopen(descriptor, encoding="utf-8") as source:
+                    metadata = os.fstat(source.fileno())
+                    if (
+                        not stat.S_ISREG(metadata.st_mode)
+                        or metadata.st_uid != os.getuid()
+                        or metadata.st_mode & 0o077
+                    ):
+                        raise CredentialError(
+                            "Bootstrap token file must be owned, regular and private"
+                        )
+                    value = source.read(16385).rstrip("\r\n")
+            finally:
+                os.close(directory_fd)
+        except (OSError, UnicodeError) as error:
+            raise CredentialError(
+                "Bootstrap token file is unavailable; desktop fallback is disabled"
+            ) from error
+        if (
+            not value
+            or len(value) > 16384
+            or any(char.isspace() or char == "\0" for char in value)
+        ):
+            raise CredentialError("Bootstrap token file is empty or invalid")
+        return value
+
+
+def child_environment() -> dict[str, str]:
+    # Vault authentication belongs to the lookup process, never its consumer.
+    return {
+        name: value for name, value in os.environ.items() if not name.startswith("OP_")
+    }
 
 
 def ssh_socket(launch: bool = False) -> tuple[str | None, str]:
@@ -312,6 +403,7 @@ def resolve(
     result = dict(spec.environment)
     deadline = time.monotonic() + 60
     resolved = []
+    auth_tokens: dict[str, str] = {}
     for secret in spec.secrets:
         cached = secret.cache_file
         value = ""
@@ -324,7 +416,26 @@ def resolve(
                 raise CredentialError(
                     f"Required credential file is unavailable for {profile}"
                 )
-            args = ["op", "--account", secret.account, "item", "get"]
+            if secret.auth_profile:
+                if secret.auth_profile not in auth_tokens:
+                    auth_tokens[secret.auth_profile] = AuthProfile.load(
+                        secret.auth_profile
+                    ).token()
+                lookup_env = child_environment()
+                lookup_env["OP_SERVICE_ACCOUNT_TOKEN"] = auth_tokens[
+                    secret.auth_profile
+                ]
+                lookup_env["OP_BIOMETRIC_UNLOCK_ENABLED"] = "false"
+                args = ["op", "item", "get"]
+            else:
+                lookup_env = dict(os.environ)
+                for name in (
+                    "OP_SERVICE_ACCOUNT_TOKEN",
+                    "OP_CONNECT_HOST",
+                    "OP_CONNECT_TOKEN",
+                ):
+                    lookup_env.pop(name, None)
+                args = ["op", "--account", secret.account, "item", "get"]
             if secret.vault:
                 args.extend(["--vault", secret.vault])
             args.append(secret.item)
@@ -341,6 +452,7 @@ def resolve(
                 # Closing stdin alone still lets op prompt through /dev/tty.
                 response = subprocess.run(
                     args,
+                    env=lookup_env,
                     stdin=subprocess.DEVNULL,
                     start_new_session=True,
                     capture_output=True,
@@ -518,6 +630,7 @@ def main() -> int:
                     secret.account
                     for secret in spec.secrets
                     if secret.account
+                    and not secret.auth_profile
                     and not (
                         secret.cache_file
                         and credential_path(secret.cache_file).is_file()
@@ -535,7 +648,7 @@ def main() -> int:
         command = args.command[1:] if args.command[0] == "--" else args.command
         if not command:
             parser.error("a command is required after --")
-        env = dict(os.environ)
+        env = child_environment()
         provider = configured.get(args.profile)
         if provider or args.profile == "ssh":
             if provider == "github" or args.profile == "ssh":

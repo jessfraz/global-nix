@@ -76,7 +76,7 @@ REASONING_DONE_EVENT = "response.reasoning_summary_part.done"
 TERMINAL_EVENT_TYPES = {"response.completed", "response.error", "response.failed"}
 LIST_ITEM_RE = re.compile(r"^(?P<indent>[ \t]*)(?:[-*+]|\d+[.)])\s+")
 
-# Ensure Nix profile bins are on PATH for git hooks (e.g., 1Password `op`).
+# Ensure Nix profile bins are on PATH for git hooks and with-credentials.
 _home = os.environ.get("HOME", "")
 _user = os.environ.get("USER", "")
 _prefix = f"/etc/profiles/per-user/{_user}/bin:{_home}/.nix-profile/bin:"
@@ -124,64 +124,25 @@ def usage() -> None:
     sys.stderr.write(f"Usage: {os.path.basename(sys.argv[0])} <commit-msg-file>|-\n")
 
 
-def ensure_api_key() -> str:
-    key = os.environ.get("OPENAI_API_KEY", "")
-    if key:
-        return key
-    # Try 1Password CLI if available
-    if which("op") is not None:
-        ensure_op_session("my.1password.com")
-        cmd = [
-            "op",
-            "--account",
-            "my.1password.com",
-            "item",
-            "get",
-            "openai.com",
-            "--fields",
-            "apikey",
-            "--reveal",
-        ]
-        dbg("fetching OPENAI_API_KEY via 1Password CLI")
-        with suppress(Exception):
-            out = subprocess.check_output(
-                cmd,
+def retry_with_credentials() -> int:
+    launcher = which("with-credentials")
+    if launcher is not None and not os.environ.get("COMMIT_AI_CREDENTIALS_ATTEMPTED"):
+        environment = dict(os.environ)
+        environment["COMMIT_AI_CREDENTIALS_ATTEMPTED"] = "1"
+        try:
+            result = subprocess.run(
+                [launcher, "openai", "--", sys.executable, __file__, *sys.argv[1:]],
+                env=environment,
                 stdin=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
                 start_new_session=True,
+                check=False,
             )
-            key = out.decode().strip()
-            if key:
-                os.environ["OPENAI_API_KEY"] = key
-                return key
-    return ""
-
-
-def ensure_op_session(account: str) -> None:
-    if os.environ.get("OP_BIOMETRIC_UNLOCK_ENABLED") != "false":
-        return
-    if not sys.stdin.isatty():
-        dbg("no TTY available; skipping op signin")
-        return
-    if which("op") is None:
-        return
-    if run(["op", "whoami", "--account", account]).returncode == 0:
-        return
-    dbg("op whoami failed; attempting op signin")
-    cp = subprocess.run(
-        ["op", "signin", "--account", account, "--raw"],
-        stdin=None,
-        stdout=subprocess.PIPE,
-        stderr=None,
-        text=True,
-        check=False,
-    )
-    if cp.returncode != 0:
-        dbg("op signin failed")
-        return
-    token = (cp.stdout or "").strip()
-    if token:
-        os.environ["OP_SESSION"] = token
+            if result.returncode == 0:
+                return 0
+        except OSError:
+            pass
+    sys.stderr.write("commit-ai: credentials unavailable; skipping\n")
+    return 0
 
 
 def run(args_or_cmd: str | Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -550,12 +511,9 @@ def main() -> int:
         dbg("existing commit message detected; not overwriting")
         return 0
 
-    api_key = ensure_api_key()
+    api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
-        sys.stderr.write("commit-ai: no OPENAI_API_KEY; skipping\n")
-        sys.stderr.flush()
-        dbg("missing OPENAI_API_KEY")
-        return 0
+        return retry_with_credentials()
 
     diff = get_diff()
     if not diff:

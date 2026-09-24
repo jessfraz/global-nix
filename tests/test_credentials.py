@@ -449,6 +449,180 @@ class CredentialsTests(unittest.TestCase):
         self.assertFalse(self.marker.exists())
         self.assertIn("lookup unavailable", result.stderr)
 
+    def scoped_profile(self) -> Path:
+        token_directory = self.config / "agent-credentials"
+        token_directory.mkdir(mode=0o700)
+        token = token_directory / "fixture.token"
+        token.write_text("test-only-bootstrap-token\n")
+        token.chmod(0o600)
+        (self.config / "with-credentials/auth-profiles.json").write_text(
+            json.dumps({"fixture-auth": {"token_file": str(token)}})
+        )
+        self.set_profiles(
+            {
+                "fixture": {
+                    "secrets": [
+                        {
+                            "auth_profile": "fixture-auth",
+                            "account": "fixture.example",
+                            "vault": "Fixture Vault",
+                            "item": "fixture",
+                            "field": "credential",
+                            "env": ["TEST_CREDENTIAL"],
+                        }
+                    ]
+                }
+            }
+        )
+        directory = self.root / "bin"
+        directory.mkdir()
+        executable = directory / "op"
+        executable.write_text(
+            f"#!{sys.executable}\n"
+            "import os,pathlib,sys\n"
+            "assert sys.argv[1:] == ['item','get','--vault','Fixture Vault','fixture','--fields','credential','--reveal']\n"
+            "assert os.environ['OP_SERVICE_ACCOUNT_TOKEN'] == 'test-only-bootstrap-token'\n"
+            "assert os.environ['OP_BIOMETRIC_UNLOCK_ENABLED'] == 'false'\n"
+            "assert not any(name.startswith('OP_SESSION') for name in os.environ)\n"
+            "assert 'OP_CONNECT_TOKEN' not in os.environ\n"
+            "assert 'OP_ACCOUNT' not in os.environ\n"
+            "pathlib.Path(os.environ['HOME'],'op-called').touch()\n"
+            "if os.environ.get('FIXTURE_OP_FAIL'):\n"
+            "    print(os.environ['OP_SERVICE_ACCOUNT_TOKEN'], file=sys.stderr)\n"
+            "    raise SystemExit(23)\n"
+            "print('test-only-provider-value')\n"
+        )
+        executable.chmod(0o700)
+        self.env.update(
+            PATH=str(directory),
+            OP_SERVICE_ACCOUNT_TOKEN="wrong-inherited-bootstrap",
+            OP_SESSION_fixture="wrong-inherited-session",
+            OP_CONNECT_TOKEN="wrong-connect-token",
+            OP_ACCOUNT="wrong.example",
+        )
+        return token
+
+    def test_scoped_token_only_reaches_op_and_provider_value_reaches_child(
+        self,
+    ) -> None:
+        self.scoped_profile()
+        result = self.run_cli(
+            "fixture",
+            "--",
+            sys.executable,
+            "-c",
+            "import os,pathlib; assert os.environ['TEST_CREDENTIAL']=='test-only-provider-value'; "
+            "assert not any(name.startswith('OP_') for name in os.environ); "
+            "pathlib.Path.home().joinpath('started').touch()",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(self.marker.exists())
+        self.assertTrue((self.root / "op-called").exists())
+        self.assertNotIn("test-only-", result.stdout + result.stderr)
+        accounts = self.run_cli("--accounts", "fixture")
+        self.assertEqual(accounts.returncode, 0, accounts.stderr)
+        self.assertEqual(accounts.stdout.strip(), "")
+
+    def test_missing_or_unsafe_bootstrap_never_invokes_op_or_child(self) -> None:
+        token = self.scoped_profile()
+        command = "from pathlib import Path; Path.home().joinpath('started').touch()"
+        for case in ("permissions", "directory", "symlink", "missing", "empty"):
+            with self.subTest(case=case):
+                token.unlink(missing_ok=True)
+                token.write_text("test-only-bootstrap-token\n")
+                token.chmod(0o600)
+                token.parent.chmod(0o700)
+                if case == "permissions":
+                    token.chmod(0o644)
+                elif case == "directory":
+                    token.parent.chmod(0o755)
+                elif case == "symlink":
+                    token.unlink()
+                    token.symlink_to(self.cache)
+                elif case == "missing":
+                    token.unlink()
+                else:
+                    token.write_text("")
+                result = self.run_cli("fixture", "--", sys.executable, "-c", command)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((self.root / "op-called").exists())
+                self.assertFalse(self.marker.exists())
+                self.assertNotIn("test-only-", result.stdout + result.stderr)
+
+    def test_scoped_lookup_failure_does_not_fall_back_or_expose_stderr(self) -> None:
+        self.scoped_profile()
+        self.env["FIXTURE_OP_FAIL"] = "1"
+        result = self.run_cli(
+            "fixture",
+            "--",
+            sys.executable,
+            "-c",
+            "from pathlib import Path; Path.home().joinpath('started').touch()",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((self.root / "op-called").exists())
+        self.assertFalse(self.marker.exists())
+        self.assertIn("exit 23", result.stderr)
+        self.assertNotIn("test-only-", result.stdout + result.stderr)
+
+    def test_scoped_profile_rejects_unbound_cache_before_reading_it(self) -> None:
+        token = self.scoped_profile()
+        path = self.config / "with-credentials/profiles.json"
+        profiles = json.loads(path.read_text())
+        profiles["fixture"]["secrets"][0]["cache_file"] = str(self.cache)
+        self.set_profiles(profiles)
+        token.unlink()
+        result = self.run_cli("--shell", "fixture")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertNotIn("test-only-", result.stdout + result.stderr)
+
+    def test_commit_hook_uses_scoped_resolver_and_missing_token_does_not_block_commit(
+        self,
+    ) -> None:
+        token = self.scoped_profile()
+        profile_path = self.config / "with-credentials/profiles.json"
+        profiles = json.loads(profile_path.read_text())
+        profile = profiles.pop("fixture")
+        profile["secrets"][0]["env"] = ["OPENAI_API_KEY"]
+        self.set_profiles({"openai": profile})
+        git = shutil.which("git")
+        self.assertIsNotNone(git)
+        (self.root / "bin/git").symlink_to(git)
+        launcher = self.root / "bin/with-credentials"
+        launcher.write_text(
+            f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(SCRIPT))} "$@"\n'
+        )
+        launcher.chmod(0o700)
+        repository = self.root / "repository"
+        repository.mkdir()
+        subprocess.run(
+            [git, "init", "--quiet", str(repository)], env=self.env, check=True
+        )
+        message = self.root / "commit-message"
+        message.write_text("")
+        for available in (True, False):
+            with self.subTest(available=available):
+                (self.root / "op-called").unlink(missing_ok=True)
+                if not available:
+                    token.unlink()
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(SCRIPT.parent / "prepare-commit-msg.py"),
+                        str(message),
+                    ],
+                    env=self.env,
+                    cwd=repository,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual((self.root / "op-called").exists(), available)
+                self.assertEqual(message.read_text(), "")
+                self.assertNotIn("test-only-", result.stdout + result.stderr)
+
     def test_file_credential_is_private_and_deleted_after_child(self) -> None:
         self.set_profiles(
             {

@@ -114,16 +114,48 @@ its CLI, including `github.personal`, `google.personal`, `google.work`, and
 reads/applications return native provider output; drafts return the Switchboard
 receipt. An uncertain write returns exit 70 and must be reconciled before retry.
 
-Other profiles are declared in `home/programs/credentials.nix`. Existing cached
-files are read first; vault lookup is bounded to a single 60-second window per
-invocation and stops on its first failure. Home Assistant reads its endpoint from
-the vault URL labeled `website` or `$XDG_CONFIG_HOME/home-assistant/url`, alongside
-the cached token at `$XDG_CONFIG_HOME/home-assistant/token` (`XDG_CONFIG_HOME`
-defaults to `~/.config`). The SSH profile uses the socket from
-`gpgconf`, correcting a stale inherited socket only for the child. Doctor checks
-configuration, executable availability, and socket reachability without reading
-credentials or unlocking the agent. Neither check proves a particular key is
-inserted or that remote authorization succeeds.
+Other profiles are declared in `home/programs/credentials.nix`. Scoped secrets
+name an `auth_profile`, vault, item and field. The generated
+`~/.config/with-credentials/auth-profiles.json` maps each authentication profile to
+`~/.config/agent-credentials/personal.token`. One authentication profile,
+`personal`, reads the selected personal and work credentials from the `AI Agents`
+vault in the personal 1Password account. Provider accounts and Google session
+namespaces remain separate. Provision the service-account token separately from
+Nix: the directory must be owned by the current user with mode `0700`, and the
+regular token file with mode `0600` or `0400`. Symlinks, missing tokens and invalid
+permissions stop the command without desktop fallback.
+The token enters only the `op` lookup process. Provider commands receive their
+selected credentials with all inherited `OP_*` variables removed. Do not export a
+service-account token globally or place one in Nix configuration, Git or logs.
+
+Vault lookup is bounded to a single 60-second window per invocation and stops on
+its first failure. Scoped profiles do not use the old unbound file caches. Home
+Assistant therefore reads the endpoint labeled `website` and its API token from
+its scoped vault item; the old Home Assistant cache files are not consulted or
+rewritten. Provider session caches managed by Switchboard remain independent.
+Legacy profiles without `auth_profile` retain their existing cache and desktop
+session behavior, but never select an account through an ambient service-account
+or Connect token. `XDG_CONFIG_HOME` defaults to `~/.config`.
+
+Use `zoo-prod`, `zoo-dev`, `easypost-live` or `easypost-test` when a command needs
+only one credential. Existing `zoo` and `easypost` aggregate helpers remain
+available. The global commit-message helper uses the same `openai` resolver and
+skips generation when credentials are unavailable.
+
+Provision and verify the destination vaults, items and read-only service-account
+grants before activating a new profile mapping. Rotate a bootstrap token by
+atomically replacing its private file; the next invocation reads the new token.
+To disable access, revoke the service account and remove its token file. Provider
+sessions and legacy consumer files such as `.netrc` have their own lifetime and
+must be revoked or cleared separately when withdrawing their access. File modes
+do not isolate different processes running as the same operating-system user.
+
+The SSH profile uses the socket from `gpgconf`, correcting a stale inherited
+socket only for the child. Doctor checks configuration, executable availability,
+and socket reachability without reading credentials or unlocking the agent.
+Neither check proves a particular key is inserted or that remote authorization
+succeeds. Service-account tokens do not replace YubiKey insertion, PIN or touch
+requirements, OAuth consent, or the need for an awake runner.
 
 Local `kittycad-pr-automerge` calls use Switchboard and share a run identifier.
 An explicitly supplied CI token keeps its existing direct `gh` path. Unknown
