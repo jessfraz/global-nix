@@ -89,6 +89,7 @@ in {
     };
     "google.personal" = {
       environment.GOOGLE_WORKSPACE_CLI_CONFIG_DIR = "${config.home.homeDirectory}/.config/gws-personal";
+      environment.GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND = "file";
       unset = ["GOOGLE_WORKSPACE_CLI_TOKEN" "GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE"];
       secrets = [
         (personal "gws cli" "username" ["GOOGLE_WORKSPACE_CLI_CLIENT_ID"])
@@ -97,6 +98,7 @@ in {
     };
     "google.work" = {
       environment.GOOGLE_WORKSPACE_CLI_CONFIG_DIR = "${config.home.homeDirectory}/.config/gws-work";
+      environment.GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND = "file";
       unset = ["GOOGLE_WORKSPACE_CLI_TOKEN" "GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE"];
       secrets = [
         (work "gws cli" "username" ["GOOGLE_WORKSPACE_CLI_CLIENT_ID"])

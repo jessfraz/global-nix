@@ -306,6 +306,15 @@
         switchboardPackages.schwab
       ];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      gwsCli = pkgs.symlinkJoin {
+        name = "gws-file-credentials-${pkgs.gws.version}";
+        paths = [pkgs.gws];
+        nativeBuildInputs = [pkgs.makeWrapper];
+        postBuild = ''
+          wrapProgram "$out/bin/gws" --set GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND file
+        '';
+        meta = pkgs.gws.meta;
+      };
       kicadPackage =
         if pkgs.stdenv.hostPlatform.isDarwin
         then pkgs.callPackage ./pkgs/kicad-bin.nix {}
@@ -336,7 +345,7 @@
           findutils
           git
           git-lfs
-          gws
+          gwsCli
           gnumake
           gnupg
           gnused
@@ -388,6 +397,7 @@
       };
     in {
       codex = codexCli;
+      gws = gwsCli;
       cli-completions = cliCompletions;
       kicad = kicadPackage;
       orca-slicer = orcaSlicerPackage;
