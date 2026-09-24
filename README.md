@@ -129,9 +129,10 @@ Local `kittycad-pr-automerge` calls use Switchboard and share a run identifier.
 An explicitly supplied CI token keeps its existing direct `gh` path. Unknown
 write outcomes stop the command, including its merge-method fallback loop.
 
-`git cleanup` fetches and prunes the remote, updates the local base branch with a
-fast-forward, and cleans up the current merged branch/worktree. It then prunes
-stale worktree metadata and runs Git garbage collection (skip with `--no-gc`).
+`git cleanup` fetches the remote base branch without fetching tags or unrelated
+refs, updates the local base branch with a fast-forward, and cleans up the current
+merged branch/worktree. It then prunes stale worktree metadata and runs Git garbage
+collection (skip with `--no-gc`).
 Running it on the base branch refreshes it without deleting the branch.
 `gcleanup` does the same and returns the shell to the primary worktree after a
 successful linked-worktree removal. Both print a readable completion message in
@@ -152,10 +153,12 @@ submodule content. Conventional ignored build directories beside their project
 manifest (Rust targets, JavaScript dependencies/builds, and Python environments
 and tool caches) are included in the plan and deleted with the linked worktree.
 Other ignored files still block removal, with the paths included in the error.
-It accepts ancestry or matching squash
-patch plus exact touched-file content. A missing remote branch is not proof of a
-merge. Locked worktrees, failed fetches, changed plans, and Git removal refusals
-stop cleanup.
+It accepts ancestry, matching squash patches with exact touched-file content,
+or a GitHub merged-PR record whose published head contains this checkout and
+whose merge commit is present on the freshly fetched base. This also handles
+detached baseline/review checkouts and rebased PRs. A missing remote branch is
+not proof of a merge. Locked worktrees, failed fetches, changed plans, and Git
+removal refusals stop cleanup of that checkout.
 Only the named local worktree/branch is removed; remote branches are never
 deleted. The base update completes before the feature branch/worktree is
 removed. When cleaning a linked worktree, a dirty primary checkout is left
@@ -178,8 +181,25 @@ The receipt reports removed build directories and their estimated size. Active
 cache users cause that worktree to be kept with a successful `skipped` receipt,
 so cleanup can be retried after the build finishes. Build output is never moved
 into a preservation directory. Primary-checkout caches remain in place.
-Plain `cleanup` handles inactive build caches across projects and Codex tasks;
-use `cleanup --dry-run` to preview that sweep.
+Plain `cleanup` handles inactive build caches across projects and Codex tasks,
+then sweeps verified-merged Codex worktrees. Use `cleanup --dry-run` to preview
+both. `cleanup-worktrees` runs just the worktree sweep; its `--dry-run` saves
+plans under `$XDG_STATE_HOME/cleanup` (default `~/.local/state/cleanup`). Run
+`cleanup-worktrees --execute DIRECTORY` to execute those reviewed plans.
+Each worktree is rechecked before removal. Busy, dirty, locked, unmerged, or
+unverifiable checkouts are skipped while others continue. Checkouts supplying
+shared files through symlinks to another worktree are retained. The sweep never
+removes a primary clone, changes its checked-out branch, or follows build
+symlinks into their destinations. Empty Codex containers and their name markers
+are removed with the finished checkout.
+
+Normal work uses the existing home-directory clones, including repositories
+under `~/zoo`, rather than creating new disposable checkouts in `~/.codex`.
+When isolation is useful, `wknew <branch>` creates a sibling worktree and
+`gcleanup` removes the finished sibling and returns to its primary clone.
+An explicit cleanup of a disposable Codex checkout deletes that checkout and
+its build output permanently. Cleanup of a normal clone retains the repository
+and brings its base branch up to date.
 
 Run `just test-tools` for real disposable-repository and credential-child
 regressions. `just ci` includes these tests.

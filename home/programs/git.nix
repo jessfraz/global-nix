@@ -5,8 +5,14 @@
   gitEmail,
   username,
   homeDir,
+  pkgs,
   ...
 }: {
+  home.packages = [
+    (pkgs.writeShellScriptBin "cleanup-worktrees" ''
+      exec with-credentials ssh -- python3 "$HOME/.config/git/scripts/cleanup-worktrees.py" "$@"
+    '')
+  ];
   programs.jujutsu = {
     enable = true;
     settings = {
@@ -226,5 +232,10 @@
       source = ../../scripts/git-cleanup;
       executable = true;
     };
+    ".config/git/scripts/cleanup-worktrees.py" = {
+      source = ../../scripts/cleanup-worktrees.py;
+      executable = true;
+    };
+    ".config/git/scripts/git_cleanup_github.py".source = ../../scripts/git_cleanup_github.py;
   };
 }

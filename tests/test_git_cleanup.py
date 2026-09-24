@@ -149,6 +149,53 @@ class CleanupTests(unittest.TestCase):
         self.assertTrue(marker.exists(), result.stderr)
         self.assertNotEqual(result.returncode, 0)
 
+    def test_merged_detached_worktree_cleanup_preserves_branches(self) -> None:
+        self.merge()
+        self.git(self.target, "switch", "--detach")
+        branches = self.git(self.primary, "show-ref", "--heads")
+        plan = self.plan()
+        self.assertIsNone(json.loads(plan.read_text())["branch"])
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertEqual(self.git(self.primary, "show-ref", "--heads"), branches)
+        receipt = json.loads(result.stdout)
+        self.assertTrue(receipt["worktree_removed"])
+        self.assertIsNone(receipt["branch_deleted"])
+        self.assertNotIn("Branch deleted", receipt["summary"])
+
+    def test_unmerged_detached_worktree_is_preserved(self) -> None:
+        self.git(self.target, "switch", "--detach")
+        head = self.git(self.target, "rev-parse", "HEAD")
+        result = self.run_cleanup()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not merged or squash-equivalent", result.stderr)
+        self.assertTrue(self.target.exists())
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), head)
+        self.assertEqual((self.target / "file").read_text(), "changed\n")
+
+    def test_detached_primary_checkout_is_preserved(self) -> None:
+        self.merge()
+        self.git(self.primary, "switch", "--detach")
+        self.target = self.primary
+        head = self.git(self.target, "rev-parse", "HEAD")
+        result = self.run_cleanup()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("detached primary", result.stderr.lower())
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), head)
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "")
+
+    def test_detached_plan_refuses_new_branch_attachment(self) -> None:
+        self.merge()
+        self.git(self.target, "switch", "--detach")
+        plan = self.plan()
+        self.git(self.target, "switch", "feature")
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("evidence changed", result.stderr.lower())
+        self.assertTrue(self.target.exists())
+        self.assertEqual(self.git(self.target, "branch", "--show-current"), "feature")
+
     def test_legacy_gcleanup_preserves_primary_ignored_files(self) -> None:
         self.merge()
         self.use_primary_checkout()
@@ -235,6 +282,41 @@ class CleanupTests(unittest.TestCase):
         self.assertTrue(self.target.exists(), result.stderr)
         self.assertNotEqual(result.returncode, 0)
 
+    def test_cleanup_fetches_only_base_despite_conflicting_configured_tags(
+        self,
+    ) -> None:
+        self.merge()
+        original = self.git(self.primary, "rev-parse", "HEAD")
+        self.git(self.primary, "tag", "conflicting-release", original)
+        self.git(self.primary, "update-ref", "refs/remotes/origin/unrelated", original)
+        latest = self.advance_remote()
+        self.git(self.remote, "tag", "conflicting-release", latest)
+        self.git(self.remote, "branch", "unrelated", latest)
+        self.git(self.primary, "config", "remote.origin.tagOpt", "--tags")
+        self.git(
+            self.primary,
+            "config",
+            "--add",
+            "remote.origin.fetch",
+            "refs/tags/*:refs/tags/*",
+        )
+        self.git(self.primary, "config", "fetch.prune", "true")
+        self.git(self.primary, "config", "fetch.pruneTags", "true")
+        plan = self.plan()
+        self.assertEqual(json.loads(plan.read_text())["base_head"], latest)
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertEqual(self.git(self.primary, "rev-parse", "origin/main"), latest)
+        self.assertEqual(
+            self.git(self.primary, "rev-parse", "refs/tags/conflicting-release"),
+            original,
+        )
+        self.assertEqual(
+            self.git(self.primary, "rev-parse", "refs/remotes/origin/unrelated"),
+            original,
+        )
+
     def test_missing_remote_branch_is_not_merge_evidence(self) -> None:
         self.git(self.target, "push", "-u", "origin", "feature")
         self.git(self.primary, "push", "origin", "--delete", "feature")
@@ -275,7 +357,19 @@ class CleanupTests(unittest.TestCase):
         plan = json.loads(path.read_text())
         plan["version"] = 1
         del plan["build_directories"]
+        del plan["build_symlinks"]
         del plan["build_bytes"]
+        path.write_text(json.dumps(plan))
+        result = self.run_cleanup("--execute", str(path))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+
+    def test_version_two_plan_remains_executable(self) -> None:
+        self.merge()
+        path = self.plan()
+        plan = json.loads(path.read_text())
+        plan["version"] = 2
+        del plan["build_symlinks"]
         path.write_text(json.dumps(plan))
         result = self.run_cleanup("--execute", str(path))
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -332,6 +426,31 @@ class CleanupTests(unittest.TestCase):
             (self.primary / "dashboard/app/package.json").read_text(),
             '{"name":"fixture"}\n',
         )
+
+    def test_merged_checkout_removes_generated_links_without_their_destinations(
+        self,
+    ) -> None:
+        self.add_nested_build_caches()
+        cache = self.target / "dashboard/app/node_modules"
+        shared = self.root / "shared-dependencies"
+        cache.rename(shared)
+        cache.symlink_to(shared, target_is_directory=True)
+        (self.target / "dashboard/app/.gitignore").write_text(
+            "node_modules\ndist/\n.vite/\nplaywright-report/\ntest-results/\n"
+        )
+        self.git(self.target, "commit", "-am", "ignore generated test output")
+        for name in (".vite", "playwright-report", "test-results"):
+            generated = self.target / "dashboard/app" / name
+            generated.mkdir()
+            (generated / "output").write_text("regenerable")
+        self.merge()
+        plan = self.plan()
+        result = self.run_cleanup("--execute", str(plan))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assertEqual((shared / "artifact").read_text(), "rebuildable")
+        receipt = json.loads(result.stdout)
+        self.assertEqual(receipt["build_symlinks_removed"], [str(cache.resolve())])
 
     def test_nested_repository_build_caches_are_preserved(self) -> None:
         caches = self.add_nested_build_caches()
