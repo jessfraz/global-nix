@@ -24,6 +24,11 @@
       url = "github:ghostty-org/ghostty";
     };
 
+    disktree = {
+      url = "github:tobi/disktree";
+      flake = false;
+    };
+
     dotfiles = {
       url = "github:jessfraz/dotfiles";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -68,6 +73,7 @@
     nix-darwin,
     rust-overlay,
     ghostty,
+    disktree,
     dotfiles,
     dotvim,
     zoo-cli,
@@ -214,6 +220,10 @@
       codexRustPlatform = pkgs.makeRustPlatform {
         cargo = rustBin.minimal;
         rustc = rustBin.minimal;
+      };
+      disktreePackage = pkgs.callPackage ./pkgs/disktree.nix {
+        src = disktree;
+        rustPlatform = codexRustPlatform;
       };
       codexCli = codexRustPlatform.buildRustPackage {
         pname = "codex-rs";
@@ -399,6 +409,7 @@
       codex = codexCli;
       gws = gwsCli;
       cli-completions = cliCompletions;
+      disktree = disktreePackage;
       kicad = kicadPackage;
       orca-slicer = orcaSlicerPackage;
       default = packageBundle;
@@ -408,6 +419,7 @@
         [
           packageBundle
           dotvim.packages.${system}.editor-tools
+          disktreePackage
           kicadPackage
         ]
         ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
@@ -421,6 +433,8 @@
   in {
     # Generate packages for all supported systems
     packages = forAllSystems mkPackages;
+
+    lib.cleanupBuildCachePolicy = "${dotfiles}/bin/build_cache_policy.py";
 
     checks.aarch64-darwin.package-selection = nixpkgs.legacyPackages.aarch64-darwin.callPackage ./tests/package-selection.nix {inherit self;};
 

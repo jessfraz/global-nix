@@ -50,7 +50,9 @@ after all three CI jobs pass. The merge job verifies the PR's repository, branch
 tested head, and tested base. If `main` changes during CI, rebase and rerun CI;
 the merge job will not regenerate the branch and discard repairs.
 
-The default package bundle is shared by all hosts. KiCad is installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
+The default package bundle is shared by all hosts. KiCad and Disktree are installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
+
+Disktree is built from the source revision in `flake.lock` and updates through the normal flake refresh. Run `disktree` to scan home, `disktree PATH` for one directory, or `nix run .#disktree -- PATH` before switching a host. macOS also gets `Disktree.app`. Upstream currently targets Linux; the macOS build uses its native GPUI backend, but mount discovery and Trash handling still follow upstream's Linux conventions.
 
 The Switchboard CLI bundle includes `phone`. Its Nix package carries the locked
 voice-worker source and Python interpreter; the worker environment and private
@@ -215,7 +217,11 @@ so cleanup can be retried after the build finishes. Build output is never moved
 into a preservation directory. Primary-checkout caches remain in place.
 Plain `cleanup` handles inactive build caches across projects and Codex tasks,
 then sweeps verified-merged Codex worktrees. Use `cleanup --dry-run` to preview
-both. `cleanup-worktrees` runs just the worktree sweep; its `--dry-run` saves
+both. Cache discovery and `git cleanup` share the project-output policy from
+the dotfiles input, including Next.js `.next` output beside `package.json`.
+`gcleanup` delegates to `git cleanup` and uses the same policy. Repository output
+must be ignored and contain no tracked files; active cache users are preserved.
+`cleanup-worktrees` runs just the worktree sweep; its `--dry-run` saves
 plans under `$XDG_STATE_HOME/cleanup` (default `~/.local/state/cleanup`). Run
 `cleanup-worktrees --execute DIRECTORY` to execute those reviewed plans.
 Each worktree is rechecked before removal. Busy, dirty, locked, unmerged, or

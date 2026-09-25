@@ -30,7 +30,7 @@ ci:
 
 # Run executable-tool regressions against disposable local repositories/files.
 test-tools:
-    python3 -m unittest discover -s tests -p 'test_*.py'
+    policy="${CLEANUP_BUILD_CACHE_POLICY:-$(nix eval --raw .#lib.cleanupBuildCachePolicy --no-write-lock-file)}"; PYTHONPATH="$(dirname "$policy")${PYTHONPATH:+:$PYTHONPATH}" python3 -B -m unittest discover -s tests -p 'test_*.py'
     bash -n scripts/kittycad-pr-automerge
 
 # Evaluate every platform without building packages or changing the lockfile.

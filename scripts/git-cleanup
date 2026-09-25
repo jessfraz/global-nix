@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
+from build_cache_policy import MANIFEST_OUTPUTS
 from git_cleanup_github import find_merged_pr
 
 
@@ -106,21 +107,13 @@ def build_outputs(root: Path) -> tuple[list[str], list[str], int]:
     directories = []
     symlinks = []
     size = 0
-    outputs = {
-        "Cargo.toml": ("target", "target-cache"),
-        "package.json": (
-            "node_modules",
-            "dist",
-            ".next",
-            ".vite",
-            "playwright-report",
-            "test-results",
-        ),
-        "pyproject.toml": (".venv", ".pytest_cache", ".ruff_cache", ".mypy_cache"),
-    }
     # The index includes nested projects, but does not descend into submodules.
     manifests = git(
-        root, "ls-files", "-z", "--", *(f":(glob)**/{name}" for name in outputs)
+        root,
+        "ls-files",
+        "-z",
+        "--",
+        *(f":(glob)**/{name}" for name in MANIFEST_OUTPUTS),
     ).stdout
     for relative in manifests.split("\0"):
         if not relative:
@@ -135,7 +128,7 @@ def build_outputs(root: Path) -> tuple[list[str], list[str], int]:
         ):
             continue
         link_names = ("pkg", "bindings") if manifest.name == "Cargo.toml" else ()
-        for name in (*outputs[manifest.name], *link_names):
+        for name in (*MANIFEST_OUTPUTS[manifest.name], *link_names):
             path = manifest.parent / name
             is_link = path.is_symlink()
             if not is_link and (name in link_names or not path.is_dir()):

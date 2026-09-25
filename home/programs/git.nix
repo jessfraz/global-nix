@@ -5,9 +5,18 @@
   gitEmail,
   username,
   homeDir,
+  inputs,
   pkgs,
   ...
-}: {
+}: let
+  cleanupScripts = pkgs.runCommand "git-cleanup-scripts" {} ''
+    mkdir -p "$out"
+    cp ${../../scripts/git-cleanup} "$out/git-cleanup"
+    cp ${../../scripts/cleanup-worktrees.py} "$out/cleanup-worktrees.py"
+    cp ${../../scripts/git_cleanup_github.py} "$out/git_cleanup_github.py"
+    cp ${inputs.dotfiles}/bin/build_cache_policy.py "$out/build_cache_policy.py"
+  '';
+in {
   home.packages = [
     (pkgs.writeShellScriptBin "cleanup-worktrees" ''
       exec with-credentials ssh -- python3 "$HOME/.config/git/scripts/cleanup-worktrees.py" "$@"
@@ -229,13 +238,14 @@
       executable = true;
     };
     ".config/git/scripts/git-cleanup" = {
-      source = ../../scripts/git-cleanup;
+      source = "${cleanupScripts}/git-cleanup";
       executable = true;
     };
     ".config/git/scripts/cleanup-worktrees.py" = {
-      source = ../../scripts/cleanup-worktrees.py;
+      source = "${cleanupScripts}/cleanup-worktrees.py";
       executable = true;
     };
-    ".config/git/scripts/git_cleanup_github.py".source = ../../scripts/git_cleanup_github.py;
+    ".config/git/scripts/git_cleanup_github.py".source = "${cleanupScripts}/git_cleanup_github.py";
+    ".config/git/scripts/build_cache_policy.py".source = "${cleanupScripts}/build_cache_policy.py";
   };
 }

@@ -401,10 +401,10 @@ class CleanupTests(unittest.TestCase):
         project = self.target / "dashboard/app"
         project.mkdir(parents=True)
         (project / "package.json").write_text('{"name":"fixture"}\n')
-        (project / ".gitignore").write_text("node_modules/\ndist/\n")
+        (project / ".gitignore").write_text("node_modules/\ndist/\n.next/\n")
         self.git(self.target, "add", "dashboard/app")
         self.git(self.target, "commit", "-m", "nested package configuration")
-        caches = [project / "node_modules", project / "dist"]
+        caches = [project / "node_modules", project / "dist", project / ".next"]
         for cache in caches:
             cache.mkdir()
             (cache / "artifact").write_text("rebuildable")
@@ -436,7 +436,7 @@ class CleanupTests(unittest.TestCase):
         cache.rename(shared)
         cache.symlink_to(shared, target_is_directory=True)
         (self.target / "dashboard/app/.gitignore").write_text(
-            "node_modules\ndist/\n.vite/\nplaywright-report/\ntest-results/\n"
+            "node_modules\ndist/\n.next/\n.vite/\nplaywright-report/\ntest-results/\n"
         )
         self.git(self.target, "commit", "-am", "ignore generated test output")
         for name in (".vite", "playwright-report", "test-results"):

@@ -9,6 +9,7 @@
 in {
   environment.systemPackages = [
     pkgs.wireshark
+    inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.disktree
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.kicad
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.orca-slicer
   ];

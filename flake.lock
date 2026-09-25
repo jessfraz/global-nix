@@ -40,6 +40,22 @@
         "url": "https://flakehub.com/f/ipetkov/crane/0"
       }
     },
+    "disktree": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790292454,
+        "narHash": "sha256-B5gMkZ0LlcOGb0P1uYGaALD+QXmnfbrRZWwqbU2NrVk=",
+        "owner": "tobi",
+        "repo": "disktree",
+        "rev": "bf6cbbfbee2b386008f5c800166e9d4f24bfa2ba",
+        "type": "github"
+      },
+      "original": {
+        "owner": "tobi",
+        "repo": "disktree",
+        "type": "github"
+      }
+    },
     "dotfiles": {
       "inputs": {
         "home-manager": [
@@ -50,11 +66,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790299457,
-        "narHash": "sha256-fTYNL/hj3INFQ5QyqZXXrEySeiBV6XwRWe5YDfxNsyU=",
+        "lastModified": 1790306129,
+        "narHash": "sha256-lc29j1Q8iOVUx1pV46U6VjR7lN3bpvr7PcHTD7cYc/w=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "133e55bc4c55f728bd9ce2977836e9c574a743ff",
+        "rev": "9c3f8196e15cab09a9013fc7226198ae1baf297b",
         "type": "github"
       },
       "original": {
@@ -359,6 +375,7 @@
     "root": {
       "inputs": {
         "codex": "codex",
+        "disktree": "disktree",
         "dotfiles": "dotfiles",
         "dotvim": "dotvim",
         "fh": "fh",
