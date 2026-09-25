@@ -134,11 +134,11 @@ in {
     tailscale = one (agent "wtljtr2cgswlvjmxzjd7j7bph4" "apikey" ["TAILSCALE_API_KEY"]);
     home-assistant = {
       secrets = [
-        (agent "ho3w66e4xvufb4sdg6e7ah2kuu" null ["HOME_ASSISTANT_URL" "HASS_SERVER"]
+        (agent "zioylg6fnbsthzgeupabcfwlse" null ["HOME_ASSISTANT_URL" "HASS_SERVER"]
           // {
             url_label = "website";
           })
-        (agent "ho3w66e4xvufb4sdg6e7ah2kuu" "apikey" ["HOME_ASSISTANT_TOKEN" "HASS_TOKEN"])
+        (agent "zioylg6fnbsthzgeupabcfwlse" "apikey" ["HOME_ASSISTANT_TOKEN" "HASS_TOKEN"])
       ];
     };
     zoo.secrets = [zooProduction zooDevelopment];
