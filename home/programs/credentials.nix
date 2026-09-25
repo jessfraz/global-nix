@@ -118,6 +118,10 @@ in {
         (agent "nyf64ypiujz6gqvrpgfj46wnbm" "credential" ["SCHWAB_CLIENT_SECRET"])
       ];
     };
+    kalshi.secrets = [
+      (agent "m4suowbuaxul7rhpb4jka7wbcy" "api-key-id" ["KALSHI_API_KEY_ID"])
+      (agent "m4suowbuaxul7rhpb4jka7wbcy" "private-key" ["KALSHI_PRIVATE_KEY"])
+    ];
     openai = one (agent "4h647lw22xr6jjsqokq2kaxb4a" "apikey" ["OPENAI_API_KEY"]);
     anthropic = one (agent "mj7p4uvfro3d7e6ispuyfv4x5i" "apikey" ["ANTHROPIC_API_KEY"]);
     google-ai = one (agent "r4lg7dwtp6kj4gb2zfcym234ai" "credential" ["GOOGLE_API_KEY"]);
