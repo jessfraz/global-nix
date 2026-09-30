@@ -23,6 +23,10 @@ rustPlatform.buildRustPackage {
   cargoBuildFlags = ["--package=disktree-app"];
   # The filesystem tests run without a window server in the Nix sandbox.
   cargoTestFlags = ["--package=disktree-core"];
+  # Nix's HOME is /homeless-shelter, not a real home on the macOS root volume.
+  checkFlags = lib.optionals stdenv.hostPlatform.isDarwin [
+    "--skip=space::tests::the_home_disk_on_macos_is_the_root_and_has_a_device"
+  ];
 
   nativeBuildInputs = [pkg-config];
   buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
