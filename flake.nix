@@ -252,11 +252,9 @@
           ''
             sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
           ''
-          + pkgs.lib.optionalString (codexVersion == "0.149.1") ''
-            # These crates exceed rustc's default query-depth limit in this release.
-            sed -i '1i#![recursion_limit = "256"]' \
-              cli/src/main.rs \
-              exec/src/lib.rs
+          + pkgs.lib.optionalString (codexVersion == "0.158.0") ''
+            # list_connectors exceeds rustc's default query-depth limit in this release.
+            sed -i '1i#![recursion_limit = "256"]' chatgpt/src/lib.rs
           '';
         nativeBuildInputs = with pkgs; [
           cmake
