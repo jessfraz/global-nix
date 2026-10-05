@@ -33,6 +33,15 @@ test-tools:
     policy="${CLEANUP_BUILD_CACHE_POLICY:-$(nix eval --raw .#lib.cleanupBuildCachePolicy --no-write-lock-file)}"; PYTHONPATH="$(dirname "$policy")${PYTHONPATH:+:$PYTHONPATH}" python3 -B -m unittest discover -s tests -p 'test_*.py'
     bash -n scripts/kittycad-pr-automerge
 
+# Exercise a fresh packaged daemon outside the Nix build sandbox.
+check-codex:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    package="$(nix build .#codex --no-link --print-out-paths --no-update-lock-file)"
+    version="$(nix eval --raw .#codex.version --no-update-lock-file)"
+    source="$(nix eval --raw .#codex.upstreamSource.outPath --no-update-lock-file)"
+    python3 scripts/check-codex-package.py "$package" "$version" "$source"
+
 # Evaluate every platform without building packages or changing the lockfile.
 eval:
     # Flake check's read-only mode cannot materialize source paths in a cold store.

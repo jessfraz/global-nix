@@ -52,6 +52,25 @@ the merge job will not regenerate the branch and discard repairs.
 
 The default package bundle is shared by all hosts. KiCad and Disktree are installed separately on the desktop hosts, OrcaSlicer is installed on macinator, and the editor tools come from the `.vim` flake's `editor-tools` package. Rust keeps the compiler, Cargo, source, Clippy, and rustfmt without the offline documentation.
 
+Codex uses the complete upstream release packages with pinned archive checksums.
+The package preserves the upstream binaries and helpers, including macOS signatures
+and the Linux sandbox helper's embedded integrity check. `just update-codex` updates
+the release source and both platform archives together. Package builds run the
+matching upstream layout validator; `just check-codex` also exercises helper loading
+and daemon startup, version reporting, and shutdown in an isolated temporary home.
+CI runs that lifecycle check outside the Nix build sandbox on both platforms.
+The NixOS host enables `nix-ld` with `ncurses` for upstream's dynamically linked
+shell and voice helpers, including daemon-managed copies and updates.
+
+Codex's default daemon installation copies its package into the user's Codex home
+and manages its own updates. The Nix pin controls the CLI package; it does not pin
+that separately managed daemon. The packaging preserves upstream's update behavior.
+
+Dependency updates refresh Zoo and its shared Rust toolchain together before
+validating the vendor tree. The scheduled updater refuses to replace an update
+branch containing unmerged human repairs; those repairs must be resolved or merged
+before the next generated refresh.
+
 Disktree is built from the source revision in `flake.lock` and updates through the normal flake refresh. Run `disktree` to scan home, `disktree PATH` for one directory, or `nix run .#disktree -- PATH` before switching a host. macOS also gets `Disktree.app`. Upstream currently targets Linux; the macOS build uses its native GPUI backend, but mount discovery and Trash handling still follow upstream's Linux conventions.
 
 The Switchboard CLI bundle includes `phone`. Its Nix package carries the locked

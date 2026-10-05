@@ -13,6 +13,13 @@
     ../desktops/minimal-gnome.nix
   ];
 
+  # Upstream Codex ships glibc-linked shell and voice helpers. Keep the
+  # binaries unchanged, including daemon-managed copies and future updates.
+  programs.nix-ld = {
+    enable = true;
+    libraries = [pkgs.ncurses];
+  };
+
   boot = {
     kernelPackages = pkgs.linuxPackages;
     initrd.kernelModules = ["nvidia"];

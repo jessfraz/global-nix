@@ -159,14 +159,14 @@ viewer_already_approved_pr() {
 
   [ -n "$pr_state_json" ] || return 1
 
-  jq -e '
+  printf '%s\n' "$pr_state_json" | jq -e '
     (.data.viewer.login // "") as $viewer
     | [
         .data.repository.pullRequest.latestOpinionatedReviews.nodes[]?
         | select((.author.login // "") == $viewer and .state == "APPROVED")
       ]
     | length > 0
-  ' <<<"$pr_state_json" >/dev/null 2>&1
+  ' >/dev/null 2>&1
 }
 
 auto_merge_already_enabled() {
@@ -174,10 +174,10 @@ auto_merge_already_enabled() {
 
   [ -n "$pr_state_json" ] || return 1
 
-  jq -e '
+  printf '%s\n' "$pr_state_json" | jq -e '
     .data.repository.pullRequest != null
     and .data.repository.pullRequest.autoMergeRequest != null
-  ' <<<"$pr_state_json" >/dev/null 2>&1
+  ' >/dev/null 2>&1
 }
 
 pr_state_json_is_usable() {
@@ -185,11 +185,11 @@ pr_state_json_is_usable() {
 
   [ -n "$pr_state_json" ] || return 1
 
-  jq -e '
+  printf '%s\n' "$pr_state_json" | jq -e '
     .errors == null
     and .data.repository.pullRequest != null
     and (.data.viewer.login // "") != ""
-  ' <<<"$pr_state_json" >/dev/null 2>&1
+  ' >/dev/null 2>&1
 }
 
 enable_auto_merge() {
@@ -294,7 +294,7 @@ ci_is_green() {
     return 1
   fi
 
-  failing="$(jq '[.[] | select(.state != "SUCCESS" and .state != "SKIPPED" and .state != "NEUTRAL")] | length' <<<"$checks")"
+  failing="$(printf '%s\n' "$checks" | jq '[.[] | select(.state != "SUCCESS" and .state != "SKIPPED" and .state != "NEUTRAL")] | length')"
   [ "$failing" -eq 0 ]
 }
 
@@ -317,12 +317,12 @@ already_requested_dependabot_rebase() {
     return 1
   fi
 
-  jq -e '
+  printf '%s\n' "$comments_json" | jq -e '
     .comments[]?
     | (.body // "")
     | gsub("\r"; "")
     | test("^@dependabot rebase[[:space:]]*$")
-  ' <<<"$comments_json" >/dev/null 2>&1
+  ' >/dev/null 2>&1
 }
 
 request_dependabot_rebase() {
@@ -394,7 +394,7 @@ rerun_failed_ci_jobs() {
 
     warn "failed to rerun failed CI jobs for $repo#$pr run $run_id: $output"
   done < <(
-    jq -r '
+    printf '%s\n' "$runs_json" | jq -r '
       .[]
       | select(.status == "completed")
       | select(
@@ -406,7 +406,7 @@ rerun_failed_ci_jobs() {
           or .conclusion == "stale"
         )
       | .databaseId
-    ' <<<"$runs_json"
+    '
   )
 
   if [ "$reran" -eq 0 ]; then
@@ -429,11 +429,12 @@ process_update_spec_repo_prs() {
     repo="${ORG}/${repo_short}"
     prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,headRefName,author,isDraft,url)"
     while IFS= read -r row; do
-      pr_number="$(jq -r '.number' <<<"$row")"
-      title="$(jq -r '.title' <<<"$row")"
+      pr_number="$(printf '%s\n' "$row" | jq -r '.number')"
+      title="$(printf '%s\n' "$row" | jq -r '.title')"
       process_pr "$repo" "$pr_number" "$title" "repo spec/docs sync"
     done < <(
-      jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" \
+      # Start the reader alongside the writer: Bash can block preloading a here-string pipe.
+      printf '%s\n' "$prs_json" | jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" \
         --arg repo "$repo" --arg website "${ORG}/website" '
         .[]
         | select(.isDraft == false)
@@ -451,7 +452,7 @@ process_update_spec_repo_prs() {
                 and .title == "Update lang spec docs for typescript")
             ))
           )
-      ' <<<"$prs_json"
+      '
     )
   done
 }
@@ -469,9 +470,9 @@ process_dependabot_prs() {
   log "scanning open Dependabot PRs in ${ORG} requested for review by ${review_requested}..."
   prs_json="$(gh search prs --owner "$ORG" --author "$DEPENDABOT_AUTHOR" --state open --review-requested "$review_requested" --limit 500 --json number,title,repository,isDraft,url)"
   while IFS= read -r row; do
-    repo="$(jq -r '.repository.nameWithOwner' <<<"$row")"
-    pr_number="$(jq -r '.number' <<<"$row")"
-    title="$(jq -r '.title' <<<"$row")"
+    repo="$(printf '%s\n' "$row" | jq -r '.repository.nameWithOwner')"
+    pr_number="$(printf '%s\n' "$row" | jq -r '.number')"
+    title="$(printf '%s\n' "$row" | jq -r '.title')"
 
     if ignore_pr_if_configured "$repo" "$pr_number" "$title"; then
       continue
@@ -501,7 +502,7 @@ process_dependabot_prs() {
       rerun_failed_ci_jobs "$repo" "$pr_number"
       process_pr "$repo" "$pr_number" "$title" "dependabot (CI not green)"
     fi
-  done < <(jq -c '.[] | select(.isDraft == false)' <<<"$prs_json")
+  done < <(printf '%s\n' "$prs_json" | jq -c '.[] | select(.isDraft == false)')
 }
 
 select_documentation_sync_prs() {
@@ -530,10 +531,10 @@ process_documentation_prs() {
   log "scanning open KCL and CLI docs sync PRs..."
   prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,headRefName,author,isDraft,url)"
   while IFS= read -r row; do
-    pr_number="$(jq -r '.number' <<<"$row")"
-    title="$(jq -r '.title' <<<"$row")"
+    pr_number="$(printf '%s\n' "$row" | jq -r '.number')"
+    title="$(printf '%s\n' "$row" | jq -r '.title')"
     process_pr "$repo" "$pr_number" "$title" "documentation sync"
-  done < <(select_documentation_sync_prs <<<"$prs_json")
+  done < <(printf '%s\n' "$prs_json" | select_documentation_sync_prs)
 }
 
 select_homebrew_formula_prs() {
@@ -555,10 +556,10 @@ process_homebrew_prs() {
   log "scanning open Homebrew formula sync PRs..."
   prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,headRefName,author,isDraft,url)"
   while IFS= read -r row; do
-    pr_number="$(jq -r '.number' <<<"$row")"
-    title="$(jq -r '.title' <<<"$row")"
+    pr_number="$(printf '%s\n' "$row" | jq -r '.number')"
+    title="$(printf '%s\n' "$row" | jq -r '.title')"
     process_pr "$repo" "$pr_number" "$title" "Homebrew formula sync"
-  done < <(select_homebrew_formula_prs <<<"$prs_json")
+  done < <(printf '%s\n' "$prs_json" | select_homebrew_formula_prs)
 }
 
 process_api_inbound_spec_prs() {
@@ -571,11 +572,11 @@ process_api_inbound_spec_prs() {
   log "scanning open api inbound spec PRs..."
   prs_json="$(gh pr list -R "$repo" --state open --limit 100 --json number,title,author,isDraft,url)"
   while IFS= read -r row; do
-    pr_number="$(jq -r '.number' <<<"$row")"
-    title="$(jq -r '.title' <<<"$row")"
+    pr_number="$(printf '%s\n' "$row" | jq -r '.number')"
+    title="$(printf '%s\n' "$row" | jq -r '.title')"
     process_pr "$repo" "$pr_number" "$title" "api inbound spec sync"
   done < <(
-    jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" '
+    printf '%s\n' "$prs_json" | jq -c --arg bot_legacy "$BOT_AUTHOR_LEGACY" --arg bot_app "$BOT_AUTHOR_APP" '
       .[]
       | select(.isDraft == false)
       | select(.author.login == $bot_legacy or .author.login == $bot_app)
@@ -584,7 +585,7 @@ process_api_inbound_spec_prs() {
           or .title == "Update text-to-cad spec"
           or .title == "Update proprietary-to-kcl spec"
         )
-    ' <<<"$prs_json"
+    '
   )
 }
 
