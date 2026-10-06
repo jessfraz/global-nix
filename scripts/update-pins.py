@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
-from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from shutil import which
-
-import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
@@ -18,17 +16,11 @@ KICAD_BIN_PATH = REPO_ROOT / "pkgs" / "kicad-bin.nix"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
 ORCA_SLICER_BIN_PATH = REPO_ROOT / "pkgs" / "orca-slicer-bin.nix"
 RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
+CODEX_PATH = REPO_ROOT / "pkgs" / "codex.nix"
 
 
 class UpdateError(RuntimeError):
     pass
-
-
-@dataclass(frozen=True)
-class CargoGitDependency:
-    package_key: str
-    url: str
-    revision: str
 
 
 def run(
@@ -68,9 +60,12 @@ def get_tags(repo_url: str) -> list[str]:
 
 
 def get_latest_github_release(repository: str) -> str:
+    command = ["gh", "api", f"repos/{repository}/releases/latest"]
+    if not (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")):
+        command = ["with-credentials", "github.personal", "--", *command]
     try:
         result = subprocess.run(
-            ["gh", "api", f"repos/{repository}/releases/latest"],
+            command,
             check=True,
             text=True,
             capture_output=True,
@@ -141,81 +136,6 @@ def prefetch_sri(url: str, *, unpack: bool = True) -> str:
     raise UpdateError("nix or nix-prefetch-url is required to compute source hashes.")
 
 
-def codex_git_dependencies(lock_text: str) -> list[CargoGitDependency]:
-    lock = tomllib.loads(lock_text)
-    packages = lock.get("package")
-    if not isinstance(packages, list):
-        raise UpdateError("Codex Cargo.lock has no package list.")
-
-    dependencies_by_revision: dict[str, CargoGitDependency] = {}
-    for package in packages:
-        if not isinstance(package, dict):
-            raise UpdateError("Codex Cargo.lock contains an invalid package entry.")
-
-        source = package.get("source")
-        if not isinstance(source, str) or not source.startswith("git+"):
-            continue
-
-        location, separator, revision = source[4:].rpartition("#")
-        if not separator or not re.fullmatch(r"[0-9a-f]{40}", revision):
-            raise UpdateError(f"Unsupported Codex Cargo git source: {source}")
-
-        url = location.partition("?")[0]
-        name = package.get("name")
-        version = package.get("version")
-        if not url or not isinstance(name, str) or not isinstance(version, str):
-            raise UpdateError(f"Invalid Codex Cargo git package: {package}")
-
-        dependency = CargoGitDependency(
-            package_key=f"{name}-{version}",
-            url=url,
-            revision=revision,
-        )
-        existing = dependencies_by_revision.get(revision)
-        if existing is not None and existing.url != dependency.url:
-            raise UpdateError(
-                f"Codex Cargo.lock uses revision {revision} from multiple repositories."
-            )
-        if existing is None or dependency.package_key < existing.package_key:
-            dependencies_by_revision[revision] = dependency
-
-    return sorted(dependencies_by_revision.values(), key=lambda item: item.package_key)
-
-
-def prefetch_git_sri(dependency: CargoGitDependency) -> str:
-    expression = (
-        "builtins.fetchGit { "
-        f"url = {json.dumps(dependency.url)}; "
-        f"rev = {json.dumps(dependency.revision)}; "
-        "allRefs = true; submodules = true; }"
-    )
-    store_path = run(
-        ["nix", "eval", "--impure", "--raw", "--expr", expression]
-    ).stdout.strip()
-    if not store_path:
-        raise UpdateError(f"Nix returned no source path for {dependency.package_key}.")
-    return run(["nix", "hash", "path", store_path]).stdout.strip()
-
-
-def replace_codex_output_hashes(
-    flake_text: str, output_hashes: Mapping[str, str]
-) -> str:
-    entries = "".join(
-        f'            "{package_key}" = "{output_hashes[package_key]}";\n'
-        for package_key in sorted(output_hashes)
-    )
-    return replace_one(
-        (
-            r"(^ {10}outputHashes = \{\n)"
-            r'(?:^ {12}"[^\"]+" = "[^\"]+";\n)*'
-            r"(^ {10}\};)"
-        ),
-        rf"\g<1>{entries}\g<2>",
-        flake_text,
-        "Codex Cargo outputHashes",
-    )
-
-
 def validate_cargo_vendor(package_expr: str, package_name: str) -> None:
     build_command = [
         "nix",
@@ -242,74 +162,46 @@ def update_codex() -> None:
     if not which("nix"):
         raise UpdateError("nix is required to update Codex.")
 
-    tags = get_tags("https://github.com/openai/codex.git")
-    latest_tag = select_latest_tag(tags, preferred_prefixes=("rust-v",))
+    latest_tag = get_latest_github_release("openai/codex")
+    if not re.fullmatch(r"rust-v\d+\.\d+\.\d+", latest_tag):
+        raise UpdateError(f"Unexpected Codex release tag: {latest_tag}")
     original_flake = FLAKE_PATH.read_text(encoding="utf-8")
     original_lock = FLAKE_LOCK_PATH.read_text(encoding="utf-8")
-    tag_changed = f"ref=refs/tags/{latest_tag}" not in original_flake
+    original_package = CODEX_PATH.read_text(encoding="utf-8")
+    if f'github:openai/codex/{latest_tag}"' in original_flake:
+        print(f"codex already at {latest_tag}")
+        return
+
     succeeded = False
     try:
-        if tag_changed:
-            updated = replace_one(
-                (
-                    r"(git\+https://github\.com/openai/codex\?"
-                    r"ref=refs/tags/)([^&\"]+)([^\"]*)"
-                ),
-                rf"\g<1>{latest_tag}\g<3>",
-                original_flake,
-                "codex tag",
-            )
-            FLAKE_PATH.write_text(updated, encoding="utf-8")
-            run(
-                [
-                    "nix",
-                    "flake",
-                    "update",
-                    "codex",
-                    "--option",
-                    "warn-dirty",
-                    "false",
-                ],
-                cwd=REPO_ROOT,
-            )
-
-        codex_path = run(
-            [
-                "nix",
-                "eval",
-                "--impure",
-                "--raw",
-                "--expr",
-                (
-                    "let flake = builtins.getFlake (toString ./.); "
-                    "in flake.inputs.codex.outPath"
-                ),
-            ],
-            cwd=REPO_ROOT,
-        ).stdout.strip()
-        cargo_lock_path = Path(codex_path) / "codex-rs" / "Cargo.lock"
-        if not cargo_lock_path.is_file():
-            raise UpdateError(f"Codex Cargo.lock not found at {cargo_lock_path}.")
-
-        output_hashes: dict[str, str] = {}
-        for dependency in codex_git_dependencies(
-            cargo_lock_path.read_text(encoding="utf-8")
+        updated_package = original_package
+        for system, target in (
+            ("aarch64-darwin", "aarch64-apple-darwin"),
+            ("x86_64-linux", "x86_64-unknown-linux-musl"),
         ):
-            print(f"codex Cargo git -> {dependency.package_key}", flush=True)
-            output_hashes[dependency.package_key] = prefetch_git_sri(dependency)
-
-        flake_text = FLAKE_PATH.read_text(encoding="utf-8")
-        updated = replace_codex_output_hashes(flake_text, output_hashes)
-        hashes_changed = updated != flake_text
-        if hashes_changed:
-            FLAKE_PATH.write_text(updated, encoding="utf-8")
-
-        if tag_changed or hashes_changed:
-            package_expr = (
-                "let flake = builtins.getFlake (toString ./.); "
-                "in flake.packages.${builtins.currentSystem}.codex"
+            url = (
+                f"https://github.com/openai/codex/releases/download/{latest_tag}/"
+                f"codex-package-{target}.tar.gz"
             )
-            validate_cargo_vendor(package_expr, "Codex")
+            archive_hash = prefetch_sri(url, unpack=False)
+            updated_package = replace_one(
+                rf'({re.escape(system)} = \{{\n\s+target = "{re.escape(target)}";\n\s+hash = ")[^"]+(";)',
+                rf"\g<1>{archive_hash}\g<2>",
+                updated_package,
+                f"Codex {system} archive hash",
+            )
+        updated_flake = replace_one(
+            r'(url = "github:openai/codex/)[^"]+(";)',
+            rf"\g<1>{latest_tag}\g<2>",
+            original_flake,
+            "Codex tag",
+        )
+        CODEX_PATH.write_text(updated_package, encoding="utf-8")
+        FLAKE_PATH.write_text(updated_flake, encoding="utf-8")
+        run(
+            ["nix", "flake", "update", "codex", "--option", "warn-dirty", "false"],
+            cwd=REPO_ROOT,
+        )
         succeeded = True
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or "unknown Nix command failure").strip()
@@ -318,11 +210,8 @@ def update_codex() -> None:
         if not succeeded:
             FLAKE_PATH.write_text(original_flake, encoding="utf-8")
             FLAKE_LOCK_PATH.write_text(original_lock, encoding="utf-8")
-
-    if tag_changed:
-        print(f"codex -> {latest_tag}")
-    else:
-        print(f"codex already at {latest_tag}")
+            CODEX_PATH.write_text(original_package, encoding="utf-8")
+    print(f"codex -> {latest_tag}")
 
 
 def update_zoo() -> None:
@@ -339,6 +228,7 @@ def update_zoo() -> None:
                     "flake",
                     "update",
                     "zoo-cli",
+                    "rust-overlay",
                     "--option",
                     "warn-dirty",
                     "false",

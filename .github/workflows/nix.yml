@@ -55,6 +55,9 @@ jobs:
       - name: Build Linux packages
         run: nix build -L .#ci-cache --out-link result-ci-cache --no-update-lock-file
 
+      - name: Check packaged Codex startup and shutdown
+        run: nix shell nixpkgs#just --command just check-codex
+
       - name: Build Linux Home Manager configuration
         run: nix build .#nixosConfigurations.system76.config.home-manager.users.jessfraz.home.activationPackage --no-link --no-update-lock-file
 
@@ -88,6 +91,9 @@ jobs:
 
       - name: Build macOS packages
         run: nix build .#ci-cache --out-link result-ci-cache --no-update-lock-file
+
+      - name: Check packaged Codex startup and shutdown
+        run: nix shell nixpkgs#just --command just check-codex
 
       - name: Build macOS host configurations
         run: |

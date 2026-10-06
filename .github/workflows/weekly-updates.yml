@@ -90,6 +90,18 @@ jobs:
           gh auth setup-git
           remote_sha="$(git ls-remote origin "refs/heads/${UPDATE_BRANCH}" | cut -f1)"
           if [[ -n "${remote_sha}" ]]; then
+            # The lease guards concurrent pushes; also preserve pending human repairs.
+            commit_authors="$(gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/compare/main...${remote_sha}?per_page=100" \
+              --jq '.commits[] | .author.login // "<unknown>"')"
+            if [[ -n "${commit_authors}" ]]; then
+              while IFS= read -r author; do
+                if [[ "${author}" != "${UPDATE_BOT}" ]]; then
+                  echo "Refusing to overwrite ${UPDATE_BRANCH}: unmerged commits by ${author}. Merge or resolve those repairs before refreshing dependencies." >&2
+                  exit 1
+                fi
+              done <<< "${commit_authors}"
+            fi
             git push \
               --force-with-lease="refs/heads/${UPDATE_BRANCH}:${remote_sha}" \
               origin "HEAD:refs/heads/${UPDATE_BRANCH}"

@@ -49,9 +49,8 @@
     };
 
     codex = {
-      url = "git+https://github.com/openai/codex?ref=refs/tags/rust-v0.158.0&submodules=1";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.rust-overlay.follows = "rust-overlay";
+      url = "github:openai/codex/rust-v0.160.0";
+      flake = false;
     };
 
     switchboard = {
@@ -104,57 +103,8 @@
       rust-overlay.overlays.default
     ];
 
-    codexSrc = codex.outPath + "/codex-rs";
-    codexCargoToml = builtins.fromTOML (builtins.readFile "${codexSrc}/Cargo.toml");
-    codexCargoLock = builtins.fromTOML (builtins.readFile "${codexSrc}/Cargo.lock");
-    codexV8Packages = builtins.filter (package: package.name == "v8") codexCargoLock.package;
-    codexV8Version =
-      if builtins.length codexV8Packages == 1
-      then (builtins.head codexV8Packages).version
-      else throw "Expected exactly one v8 package in the Codex Cargo.lock";
-    codexVersion =
-      if codexCargoToml.workspace.package.version != "0.0.0"
-      then codexCargoToml.workspace.package.version
-      else "0.0.0-dev+${codex.shortRev or "dirty"}";
-
-    # Code mode enables rusty_v8's sandbox feature. Fetch its matching static
-    # archive and generated binding up front rather than downloading at build time.
-    rustyV8ArtifactsByVersion = {
-      "150.4.0" = {
-        aarch64-darwin = {
-          archive = {
-            url = "https://github.com/openai/codex/releases/download/rusty-v8-v${codexV8Version}/librusty_v8_ptrcomp_sandbox_release_aarch64-apple-darwin.a.gz";
-            hash = "sha256-AK27SHmISMd1UEQcaGc6XoUpuOG3PqvN7iMss5tA9KE=";
-          };
-          binding = {
-            url = "https://github.com/openai/codex/releases/download/rusty-v8-v${codexV8Version}/src_binding_ptrcomp_sandbox_release_aarch64-apple-darwin.rs";
-            hash = "sha256-ylrfDPicmnCtRgrnNkiy/om3SqETs8t/dXtqArdYOU8=";
-          };
-        };
-        x86_64-linux = {
-          archive = {
-            url = "https://github.com/openai/codex/releases/download/rusty-v8-v${codexV8Version}/librusty_v8_ptrcomp_sandbox_release_x86_64-unknown-linux-gnu.a.gz";
-            hash = "sha256-o1x10fJuapg4haRbM0kKTr5U8FBQVosyuJz7QhswtYM=";
-          };
-          binding = {
-            url = "https://github.com/openai/codex/releases/download/rusty-v8-v${codexV8Version}/src_binding_ptrcomp_sandbox_release_x86_64-unknown-linux-gnu.rs";
-            hash = "sha256-dyeCauR5vbZF6Acjn7EtH44uI956bPFvXuWSaQ0dhQY=";
-          };
-        };
-      };
-    };
-    rustyV8Artifacts =
-      if builtins.hasAttr codexV8Version rustyV8ArtifactsByVersion
-      then builtins.getAttr codexV8Version rustyV8ArtifactsByVersion
-      else throw "No rusty_v8 artifacts pinned for Codex v8 ${codexV8Version}";
-
-    livekitWebrtcArchives = {
-      aarch64-darwin = {
-        url = "https://github.com/livekit/rust-sdks/releases/download/webrtc-24f6822-2/webrtc-mac-arm64-release.zip";
-        hash = "sha256-eb5cwV5uBjPEOA4z4XLX6/Gm3Og+ngmXYdYQPw1+tsE=";
-        directory = "mac-arm64-release";
-      };
-    };
+    codexCargoToml = builtins.fromTOML (builtins.readFile "${codex}/codex-rs/Cargo.toml");
+    codexVersion = codexCargoToml.workspace.package.version;
 
     # Define the systems we want to support
     supportedSystems = ["aarch64-darwin" "x86_64-linux"];
@@ -177,35 +127,6 @@
         };
         overlays = commonOverlays;
       };
-      rustyV8ArtifactsForSystem = builtins.getAttr system rustyV8Artifacts;
-      rustyV8Archive =
-        pkgs.fetchurl (rustyV8ArtifactsForSystem.archive
-          // {name = "rusty-v8-${codexV8Version}-${system}.a.gz";});
-      rustyV8Binding =
-        pkgs.fetchurl (rustyV8ArtifactsForSystem.binding
-          // {name = "rusty-v8-${codexV8Version}-${system}-binding.rs";});
-      livekitWebrtcArchive =
-        if builtins.hasAttr system livekitWebrtcArchives
-        then
-          pkgs.fetchurl {
-            inherit (builtins.getAttr system livekitWebrtcArchives) url hash;
-            name = "livekit-webrtc-${system}.zip";
-          }
-        else null;
-      livekitWebrtcDirectory =
-        if livekitWebrtcArchive != null
-        then (builtins.getAttr system livekitWebrtcArchives).directory
-        else null;
-      livekitWebrtcPrebuilt =
-        if livekitWebrtcArchive != null
-        then
-          pkgs.runCommand "livekit-webrtc-${system}" {
-            nativeBuildInputs = [pkgs.unzip];
-          } ''
-            mkdir -p "$out"
-            unzip -q "${livekitWebrtcArchive}" -d "$out"
-          ''
-        else null;
       rustBin = pkgs.rust-bin.stable.latest;
       rustToolchain = rustBin.minimal.override {
         extensions = [
@@ -217,92 +138,17 @@
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
       cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};
       stripeCli = pkgs."stripe-cli";
-      codexRustPlatform = pkgs.makeRustPlatform {
+      rustPlatform = pkgs.makeRustPlatform {
         cargo = rustBin.minimal;
         rustc = rustBin.minimal;
       };
       disktreePackage = pkgs.callPackage ./pkgs/disktree.nix {
         src = disktree;
-        rustPlatform = codexRustPlatform;
+        inherit rustPlatform;
       };
-      codexCli = codexRustPlatform.buildRustPackage {
-        pname = "codex-rs";
+      codexCli = pkgs.callPackage ./pkgs/codex.nix {
         version = codexVersion;
-        src = codexSrc;
-        cargoLock = {
-          lockFile = "${codexSrc}/Cargo.lock";
-          outputHashes = {
-            "appcontainer_common-0.8.0" = "sha256-XUkT2R+RYk9WIqgKnmIAagNW4xOTyp4bWHmQL1iznHw=";
-            "crossterm-0.29.0" = "sha256-0OFnAzKZOd5lNkvwdXPu5zbfDWBRQG80OruXxqrFklQ=";
-            "h3-0.0.8" = "sha256-fgE0AMj5d4iattTC/yQwnACV8uEu+KR7wD29xfEm8M0=";
-            "nucleo-0.5.0" = "sha256-Hm4SxtTSBrcWpXrtSqeO0TACbUxq3gizg1zD/6Yw/sI=";
-            "runfiles-0.1.0" = "sha256-uJpVLcQh8wWZA3GPv9D8Nt43EOirajfDJ7eq/FB+tek=";
-            "tokio-tungstenite-0.28.0" = "sha256-V1xmnrfRWOcZZogelZEA4vvyMj2awCfHVA5/glQ6KAI=";
-            "tungstenite-0.27.0" = "sha256-VVHhk7l9J/sEmG3q/UuV/sQ3f+fGsmq5vumSy8vbMvw=";
-          };
-        };
-        doCheck = false;
-        cargoBuildFlags = [
-          "--package"
-          "codex-cli"
-          "--package"
-          "codex-code-mode-host"
-        ];
-        postPatch =
-          ''
-            sed -i 's/^version = "0\.0\.0"$/version = "${codexVersion}"/' Cargo.toml
-          ''
-          + pkgs.lib.optionalString (codexVersion == "0.158.0") ''
-            # list_connectors exceeds rustc's default query-depth limit in this release.
-            sed -i '1i#![recursion_limit = "256"]' chatgpt/src/lib.rs
-          '';
-        nativeBuildInputs = with pkgs; [
-          cmake
-          git
-          llvmPackages.clang
-          pkg-config
-        ];
-        buildInputs =
-          (with pkgs; [
-            openssl
-            llvmPackages.libclang.lib
-          ])
-          ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
-            pkgs.libcap.dev
-            pkgs.libcap.lib
-          ];
-        env =
-          {
-            PKG_CONFIG_PATH = pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
-              [pkgs.openssl] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [pkgs.libcap]
-            );
-            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-            CC = "clang";
-            CXX = "clang++";
-            RUSTY_V8_ARCHIVE = "${rustyV8Archive}";
-            RUSTY_V8_SRC_BINDING_PATH = "${rustyV8Binding}";
-          }
-          // pkgs.lib.optionalAttrs (livekitWebrtcPrebuilt != null) {
-            LK_CUSTOM_WEBRTC = "${livekitWebrtcPrebuilt}/${livekitWebrtcDirectory}";
-          };
-        postInstall =
-          ''
-            test -x "$out/bin/codex"
-            test -x "$out/bin/codex-code-mode-host"
-          ''
-          + pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
-            mkdir -p "$out/codex-resources"
-            ln "$out/bin/codex" "$out/bin/codex-linux-sandbox"
-            ln -s ${pkgs.bubblewrap}/bin/bwrap "$out/codex-resources/bwrap"
-            test -x "$out/bin/codex-linux-sandbox"
-            test -x "$out/codex-resources/bwrap"
-          '';
-        meta = with pkgs.lib; {
-          description = "OpenAI Codex command-line interface rust implementation";
-          homepage = "https://github.com/openai/codex";
-          license = licenses.asl20;
-          mainProgram = "codex";
-        };
+        upstreamSource = codex;
       };
       switchboardPackages = switchboard.packages.${pkgs.stdenv.hostPlatform.system};
       switchboardClis = [
