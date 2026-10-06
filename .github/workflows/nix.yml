@@ -58,9 +58,7 @@ jobs:
       - name: Check packaged Codex startup and shutdown
         run: nix shell nixpkgs#just --command just check-codex
 
-      - name: Build Linux Home Manager configuration
-        run: nix build .#nixosConfigurations.system76.config.home-manager.users.jessfraz.home.activationPackage --no-link --no-update-lock-file
-
+      # Publish before host builds so unrelated failures cannot block caching.
       - name: Publish package cache
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
@@ -68,6 +66,9 @@ jobs:
         # Host and Home Manager outputs contain private configuration. Only
         # publish the explicitly selected package closure, never the whole store.
         run: cachix push jessfraz-global-nix "$(readlink result-ci-cache)"
+
+      - name: Build Linux Home Manager configuration
+        run: nix build .#nixosConfigurations.system76.config.home-manager.users.jessfraz.home.activationPackage --no-link --no-update-lock-file
 
   nix-build-macos:
     runs-on: macos-latest
@@ -95,6 +96,14 @@ jobs:
       - name: Check packaged Codex startup and shutdown
         run: nix shell nixpkgs#just --command just check-codex
 
+      # Publish before host builds so unrelated failures cannot block caching.
+      - name: Publish package cache
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        # Keep generated host and Home Manager configurations out of the cache.
+        run: cachix push jessfraz-global-nix "$(readlink result-ci-cache)"
+
       - name: Build macOS host configurations
         run: |
           nix build --no-link --no-update-lock-file \
@@ -102,13 +111,6 @@ jobs:
             .#darwinConfigurations.macmini.system \
             .#checks.aarch64-darwin.package-selection \
             .#checks.aarch64-darwin.tailscale-home-server-launch-agent
-
-      - name: Publish package cache
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        env:
-          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        # Keep generated host and Home Manager configurations out of the cache.
-        run: cachix push jessfraz-global-nix "$(readlink result-ci-cache)"
 
   merge-dependency-updates:
     needs: [nix-flake-check, nix-build-linux, nix-build-macos]

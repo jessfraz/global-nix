@@ -33,7 +33,7 @@ To cleanup the world run `nix store gc`
 
 Run `just ci` for formatting and lint, and `just eval` to evaluate all platforms without building packages or changing the lockfile. The evaluation first materializes package derivations and their sources so the flake check also works with an empty Nix store.
 
-CI also builds the native Home Manager configuration on Linux and both host configurations on macOS. The public cache receives only the packages selected by `packages.<system>.ci-cache`; generated host configurations and Home Manager generations stay out of it. Linux CI can read Ghostty's upstream cache and includes the unconfigured terminal package in the selected outputs. Automated dependency merges explicitly dispatch a main-branch build to populate that cache.
+CI also builds the native Home Manager configuration on Linux and both host configurations on macOS. The public cache receives only the packages selected by `packages.<system>.ci-cache`; generated host configurations and Home Manager generations stay out of it. Packages are published after their build and Codex runtime checks pass, before host builds, so unrelated host failures cannot block caching. Linux CI can read Ghostty's upstream cache and includes the unconfigured terminal package in the selected outputs. Automated dependency merges explicitly dispatch a main-branch build to populate that cache.
 
 macOS CI configures `127.0.0.2` as a loopback alias so CoreDNS's cache/ACL regression test can use separate allowed and blocked clients. A local source build of CoreDNS 1.14.7 needs the same alias (`sudo ifconfig lo0 alias 127.0.0.2 netmask 255.255.255.255 up`). The test remains enabled.
 
