@@ -5,14 +5,14 @@
 }:
 python3Packages.buildPythonApplication rec {
   pname = "ramp-cli";
-  version = "0.2.49";
+  version = "0.2.54";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "ramp-public";
     repo = "ramp-cli";
     tag = "v${version}";
-    hash = "sha256-PMxiXEX6+EfwOy+gbx2knA0g29M2rlSxC6Y1ETmttWg=";
+    hash = "sha256-V39JDGSwAGxU9qkyvGZM612mdDWJi3GBQegydgTLJ4U=";
   };
 
   nativeBuildInputs = with python3Packages; [
@@ -25,6 +25,7 @@ python3Packages.buildPythonApplication rec {
     json5
     jsonref
     questionary
+    textual
     tomli-w
     zstandard
   ];
