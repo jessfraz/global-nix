@@ -25,6 +25,7 @@ python3Packages.buildPythonApplication rec {
     json5
     jsonref
     questionary
+    textual
     tomli-w
     zstandard
   ];
