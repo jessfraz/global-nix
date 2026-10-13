@@ -91,7 +91,7 @@ jobs:
           skipPush: true
 
       - name: Build macOS packages
-        run: nix build .#ci-cache --out-link result-ci-cache --no-update-lock-file
+        run: nix build -L .#ci-cache --out-link result-ci-cache --no-update-lock-file
 
       - name: Check packaged Codex startup and shutdown
         run: nix shell nixpkgs#just --command just check-codex

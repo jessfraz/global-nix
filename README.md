@@ -66,10 +66,14 @@ Codex's default daemon installation copies its package into the user's Codex hom
 and manages its own updates. The Nix pin controls the CLI package; it does not pin
 that separately managed daemon. The packaging preserves upstream's update behavior.
 
-Dependency updates refresh Zoo and its shared Rust toolchain together before
-validating the vendor tree. The scheduled updater refuses to replace an update
-branch containing unmerged human repairs; those repairs must be resolved or merged
-before the next generated refresh.
+`just update-pins` refreshes artifact pins, then resolves all flake inputs once.
+Zoo's Cargo vendor tree is built and rebuilt against that final graph to check
+reproducibility, and native CI builds the same graph on Linux and macOS. Failed
+pin, lock, or vendor validation restores the original pin and lockfile contents,
+including existing local edits. `just update-zoo` refreshes only Zoo and its shared
+Rust toolchain together. The scheduled updater refuses to replace an update branch
+containing unmerged human repairs; those repairs must be resolved or merged before
+the next generated refresh.
 
 Disktree is built from the source revision in `flake.lock` and updates through the normal flake refresh. Run `disktree` to scan home, `disktree PATH` for one directory, or `nix run .#disktree -- PATH` before switching a host. macOS also gets `Disktree.app`. Upstream currently targets Linux; the macOS build uses its native GPUI backend, but mount discovery and Trash handling still follow upstream's Linux conventions.
 

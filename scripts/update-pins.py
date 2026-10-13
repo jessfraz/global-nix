@@ -136,8 +136,12 @@ def prefetch_sri(url: str, *, unpack: bool = True) -> str:
     raise UpdateError("nix or nix-prefetch-url is required to compute source hashes.")
 
 
-def validate_cargo_vendor(package_expr: str, package_name: str) -> None:
-    build_command = [
+def validate_zoo_vendor() -> None:
+    package_expr = (
+        "let flake = builtins.getFlake (toString ./.); "
+        "in flake.inputs.zoo-cli.packages.${builtins.currentSystem}.zoo"
+    )
+    command = [
         "nix",
         "build",
         "--impure",
@@ -145,20 +149,13 @@ def validate_cargo_vendor(package_expr: str, package_name: str) -> None:
         f"({package_expr}).cargoDeps",
         "--no-link",
     ]
-
-    for command, label in (
-        (build_command, "build"),
-        ([*build_command, "--rebuild"], "reproducibility validation"),
-    ):
-        print(f"{package_name} Cargo vendor {label}", flush=True)
-        vendor = run(command, check=False, cwd=REPO_ROOT)
-        if vendor.returncode != 0:
-            detail = vendor.stderr.strip().splitlines()
-            message = detail[-1] if detail else "unknown Nix build failure"
-            raise UpdateError(f"{package_name} Cargo vendor {label} failed: {message}")
+    print("Zoo Cargo vendor build", flush=True)
+    run(command, cwd=REPO_ROOT)
+    print("Zoo Cargo vendor reproducibility validation", flush=True)
+    run([*command, "--rebuild"], cwd=REPO_ROOT)
 
 
-def update_codex() -> None:
+def update_codex() -> bool:
     if not which("nix"):
         raise UpdateError("nix is required to update Codex.")
 
@@ -166,109 +163,37 @@ def update_codex() -> None:
     if not re.fullmatch(r"rust-v\d+\.\d+\.\d+", latest_tag):
         raise UpdateError(f"Unexpected Codex release tag: {latest_tag}")
     original_flake = FLAKE_PATH.read_text(encoding="utf-8")
-    original_lock = FLAKE_LOCK_PATH.read_text(encoding="utf-8")
     original_package = CODEX_PATH.read_text(encoding="utf-8")
     if f'github:openai/codex/{latest_tag}"' in original_flake:
         print(f"codex already at {latest_tag}")
-        return
+        return False
 
-    succeeded = False
-    try:
-        updated_package = original_package
-        for system, target in (
-            ("aarch64-darwin", "aarch64-apple-darwin"),
-            ("x86_64-linux", "x86_64-unknown-linux-musl"),
-        ):
-            url = (
-                f"https://github.com/openai/codex/releases/download/{latest_tag}/"
-                f"codex-package-{target}.tar.gz"
-            )
-            archive_hash = prefetch_sri(url, unpack=False)
-            updated_package = replace_one(
-                rf'({re.escape(system)} = \{{\n\s+target = "{re.escape(target)}";\n\s+hash = ")[^"]+(";)',
-                rf"\g<1>{archive_hash}\g<2>",
-                updated_package,
-                f"Codex {system} archive hash",
-            )
-        updated_flake = replace_one(
-            r'(url = "github:openai/codex/)[^"]+(";)',
-            rf"\g<1>{latest_tag}\g<2>",
-            original_flake,
-            "Codex tag",
+    updated_package = original_package
+    for system, target in (
+        ("aarch64-darwin", "aarch64-apple-darwin"),
+        ("x86_64-linux", "x86_64-unknown-linux-musl"),
+    ):
+        url = (
+            f"https://github.com/openai/codex/releases/download/{latest_tag}/"
+            f"codex-package-{target}.tar.gz"
         )
-        CODEX_PATH.write_text(updated_package, encoding="utf-8")
-        FLAKE_PATH.write_text(updated_flake, encoding="utf-8")
-        run(
-            ["nix", "flake", "update", "codex", "--option", "warn-dirty", "false"],
-            cwd=REPO_ROOT,
+        archive_hash = prefetch_sri(url, unpack=False)
+        updated_package = replace_one(
+            rf'({re.escape(system)} = \{{\n\s+target = "{re.escape(target)}";\n\s+hash = ")[^"]+(";)',
+            rf"\g<1>{archive_hash}\g<2>",
+            updated_package,
+            f"Codex {system} archive hash",
         )
-        succeeded = True
-    except subprocess.CalledProcessError as exc:
-        detail = (exc.stderr or exc.stdout or "unknown Nix command failure").strip()
-        raise UpdateError(f"Failed to update Codex: {detail}") from exc
-    finally:
-        if not succeeded:
-            FLAKE_PATH.write_text(original_flake, encoding="utf-8")
-            FLAKE_LOCK_PATH.write_text(original_lock, encoding="utf-8")
-            CODEX_PATH.write_text(original_package, encoding="utf-8")
+    updated_flake = replace_one(
+        r'(url = "github:openai/codex/)[^"]+(";)',
+        rf"\g<1>{latest_tag}\g<2>",
+        original_flake,
+        "Codex tag",
+    )
+    CODEX_PATH.write_text(updated_package, encoding="utf-8")
+    FLAKE_PATH.write_text(updated_flake, encoding="utf-8")
     print(f"codex -> {latest_tag}")
-
-
-def update_zoo() -> None:
-    if not which("nix"):
-        raise UpdateError("nix is required to update the Zoo flake input.")
-
-    original_lock = FLAKE_LOCK_PATH.read_text(encoding="utf-8")
-    succeeded = False
-    try:
-        try:
-            run(
-                [
-                    "nix",
-                    "flake",
-                    "update",
-                    "zoo-cli",
-                    "rust-overlay",
-                    "--option",
-                    "warn-dirty",
-                    "false",
-                ],
-                cwd=REPO_ROOT,
-            )
-
-            package_expr = (
-                "let flake = builtins.getFlake (toString ./.); "
-                "in flake.inputs.zoo-cli.packages.${builtins.currentSystem}.zoo"
-            )
-            lock_changed = FLAKE_LOCK_PATH.read_text(encoding="utf-8") != original_lock
-            if lock_changed:
-                validate_cargo_vendor(package_expr, "Zoo")
-
-            version = run(
-                [
-                    "nix",
-                    "eval",
-                    "--impure",
-                    "--raw",
-                    "--expr",
-                    f"({package_expr}).version",
-                ],
-                cwd=REPO_ROOT,
-            ).stdout.strip()
-        except subprocess.CalledProcessError as exc:
-            detail = (exc.stderr or exc.stdout or "unknown Nix command failure").strip()
-            raise UpdateError(
-                f"Failed to update the Zoo flake input: {detail}"
-            ) from exc
-        succeeded = True
-    finally:
-        if not succeeded:
-            FLAKE_LOCK_PATH.write_text(original_lock, encoding="utf-8")
-
-    if lock_changed:
-        print(f"zoo -> {version}")
-    else:
-        print(f"zoo already at {version}")
+    return True
 
 
 def update_kicad() -> None:
@@ -470,7 +395,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
     targets = set(args.targets)
-    if "all" in targets:
+    update_all = "all" in targets
+    if update_all:
         targets = {
             "codex",
             "kicad",
@@ -480,9 +406,25 @@ def main(argv: Sequence[str]) -> int:
             "zoo",
         }
 
+    # One transaction covers both artifact pins and the final dependency graph.
+    # Restore the original bytes on failure, including any preexisting edits.
+    original_files = {
+        path: path.read_bytes()
+        for path in (
+            FLAKE_PATH,
+            FLAKE_LOCK_PATH,
+            CODEX_PATH,
+            KICAD_BIN_PATH,
+            MOLE_PATH,
+            ORCA_SLICER_BIN_PATH,
+            RAMP_CLI_PATH,
+        )
+    }
+    succeeded = False
     try:
-        if "codex" in targets:
-            update_codex()
+        lock_inputs: list[str] = []
+        if "codex" in targets and update_codex():
+            lock_inputs.append("codex")
         if "kicad" in targets:
             update_kicad()
         if "mole" in targets:
@@ -492,13 +434,49 @@ def main(argv: Sequence[str]) -> int:
         if "ramp" in targets:
             update_ramp()
         if "zoo" in targets:
-            update_zoo()
+            lock_inputs.extend(("zoo-cli", "rust-overlay"))
+        if update_all or lock_inputs:
+            # Resolve once before validation so both the vendor rebuild and
+            # native CI exercise the graph that will be committed.
+            result = run(
+                [
+                    "nix",
+                    "flake",
+                    "update",
+                    *([] if update_all else lock_inputs),
+                    "--option",
+                    "warn-dirty",
+                    "false",
+                ],
+                cwd=REPO_ROOT,
+            )
+            if result.stderr:
+                print(result.stderr, file=sys.stderr, end="")
+            print("flake inputs updated")
+        if (
+            "zoo" in targets
+            and FLAKE_LOCK_PATH.read_bytes() != original_files[FLAKE_LOCK_PATH]
+        ):
+            validate_zoo_vendor()
+        succeeded = True
     except UpdateError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or str(exc)).strip()
+        print(f"error: {detail}", file=sys.stderr)
+        return 1
+    except OSError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("error: interrupted", file=sys.stderr)
         return 130
+    finally:
+        if not succeeded:
+            for path, contents in original_files.items():
+                if not path.exists() or path.read_bytes() != contents:
+                    path.write_bytes(contents)
     return 0
 
 

@@ -46,10 +46,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          {
-            nix shell nixpkgs#just --command just update-pins
-            nix flake update --option warn-dirty false
-          } 2>&1 | tee "${RUNNER_TEMP}/update-output.txt"
+          nix shell nixpkgs#just --command just update-pins 2>&1 | tee "${RUNNER_TEMP}/update-output.txt"
 
       # Installation tokens expire after an hour; mint after the long refresh.
       - name: Create dependency updater token
