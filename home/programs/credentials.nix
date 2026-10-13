@@ -128,9 +128,9 @@ in {
     deepseek = one (agent "7brerhra2hwrnuvdq7jlacrcny" "apikey" ["DEEPSEEK_API_KEY"]);
     grok = one (agent "yufotbvsqml3lxcs5rkxmcsozu" "credential" ["GROK_API_KEY"]);
     unifi.secrets = [
-      (agent "nn6rffzbcnxri5bwqly3xwj56u" "home-api-key-network" ["UNIFI_NETWORK_API_KEY"])
-      (agent "nn6rffzbcnxri5bwqly3xwj56u" "home-api-key-protect" ["UNIFI_PROTECT_API_KEY" "UNIFI_ACCESS_API_KEY"])
-      (agent "nn6rffzbcnxri5bwqly3xwj56u" "remote-api-key-network" ["UNIFI_REMOTE_API_KEY"])
+      (agent "u67k6tivychxtzjq27yvpr5s7u" "hxisub665xrph6eyepsgqgccnq" ["UNIFI_NETWORK_API_KEY"])
+      (agent "u67k6tivychxtzjq27yvpr5s7u" "wzuup7ye2mbzheqyt2l5hvf54e" ["UNIFI_PROTECT_API_KEY" "UNIFI_ACCESS_API_KEY"])
+      (agent "u67k6tivychxtzjq27yvpr5s7u" "remote-network" ["UNIFI_REMOTE_API_KEY"])
     ];
     tailscale = one (agent "wtljtr2cgswlvjmxzjd7j7bph4" "apikey" ["TAILSCALE_API_KEY"]);
     home-assistant = {
