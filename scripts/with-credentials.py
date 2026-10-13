@@ -397,85 +397,145 @@ def run_provider(
     return native.exit_code
 
 
+def selected_field_values(output: str, selectors: list[str]) -> dict[str, str]:
+    try:
+        fields = json.loads(output)
+    except ValueError as error:
+        raise CredentialError("Invalid 1Password selected-field response") from error
+    if not isinstance(fields, list) or any(
+        not isinstance(field, dict) for field in fields
+    ):
+        raise CredentialError("Invalid 1Password selected-field response")
+    values = {}
+    for selector in selectors:
+        label_only = selector.startswith("label=")
+        name = selector.removeprefix("label=")
+        matches = [
+            field
+            for field in fields
+            if field.get("label") == name
+            or (not label_only and field.get("id") == name)
+        ]
+        if len(matches) != 1 or not isinstance(matches[0].get("value"), str):
+            raise CredentialError(
+                "Expected one 1Password value for each selected field"
+            )
+        values[selector] = matches[0]["value"].rstrip("\n")
+    return values
+
+
 def resolve(
     profile: str, spec: Profile, directory: Path, *, shell: bool = False
 ) -> dict[str, str]:
     result = dict(spec.environment)
     deadline = time.monotonic() + 60
-    resolved = []
+    resolved: list[tuple[Secret, str]] = []
+    pending: dict[tuple[str | None, ...], list[int]] = {}
     auth_tokens: dict[str, str] = {}
-    for secret in spec.secrets:
+    for index, secret in enumerate(spec.secrets):
         cached = secret.cache_file
         value = ""
         if cached:
             path = credential_path(cached)
             if path.exists():
                 value = path.read_text()
+        if "\0" in value:
+            raise CredentialError(f"Credential for {profile} contains a NUL byte")
         if not value:
             if not secret.item:
                 raise CredentialError(
                     f"Required credential file is unavailable for {profile}"
                 )
-            if secret.auth_profile:
-                if secret.auth_profile not in auth_tokens:
-                    auth_tokens[secret.auth_profile] = AuthProfile.load(
-                        secret.auth_profile
-                    ).token()
-                lookup_env = child_environment()
-                lookup_env["OP_SERVICE_ACCOUNT_TOKEN"] = auth_tokens[
-                    secret.auth_profile
-                ]
-                lookup_env["OP_BIOMETRIC_UNLOCK_ENABLED"] = "false"
-                args = ["op", "item", "get"]
-            else:
-                lookup_env = dict(os.environ)
-                for name in (
-                    "OP_SERVICE_ACCOUNT_TOKEN",
-                    "OP_CONNECT_HOST",
-                    "OP_CONNECT_TOKEN",
-                ):
-                    lookup_env.pop(name, None)
-                args = ["op", "--account", secret.account, "item", "get"]
-            if secret.vault:
-                args.extend(["--vault", secret.vault])
-            args.append(secret.item)
-            if secret.url_label is not None:
-                args.extend(["--format", "json"])
-            else:
-                args.extend(["--fields", secret.field, "--reveal"])
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise CredentialError(
-                    f"Credential recovery exceeded 60 seconds for {profile}"
-                )
-            try:
-                # Closing stdin alone still lets op prompt through /dev/tty.
-                response = subprocess.run(
-                    args,
-                    env=lookup_env,
-                    stdin=subprocess.DEVNULL,
-                    start_new_session=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=remaining,
-                    check=False,
-                )
-            except (OSError, subprocess.SubprocessError) as error:
-                raise CredentialError(
-                    f"Credential lookup unavailable or timed out for {profile}"
-                ) from error
-            if response.returncode:
-                raise CredentialError(
-                    f"Credential lookup failed for {profile} (exit {response.returncode}); command was not started"
-                )
-            value = secret.response_value(response.stdout)
-        if not value:
-            raise CredentialError(
-                f"Empty credential for {profile}; command was not started"
+            # Keep complex op selectors on their existing path. Only combine
+            # individual field IDs/labels, never broaden a read to the full item.
+            selection = secret.field
+            if selection and re.fullmatch(r"(?:label=)?[\w -]+", selection):
+                selection = None
+            key = (
+                secret.account,
+                secret.auth_profile,
+                secret.vault,
+                secret.item,
+                selection,
+                secret.url_label,
             )
-        if "\0" in value:
-            raise CredentialError(f"Credential for {profile} contains a NUL byte")
+            pending.setdefault(key, []).append(index)
         resolved.append((secret, value))
+    for indices in pending.values():
+        secret = spec.secrets[indices[0]]
+        fields = list(
+            dict.fromkeys(
+                spec.secrets[index].field
+                for index in indices
+                if spec.secrets[index].field is not None
+            )
+        )
+        if secret.auth_profile:
+            if secret.auth_profile not in auth_tokens:
+                auth_tokens[secret.auth_profile] = AuthProfile.load(
+                    secret.auth_profile
+                ).token()
+            lookup_env = child_environment()
+            lookup_env["OP_SERVICE_ACCOUNT_TOKEN"] = auth_tokens[secret.auth_profile]
+            lookup_env["OP_BIOMETRIC_UNLOCK_ENABLED"] = "false"
+            args = ["op", "item", "get"]
+        else:
+            lookup_env = dict(os.environ)
+            for name in (
+                "OP_SERVICE_ACCOUNT_TOKEN",
+                "OP_CONNECT_HOST",
+                "OP_CONNECT_TOKEN",
+            ):
+                lookup_env.pop(name, None)
+            args = ["op", "--account", secret.account, "item", "get"]
+        if secret.vault:
+            args.extend(["--vault", secret.vault])
+        args.append(secret.item)
+        if secret.url_label is not None:
+            args.extend(["--format", "json"])
+        elif len(fields) > 1:
+            args.extend(["--fields", ",".join(fields), "--format", "json", "--reveal"])
+        else:
+            args.extend(["--fields", secret.field, "--reveal"])
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise CredentialError(
+                f"Credential recovery exceeded 60 seconds for {profile}"
+            )
+        try:
+            # Closing stdin alone still lets op prompt through /dev/tty.
+            response = subprocess.run(
+                args,
+                env=lookup_env,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
+                capture_output=True,
+                text=True,
+                timeout=remaining,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as error:
+            raise CredentialError(
+                f"Credential lookup unavailable or timed out for {profile}"
+            ) from error
+        if response.returncode:
+            raise CredentialError(
+                f"Credential lookup failed for {profile} (exit {response.returncode}); command was not started"
+            )
+        if len(fields) > 1:
+            values = selected_field_values(response.stdout, fields)
+        else:
+            values = {secret.field: secret.response_value(response.stdout)}
+        for index in indices:
+            selected = spec.secrets[index]
+            value = values[selected.field]
+            if not value:
+                raise CredentialError(
+                    f"Empty credential for {profile}; command was not started"
+                )
+            if "\0" in value:
+                raise CredentialError(f"Credential for {profile} contains a NUL byte")
+            resolved[index] = (selected, value)
     for index, (secret, value) in enumerate(resolved):
         if secret.cache_file:
             path = credential_path(secret.cache_file)

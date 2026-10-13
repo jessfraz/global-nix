@@ -565,6 +565,229 @@ class CredentialsTests(unittest.TestCase):
         self.assertIn("exit 23", result.stderr)
         self.assertNotIn("test-only-", result.stdout + result.stderr)
 
+    def batched_profile(self, selections: list[dict]) -> None:
+        self.scoped_profile()
+        self.set_profiles(
+            {
+                "fixture": {
+                    "secrets": [
+                        {
+                            "auth_profile": "fixture-auth",
+                            "account": "fixture.example",
+                            "vault": "Fixture Vault",
+                            "item": "fixture",
+                            **selection,
+                        }
+                        for selection in selections
+                    ]
+                }
+            }
+        )
+        (self.root / "bin/op").write_text(
+            f"#!{sys.executable}\n"
+            "import json,os,pathlib,sys\n"
+            "args = sys.argv[1:]\n"
+            "token = os.environ.get('OP_SERVICE_ACCOUNT_TOKEN')\n"
+            "scope = {None: 'desktop', 'test-only-bootstrap-token': 'primary', "
+            "'test-only-second-bootstrap': 'secondary'}[token]\n"
+            "if token:\n"
+            "    assert os.environ['OP_BIOMETRIC_UNLOCK_ENABLED'] == 'false'\n"
+            "    assert 'OP_ACCOUNT' not in os.environ\n"
+            "    assert not any(key.startswith('OP_SESSION') for key in os.environ)\n"
+            "assert 'OP_CONNECT_TOKEN' not in os.environ\n"
+            "with pathlib.Path(os.environ['HOME'],'op-calls.jsonl').open('a') as log:\n"
+            "    log.write(json.dumps({'args': args, 'scope': scope}) + '\\n')\n"
+            "if 'FIXTURE_RESPONSE' in os.environ:\n"
+            "    print(os.environ['FIXTURE_RESPONSE'])\n"
+            "elif '--fields' not in args:\n"
+            "    assert args[-2:] == ['--format', 'json']\n"
+            "    print(json.dumps({'urls': [{'label': 'website', 'href': 'https://fixture.example'}]}))\n"
+            "else:\n"
+            "    selectors = args[args.index('--fields') + 1].split(',')\n"
+            "    fields = []\n"
+            "    for selector in selectors:\n"
+            "        name = selector.removeprefix('label=')\n"
+            "        fields.append({'id': name if name.endswith('-id') else 'generated-' + name, "
+            "'label': 'id-selected label' if name.endswith('-id') else name, "
+            "'value': 'test-only-provider-' + scope + '-' + name})\n"
+            "    if '--format' in args:\n"
+            "        assert args[args.index('--format') + 1] == 'json'\n"
+            "        print(json.dumps(list(reversed(fields))))\n"
+            "    else:\n"
+            "        assert len(fields) == 1\n"
+            "        print(fields[0]['value'])\n"
+        )
+
+    def lookup_calls(self) -> list[dict]:
+        return [
+            json.loads(line)
+            for line in (self.root / "op-calls.jsonl").read_text().splitlines()
+        ]
+
+    def run_credential_child(
+        self, expected: dict[str, str]
+    ) -> subprocess.CompletedProcess[str]:
+        return self.run_cli(
+            "fixture",
+            "--",
+            sys.executable,
+            "-c",
+            "import json,os,pathlib,sys; "
+            "assert all(os.environ[key] == value for key,value in json.loads(sys.argv[1]).items()); "
+            "assert not any(key.startswith('OP_') for key in os.environ); "
+            "pathlib.Path.home().joinpath('started').touch()",
+            json.dumps(expected),
+        )
+
+    def test_selected_fields_share_one_lookup_only_within_each_invocation(
+        self,
+    ) -> None:
+        self.batched_profile(
+            [
+                {"field": "first-id", "env": ["FIRST"]},
+                {"field": "label=second key", "env": ["SECOND"]},
+                {"field": "third key", "env": ["THIRD"]},
+            ]
+        )
+        for call_count in (1, 2):
+            result = self.run_credential_child(
+                {
+                    "FIRST": "test-only-provider-primary-first-id",
+                    "SECOND": "test-only-provider-primary-second key",
+                    "THIRD": "test-only-provider-primary-third key",
+                }
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(self.marker.exists())
+            self.assertNotIn("test-only-", result.stdout + result.stderr)
+            calls = self.lookup_calls()
+            self.assertEqual(len(calls), call_count)
+            self.assertEqual(
+                calls[-1]["args"],
+                [
+                    "item",
+                    "get",
+                    "--vault",
+                    "Fixture Vault",
+                    "fixture",
+                    "--fields",
+                    "first-id,label=second key,third key",
+                    "--format",
+                    "json",
+                    "--reveal",
+                ],
+            )
+        self.assertFalse((self.config / "with-credentials/files").exists())
+
+    def test_duplicate_field_uses_one_single_field_lookup(self) -> None:
+        self.batched_profile(
+            [
+                {"field": "first-id", "env": ["FIRST"]},
+                {"field": "first-id", "env": ["SECOND"]},
+            ]
+        )
+        result = self.run_credential_child(
+            dict.fromkeys(("FIRST", "SECOND"), "test-only-provider-primary-first-id")
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.lookup_calls()
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["args"][-3:], ["--fields", "first-id", "--reveal"])
+
+    def test_field_batches_keep_item_vault_account_and_auth_profile_separate(
+        self,
+    ) -> None:
+        variants = [
+            {},
+            {"item": "second-item"},
+            {"vault": "Second Vault"},
+            {"account": "second.example"},
+            {"auth_profile": "second-auth"},
+            {"auth_profile": None},
+        ]
+        self.batched_profile(
+            [
+                {"field": field, "env": [f"VALUE_{index}_{part}"], **variant}
+                for index, variant in enumerate(variants)
+                for part, field in enumerate(("first-id", "second key"))
+            ]
+        )
+        token = self.config / "agent-credentials/second.token"
+        token.write_text("test-only-second-bootstrap\n")
+        token.chmod(0o600)
+        auth_path = self.config / "with-credentials/auth-profiles.json"
+        auth = json.loads(auth_path.read_text())
+        auth["second-auth"] = {"token_file": str(token)}
+        auth_path.write_text(json.dumps(auth))
+        expected = {}
+        for index, variant in enumerate(variants):
+            scope = {"second-auth": "secondary", None: "desktop"}.get(
+                variant.get("auth_profile", "fixture-auth"), "primary"
+            )
+            for part, field in enumerate(("first-id", "second key")):
+                expected[f"VALUE_{index}_{part}"] = (
+                    f"test-only-provider-{scope}-{field}"
+                )
+        result = self.run_credential_child(expected)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.lookup_calls()
+        self.assertEqual(len(calls), len(variants))
+        self.assertEqual(
+            [call["scope"] for call in calls],
+            ["primary", "primary", "primary", "primary", "secondary", "desktop"],
+        )
+        self.assertEqual(calls[-1]["args"][:2], ["--account", "fixture.example"])
+
+    def test_url_selection_stays_separate_from_selected_field_lookup(self) -> None:
+        self.batched_profile(
+            [
+                {"url_label": "website", "env": ["URL"]},
+                {"field": "first-id", "env": ["FIRST"]},
+            ]
+        )
+        result = self.run_credential_child(
+            {
+                "URL": "https://fixture.example",
+                "FIRST": "test-only-provider-primary-first-id",
+            }
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.lookup_calls()
+        self.assertEqual(len(calls), 2)
+        self.assertNotIn("--fields", calls[0]["args"])
+        self.assertEqual(calls[1]["args"][-3:], ["--fields", "first-id", "--reveal"])
+
+    def test_bad_selected_field_response_never_starts_child_or_prints_values(
+        self,
+    ) -> None:
+        self.batched_profile(
+            [
+                {"field": "first-id", "env": ["FIRST"]},
+                {"field": "second key", "env": ["SECOND"]},
+                {"item": "later-item", "field": "third", "env": ["THIRD"]},
+            ]
+        )
+        first = {"id": "first-id", "value": "test-only-response-value"}
+        second = {"label": "second key", "value": "test-only-second-value"}
+        responses = [
+            "test-only-invalid-json",
+            json.dumps({"fields": [first, second]}),
+            json.dumps([first]),
+            json.dumps([first, first, second]),
+            json.dumps([first, {**second, "value": None}]),
+            json.dumps([first, {**second, "value": ""}]),
+            json.dumps([first, {**second, "value": "test-only-\u0000"}]),
+        ]
+        for count, response in enumerate(responses, start=1):
+            with self.subTest(response=count):
+                self.env["FIXTURE_RESPONSE"] = response
+                result = self.run_credential_child({})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.marker.exists())
+                self.assertEqual(result.stdout, "")
+                self.assertNotIn("test-only-", result.stderr)
+                self.assertEqual(len(self.lookup_calls()), count)
+
     def test_scoped_profile_rejects_unbound_cache_before_reading_it(self) -> None:
         token = self.scoped_profile()
         path = self.config / "with-credentials/profiles.json"

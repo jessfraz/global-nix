@@ -154,7 +154,13 @@ selected credentials with all inherited `OP_*` variables removed. Do not export 
 service-account token globally or place one in Nix configuration, Git or logs.
 
 Vault lookup is bounded to a single 60-second window per invocation and stops on
-its first failure. Scoped profiles do not use the old unbound file caches. Home
+its first failure. Selected fields from the same account, authentication profile,
+vault and item share one lookup; duplicate references reuse that result in memory
+for the invocation. Separate helper invocations still resolve their scoped fields
+again. Configured provider commands use Switchboard's existing one-hour cache,
+which coordinates cold lookups and records confirmed quota cooldowns across
+processes. No helper credential cache or longer credential lifetime is added.
+Scoped profiles do not use the old unbound file caches. Home
 Assistant therefore reads the endpoint labeled `website` and its API token from
 its scoped vault item; the old Home Assistant cache files are not consulted or
 rewritten. Provider session caches managed by Switchboard remain independent.
