@@ -28,8 +28,16 @@
     ratgdo-big-garage = mkPlainHttpService "192.168.1.58";
     ratgdo-small-garage = mkPlainHttpService "192.168.1.12";
     ratgdo-gate = mkPlainHttpService "192.168.1.241";
+    plex = {
+      destination = "127.0.0.1:32400";
+      protocol = "tls-terminated-tcp";
+    };
+    irc = {
+      destination = "127.0.0.1:12345";
+      protocol = "tls-terminated-tcp";
+    };
   };
-  httpDeviceRoutes = lib.mapAttrsToList (_: definition: "${definition.address}/32") tailscaleServiceDefinitions;
+  httpDeviceRoutes = lib.mapAttrsToList (_: definition: "${definition.address}/32") (lib.filterAttrs (_: definition: definition ? address) tailscaleServiceDefinitions);
   tailscaleServices =
     lib.mapAttrs (
       name: definition: let
