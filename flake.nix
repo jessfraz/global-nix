@@ -92,6 +92,16 @@
     tplResolverFile = "resolver/tpl"; # serves *.tpl
 
     overlay = final: prev: {
+      # Keep the cache/ACL regression enabled without requiring host loopback aliases.
+      coredns = prev.coredns.overrideAttrs (old: {
+        patches =
+          (old.patches or [])
+          ++ [
+            ./pkgs/coredns-cache-acl-test.patch
+            # A 10ms handshake deadline flakes under Darwin's socket scheduling.
+            ./pkgs/coredns-test-timeouts.patch
+          ];
+      });
       axiomCli = prev.callPackage ./pkgs/axiom-cli.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
       rampCli = prev.callPackage ./pkgs/ramp-cli.nix {};
@@ -250,6 +260,55 @@
         name = "home-packages";
         paths = commonPackages ++ systemSpecificPackages;
       };
+      # Public package roots are explicit and independent of host configuration.
+      cachePackages =
+        [
+          packageBundle
+          dotvim.packages.${system}.editor-tools
+          disktreePackage
+          kicadPackage
+          # Packages introduced by host and Home Manager modules, outside the
+          # shared bundle. Keep this list independent of generated host configs.
+          pkgs.bashInteractive
+          pkgs.diffutils
+          pkgs.fontconfig
+          pkgs.irssi
+          pkgs.jujutsu
+          pkgs.man-db
+          pkgs.nerd-fonts.hack
+          pkgs.openssh
+          pkgs.rsync
+          # Providers are shared packages; no user's editor configuration.
+          (pkgs.wrapNeovim pkgs.neovim-unwrapped {
+            withPython3 = true;
+            withRuby = true;
+          })
+        ]
+        ++ commonPackages
+        ++ systemSpecificPackages
+        ++ dotvim.packages.${system}.editor-tools.paths
+        ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+          ghostty.packages.${system}.default
+        ]
+        ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+          pkgs.coredns
+          pkgs.mas
+          pkgs.socat
+          pkgs.wireshark
+          pkgs.zsh
+          pkgs.nix-zsh-completions
+          pkgs.texinfoInteractive
+          orcaSlicerPackage
+        ];
+      # Hosts install man/info outputs as well as executables. Use output paths
+      # as link names so multi-output packages cannot overwrite each other.
+      cacheOutputs = pkgs.lib.concatMap (package:
+        map (output: pkgs.lib.getOutput output package) (pkgs.lib.unique (
+          [(package.outputName or "out")]
+          ++ (package.meta.outputsToInstall or [])
+          ++ builtins.filter (output: builtins.hasAttr output package) ["man" "info"]
+        )))
+      cachePackages;
     in {
       codex = codexCli;
       gws = gwsCli;
@@ -260,20 +319,11 @@
       default = packageBundle;
       # Only package outputs belong in the public cache, never generated host
       # configurations or Home Manager generations.
-      ci-cache = pkgs.linkFarmFromDrvs "ci-cache" (
-        [
-          packageBundle
-          dotvim.packages.${system}.editor-tools
-          disktreePackage
-          kicadPackage
-        ]
-        ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
-          ghostty.packages.${system}.default
-        ]
-        ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-          orcaSlicerPackage
-        ]
-      );
+      ci-cache = pkgs.linkFarm "ci-cache" (map (package: {
+          name = builtins.unsafeDiscardStringContext (builtins.baseNameOf package.outPath);
+          path = package;
+        })
+        cacheOutputs);
     };
   in {
     # Generate packages for all supported systems

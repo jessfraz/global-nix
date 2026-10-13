@@ -1,0 +1,156 @@
+--- a/test/acl_test.go
++++ b/test/acl_test.go
+@@ -1,11 +1,17 @@
+ package test
+ 
+ import (
++	"context"
+ 	"fmt"
+ 	"net"
++	"strings"
+ 	"testing"
+-	"time"
+ 
++	"github.com/coredns/caddy"
++	"github.com/coredns/caddy/caddyfile"
++	"github.com/coredns/coredns/core/dnsserver"
++	"github.com/coredns/coredns/plugin/pkg/dnstest"
++	plugintest "github.com/coredns/coredns/plugin/test"
+ 	"github.com/miekg/dns"
+ )
+ 
+@@ -16,43 +22,55 @@
+ 		queryName     = "secret.protected.example."
+ 	)
+ 
+-	exchange := func(server, source string) *dns.Msg {
++	// Exercise the real server and configured plugin chain with distinct client
++	// addresses, without requiring a privileged loopback alias on Darwin.
++	exchange := func(server *dnsserver.Server, source string) *dns.Msg {
+ 		t.Helper()
+-
+-		remoteAddr, err := net.ResolveUDPAddr("udp4", server)
+-		if err != nil {
+-			t.Fatalf("resolve server address %q: %v", server, err)
+-		}
+-
+-		conn, err := net.DialUDP(
+-			"udp4",
+-			&net.UDPAddr{
+-				IP: net.ParseIP(source).To4(),
+-			},
+-			remoteAddr,
+-		)
+-		if err != nil {
+-			t.Fatalf("dial from %s to %s: %v", source, server, err)
+-		}
+-		defer conn.Close()
+-
+ 		request := new(dns.Msg)
+ 		request.SetQuestion(queryName, dns.TypeA)
++		recorder := dnstest.NewRecorder(&plugintest.ResponseWriter{RemoteIP: source})
++		ctx := context.WithValue(context.Background(), dnsserver.Key{}, server)
++		ctx = context.WithValue(ctx, dnsserver.LoopKey{}, 0)
++		server.ServeDNS(ctx, recorder, request)
++		if recorder.Msg == nil {
++			t.Fatalf("no response for client %s", source)
++		}
++		return recorder.Msg
++	}
+ 
+-		client := &dns.Client{
+-			Net:     "udp4",
+-			Timeout: time.Second,
++	// Use the production parser, directive ordering and server construction,
++	// but dispatch requests in-process so their source IPs need no OS aliases.
++	newServer := func(corefile string) (*dnsserver.Server, error) {
++		controller := caddy.NewTestController("dns", "")
++		blocks, err := caddyfile.Parse("Corefile", strings.NewReader(corefile), dnsserver.Directives)
++		if err != nil {
++			return nil, err
+ 		}
+-
+-		response, _, err := client.ExchangeWithConn(
+-			request,
+-			&dns.Conn{Conn: conn},
+-		)
++		blocks, err = controller.Context().InspectServerBlocks("Corefile", blocks)
+ 		if err != nil {
+-			t.Fatalf("query from %s to %s: %v", source, server, err)
++			return nil, err
+ 		}
+-
+-		return response
++		controller.Key = blocks[0].Keys[0]
++		controller.ServerBlockKeys = blocks[0].Keys
++		for _, directive := range dnsserver.Directives {
++			tokens, ok := blocks[0].Tokens[directive]
++			if !ok {
++				continue
++			}
++			controller.Dispenser = caddyfile.NewDispenserTokens("Corefile", tokens)
++			setup, err := caddy.DirectiveAction("dns", directive)
++			if err != nil {
++				return nil, err
++			}
++			if err := setup(controller); err != nil {
++				return nil, err
++			}
++		}
++		servers, err := controller.Context().MakeServers()
++		if err != nil {
++			return nil, err
++		}
++		return servers[0].(*dnsserver.Server), nil
+ 	}
+ 
+ 	corefile := func(withCache bool) string {
+@@ -104,42 +122,38 @@
+ 	}
+ 
+ 	// Control: prove that the ACL works correctly without cache.
+-	control, controlUDP, _, err := CoreDNSServerAndPorts(corefile(false))
++	control, err := newServer(corefile(false))
+ 	if err != nil {
+ 		t.Fatalf("start no-cache control server: %v", err)
+ 	}
+ 
+ 	requireAnswer(
+-		exchange(controlUDP, allowedSource),
++		exchange(control, allowedSource),
+ 		"no-cache allowed query",
+ 	)
+ 
+-	response := exchange(controlUDP, blockedSource)
++	response := exchange(control, blockedSource)
+ 	if response.Rcode != dns.RcodeRefused {
+-		control.Stop()
+ 		t.Fatalf(
+ 			"no-cache blocked query: got rcode %s, want REFUSED",
+ 			dns.RcodeToString[response.Rcode],
+ 		)
+ 	}
+ 
+-	control.Stop()
+-
+ 	// Actual regression test: allowed client fills the shared cache.
+-	instance, udp, _, err := CoreDNSServerAndPorts(corefile(true))
++	instance, err := newServer(corefile(true))
+ 	if err != nil {
+ 		t.Fatalf("start cache server: %v", err)
+ 	}
+-	defer instance.Stop()
+ 
+ 	requireAnswer(
+-		exchange(udp, allowedSource),
++		exchange(instance, allowedSource),
+ 		"cache-fill allowed query",
+ 	)
+ 
+ 	// This must remain REFUSED. Current vulnerable code returns the
+ 	// cached NOERROR answer without calling ACL.
+-	response = exchange(udp, blockedSource)
++	response = exchange(instance, blockedSource)
+ 	if response.Rcode != dns.RcodeRefused {
+ 		t.Fatalf(
+ 			"blocked query after allowed cache fill: got rcode %s, want REFUSED",

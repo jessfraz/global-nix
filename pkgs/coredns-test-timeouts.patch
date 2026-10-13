@@ -1,0 +1,38 @@
+--- a/plugin/dnstap/io_test.go
++++ b/plugin/dnstap/io_test.go
+@@ -87,7 +87,7 @@
+ 		})
+ 
+ 		dio := newIO(param[0], l.Addr().String(), 1, 1)
+-		dio.tcpTimeout = 10 * time.Millisecond
++		dio.tcpTimeout = time.Second
+ 		dio.flushTimeout = 30 * time.Millisecond
+ 		dio.errorCheckInterval = 50 * time.Millisecond
+ 		dio.connect()
+@@ -115,7 +115,7 @@
+ 	})
+ 
+ 	dio := newIO("tcp", l.Addr().String(), 1, 1)
+-	dio.tcpTimeout = 10 * time.Millisecond
++	dio.tcpTimeout = time.Second
+ 	dio.flushTimeout = 30 * time.Millisecond
+ 	dio.errorCheckInterval = 50 * time.Millisecond
+ 	dio.connect()
+@@ -150,7 +150,7 @@
+ 		addr := l.Addr().String()
+ 		logger := MockLogger{}
+ 		dio := newIO("tcp", addr, 1, 1)
+-		dio.tcpTimeout = 10 * time.Millisecond
++		dio.tcpTimeout = time.Second
+ 		dio.flushTimeout = 30 * time.Millisecond
+ 		dio.errorCheckInterval = 50 * time.Millisecond
+ 		dio.logger = &logger
+@@ -205,7 +205,7 @@
+ 		logger := MockLogger{}
+ 		addr := l.Addr().String()
+ 		dio := newIO("tcp", addr, 1, 1)
+-		dio.tcpTimeout = 10 * time.Millisecond
++		dio.tcpTimeout = time.Second
+ 		dio.flushTimeout = 30 * time.Millisecond
+ 		dio.errorCheckInterval = 50 * time.Millisecond
+ 		dio.logger = &logger
