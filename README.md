@@ -285,3 +285,29 @@ regressions. `just ci` includes these tests.
 - [Home Manager Module Source](https://github.com/nix-community/home-manager/tree/master/modules)
 - [nix-darwin Module Source](https://github.com/nix-darwin/nix-darwin/tree/master/modules)
 - [Nix lang visual 'splainer](https://zaynetro.com/explainix)
+
+### ZNC state and Tailscale IRC
+
+macmini keeps ZNC state in `~/.local/state/znc` on its native filesystem.
+Do not use the external exFAT volume for this mutable Docker bind mount: it has
+returned VirtioFS `Bad file descriptor` errors while ZNC continued running in
+memory. Before moving an existing installation, preserve the complete state
+(including config, module encryption material and saved buffers) in a private,
+checksum-verified backup. Copy the state without resetting encryption or deleting
+buffers, verify the new copy, and switch only ZNC's bind mount during a planned
+interruption. The bind mount and config check fail closed if migration is missing;
+Nix activation does not migrate data.
+
+ZNC listens without TLS on container port 6697, published only at
+`127.0.0.1:12345`. Tailscale terminates TLS for
+`irc.osiris-dinosaur.ts.net:443`. Separately define `svc:irc` with `tcp:443` in the
+tailnet admin console (or the Services API) and approve tagged macmini as its
+service host. Local Serve
+configuration and advertisement alone do not publish the service DNS name. Keep
+existing tailnet access rules; this does not require Funnel or broader ACLs.
+
+Before ZNC starts, verified AppleDouble (`._`) metadata in savebuff directories
+is moved into `.appledouble-savebuff` within the state directory. These files
+are preserved, not deleted. ZNC 1.8 savebuff otherwise treats metadata as encrypted
+buffers and clears its working key after the first failure, preventing valid
+buffers from loading. Actual saved buffers and encryption settings are untouched.

@@ -1,9 +1,13 @@
 {
   hostname,
   lib,
-  volumesPath,
+  homeDir,
   ...
-}: {
+}: let
+  # Native APFS storage avoids exFAT/VirtioFS errors in mutable ZNC state.
+  # Migrate and verify existing state separately; never create an empty config.
+  statePath = "${homeDir}/.local/state/znc";
+in {
   launchd.user.agents."${hostname}.znc" = {
     serviceConfig = {
       ProgramArguments = [
@@ -19,15 +23,17 @@
         "10.42.0.1"
         "--dns"
         "1.1.1.1"
-        "-v"
-        "${volumesPath}/znc:/home/user/.znc"
+        "--mount"
+        "type=bind,source=${statePath},target=/home/user/.znc"
         "jess/znc"
         "-ec"
         # Docker claims the container name before this runs, so the existing
         # server cannot rewrite its mutable config during the listener update.
         # Tailscale Serve owns TLS; only the host's loopback port is published.
         ''
+          test -s /home/user/.znc/configs/znc.conf
           perl -e ${lib.escapeShellArg (builtins.readFile ../../../scripts/znc-tailscale-listener.pl)} /home/user/.znc/configs/znc.conf
+          perl -e ${lib.escapeShellArg (builtins.readFile ../../../scripts/znc-savebuff-metadata.pl)} /home/user/.znc
           exec znc -f
         ''
       ];

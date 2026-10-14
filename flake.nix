@@ -353,6 +353,23 @@
           touch "$out"
         '';
 
+    checks.aarch64-darwin.znc-native-state = let
+      config = self.darwinConfigurations.macmini.config;
+      pkgs = nixpkgs.legacyPackages.aarch64-darwin;
+      args = config.launchd.user.agents."macmini.znc".serviceConfig.ProgramArguments;
+    in
+      assert builtins.elem "--mount" args;
+      assert builtins.elem "type=bind,source=/Users/minitron/.local/state/znc,target=/home/user/.znc" args;
+      assert !(builtins.elem "-v" args);
+      assert builtins.elem "127.0.0.1:12345:6697" args;
+        pkgs.runCommand "znc-native-state-check" {nativeBuildInputs = [pkgs.python3 pkgs.perl];} ''
+          mkdir -p tests scripts
+          cp ${./tests/test_znc_savebuff_metadata.py} tests/test_znc_savebuff_metadata.py
+          cp ${./scripts/znc-savebuff-metadata.pl} scripts/znc-savebuff-metadata.pl
+          python tests/test_znc_savebuff_metadata.py
+          touch "$out"
+        '';
+
     # NixOS configurations
     nixosConfigurations = {
       system76 = nixpkgs.lib.nixosSystem {
