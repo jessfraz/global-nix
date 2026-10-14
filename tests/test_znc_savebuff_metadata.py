@@ -3,7 +3,9 @@ import subprocess
 import tempfile
 import unittest
 
-SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts/znc-savebuff-metadata.pl"
+SCRIPT = (
+    pathlib.Path(__file__).resolve().parents[1] / "scripts/znc-savebuff-metadata.pl"
+)
 
 
 class MetadataTest(unittest.TestCase):
@@ -17,10 +19,15 @@ class MetadataTest(unittest.TestCase):
             (saved / "buffer").write_bytes(b"encrypted-buffer")
             (saved / "._not-appledouble").write_bytes(b"other")
             for _ in range(2):
-                subprocess.run(["perl", str(SCRIPT), str(root)], check=True, capture_output=True)
+                subprocess.run(
+                    ["perl", str(SCRIPT), str(root)], check=True, capture_output=True
+                )
             self.assertEqual((saved / "buffer").read_bytes(), b"encrypted-buffer")
             self.assertEqual((saved / "._not-appledouble").read_bytes(), b"other")
-            archive = root / ".appledouble-savebuff/users/user/networks/network/moddata/savebuff/._buffer"
+            archive = (
+                root
+                / ".appledouble-savebuff/users/user/networks/network/moddata/savebuff/._buffer"
+            )
             self.assertEqual(archive.read_bytes(), metadata)
             self.assertFalse((saved / "._buffer").exists())
 
@@ -32,7 +39,9 @@ class MetadataTest(unittest.TestCase):
             target = root / "target"
             target.write_bytes(bytes.fromhex("00051607") + b"metadata")
             (saved / "._buffer").symlink_to(target)
-            result = subprocess.run(["perl", str(SCRIPT), str(root)], capture_output=True)
+            result = subprocess.run(
+                ["perl", str(SCRIPT), str(root)], capture_output=True, check=False
+            )
             self.assertNotEqual(result.returncode, 0)
             self.assertTrue(target.exists())
             self.assertTrue((saved / "._buffer").is_symlink())
