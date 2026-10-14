@@ -48,6 +48,30 @@ PRIVATE_PREFIXES = (
 )
 
 
+def normalize_derivations(document, store_dir="/nix/store"):
+    """Accept legacy JSON and Nix's versioned graph with relative store paths."""
+    graph = document.get("derivations", document)
+    result = {}
+    for drv, value in graph.items():
+        if not isinstance(value, dict) or "outputs" not in value:
+            raise ValueError(f"Unrecognized derivation JSON for {drv}")
+        sources = value.get("inputs", {}).get("srcs", value.get("inputSrcs", []))
+        outputs = {
+            name: (
+                {**output, "path": str(Path(store_dir) / output["path"])}
+                if output.get("path")
+                else output
+            )
+            for name, output in value["outputs"].items()
+        }
+        result[str(Path(store_dir) / drv)] = {
+            **value,
+            "inputSrcs": [str(Path(store_dir) / path) for path in sources],
+            "outputs": outputs,
+        }
+    return result
+
+
 def attributes(derivation):
     env = derivation.get("env", {})
     return {
@@ -124,6 +148,7 @@ def main():
     derivations = json.loads(
         nix("derivation", "show", "--recursive", "--no-update-lock-file", *args.host)
     )
+    derivations = normalize_derivations(derivations, str(Path(cache).parent))
     host_paths = set() if args.publication_only else closure(roots)
     missing, private, local = inspect_coverage(cache_paths, host_paths, derivations)
     for path in private:

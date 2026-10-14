@@ -24,6 +24,36 @@ def derivation(name, path, **attrs):
 
 
 class CacheCoverageTests(unittest.TestCase):
+    def test_versioned_graph_preserves_coverage_and_privacy(self):
+        config = derivation("Corefile", "private", preferLocalBuild=True)
+        config.pop("inputSrcs")
+        config["inputs"] = {"srcs": ["source"], "drvs": {}}
+        graph = coverage.normalize_derivations(
+            {
+                "version": 4,
+                "derivations": {
+                    "config.drv": config,
+                    "tool.drv": derivation("new-tool", "tool"),
+                },
+            }
+        )
+        missing, private, local = coverage.inspect_coverage(
+            {"/nix/store/private"},
+            {"/nix/store/private", "/nix/store/source", "/nix/store/tool"},
+            graph,
+        )
+        self.assertEqual(missing, ["/nix/store/tool"])
+        self.assertEqual(private, ["/nix/store/private"])
+        self.assertEqual(local, ["/nix/store/source"])
+
+    def test_legacy_graph_preserves_absolute_paths(self):
+        graph = {"/nix/store/tool.drv": derivation("tool", "/nix/store/tool")}
+        self.assertEqual(coverage.normalize_derivations(graph), graph)
+
+    def test_unknown_derivation_format_fails_closed(self):
+        with self.assertRaises(ValueError):
+            coverage.normalize_derivations({"unexpected": {"new-format": True}})
+
     def test_new_host_package_fails_even_without_pname(self):
         missing, _, _ = coverage.inspect_coverage(
             {"/cache"}, {"/new"}, {"new.drv": derivation("new-tool", "/new")}
