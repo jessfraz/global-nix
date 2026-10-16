@@ -5,14 +5,14 @@
 }:
 python3Packages.buildPythonApplication rec {
   pname = "ramp-cli";
-  version = "0.2.60";
+  version = "0.2.64";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "ramp-public";
     repo = "ramp-cli";
     tag = "v${version}";
-    hash = "sha256-gy/ZIgwXIWPhYSxrrcpefIdRI9qXcLLjl+F15r9WGh8=";
+    hash = "sha256-UcF0vG/NyJ0kHIuaZmOquGL9LSaz7cPCyePhEKQ99+U=";
   };
 
   nativeBuildInputs = with python3Packages; [
