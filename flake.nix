@@ -49,7 +49,7 @@
     };
 
     codex = {
-      url = "github:openai/codex/rust-v0.162.1";
+      url = "github:openai/codex/rust-v0.163.0";
       flake = false;
     };
 
