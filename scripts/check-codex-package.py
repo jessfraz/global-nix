@@ -3,6 +3,7 @@
 
 import argparse
 import importlib
+import inspect
 import json
 import os
 import shutil
@@ -38,7 +39,7 @@ def require(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
-def validate_layout(package: Path, source: Path) -> None:
+def validate_layout(package: Path, source: Path) -> bool:
     # Use the matching release's layout contract, including platform helpers.
     sys.dont_write_bytecode = True
     os.environ["CODEX_REPO_ROOT"] = str(source)
@@ -46,12 +47,18 @@ def validate_layout(package: Path, source: Path) -> None:
     layout = importlib.import_module("codex_package.layout")
     targets = importlib.import_module("codex_package.targets")
     manifest = json.loads((package / "codex-package.json").read_text())
+    # Releases before 0.163 bundle zsh and require explicitly validating it.
+    includes_zsh = (
+        "include_zsh" in inspect.signature(layout.validate_package_dir).parameters
+    )
+    layout_options = {"include_zsh": True} if includes_zsh else {}
     layout.validate_package_dir(
         package,
         targets.PACKAGE_VARIANTS["codex"],
         targets.TARGET_SPECS[manifest["target"]],
-        include_zsh=True,
+        **layout_options,
     )
+    return includes_zsh
 
 
 def check_package(
@@ -115,13 +122,13 @@ def check_package(
     started: DaemonStatus | None = None
     daemon_attempted = False
     try:
+        includes_zsh = validate_layout(package, source)
         require(
             run(codex, "--version").strip() == f"codex-cli {version}",
             "CLI version mismatch",
         )
         run(package / "bin/codex-code-mode-host", "--help")
         if layout_only:
-            validate_layout(package, source)
             run(package / "codex-path/rg", "--version")
             print(f"Codex {version}: package layout and basic executables passed")
             return
@@ -147,13 +154,17 @@ def check_package(
         )
         run(started.managed_path.resolve().parent / "codex-code-mode-host", "--help")
         run(package / "codex-path/rg", "--version")
-        require(
-            run(
-                package / "codex-resources/zsh/bin/zsh", "-f", "-c", "print $((2 + 3))"
-            ).strip()
-            == "5",
-            "bundled zsh could not execute a command",
-        )
+        if includes_zsh:
+            require(
+                run(
+                    package / "codex-resources/zsh/bin/zsh",
+                    "-f",
+                    "-c",
+                    "print $((2 + 3))",
+                ).strip()
+                == "5",
+                "bundled zsh could not execute a command",
+            )
         voice = package / "codex-resources/voice"
         voice_manifest = json.loads((voice / "manifest.json").read_text())
         # This identity command loads linked libraries without opening audio devices.
@@ -165,7 +176,6 @@ def check_package(
         require(
             not (state / "daemon-updater.pid").exists(), "updater unexpectedly started"
         )
-        validate_layout(package, source)
     finally:
         if daemon_attempted:
             # Stop via the same isolated home, including failed/partial starts.
