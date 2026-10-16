@@ -73,9 +73,10 @@ Zoo's Cargo vendor tree is built and rebuilt against that final graph to check
 reproducibility, and native CI builds the same graph on Linux and macOS. Failed
 pin, lock, or vendor validation restores the original pin and lockfile contents,
 including existing local edits. `just update-zoo` refreshes only Zoo and its shared
-Rust toolchain together. The scheduled updater refuses to replace an update branch
-containing unmerged human repairs; those repairs must be resolved or merged before
-the next generated refresh.
+Rust toolchain together. Vendor validation uses the exported `zoo` package,
+including any correction scoped to an upstream source revision. The scheduled
+updater refuses to replace an update branch containing unmerged human repairs;
+those repairs must be resolved or merged before the next generated refresh.
 
 Disktree is built from the source revision in `flake.lock` and updates through the normal flake refresh. Run `disktree` to scan home, `disktree PATH` for one directory, or `nix run .#disktree -- PATH` before switching a host. macOS also gets `Disktree.app`. Upstream currently targets Linux; the macOS build uses its native GPUI backend, but mount discovery and Trash handling still follow upstream's Linux conventions.
 

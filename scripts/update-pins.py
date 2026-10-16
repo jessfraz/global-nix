@@ -139,7 +139,7 @@ def prefetch_sri(url: str, *, unpack: bool = True) -> str:
 def validate_zoo_vendor() -> None:
     package_expr = (
         "let flake = builtins.getFlake (toString ./.); "
-        "in flake.inputs.zoo-cli.packages.${builtins.currentSystem}.zoo"
+        "in flake.packages.${builtins.currentSystem}.zoo"
     )
     command = [
         "nix",

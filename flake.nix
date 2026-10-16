@@ -145,7 +145,16 @@
           "rustfmt"
         ];
       };
-      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo.overrideAttrs (final: old:
+        pkgs.lib.optionalAttrs (zoo-cli.rev == "d6bad2eb81e399f12e6961d85dc7ea12cf9f0554") {
+          # This upstream revision has a stale Cargo vendor hash.
+          cargoHash = "sha256-C011R5pzT8B1akYBptafcXqPs6DYZoc6rJ8QMBG4I40=";
+          cargoDeps = old.cargoDeps.overrideAttrs (deps: {
+            vendorStaging = deps.vendorStaging.overrideAttrs (_: {
+              outputHash = final.cargoHash;
+            });
+          });
+        });
       cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};
       stripeCli = pkgs."stripe-cli";
       rustPlatform = pkgs.makeRustPlatform {
@@ -310,6 +319,7 @@
         )))
       cachePackages;
     in {
+      zoo = zooCli;
       codex = codexCli;
       gws = gwsCli;
       cli-completions = cliCompletions;
