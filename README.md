@@ -73,8 +73,7 @@ Zoo's Cargo vendor tree is built and rebuilt against that final graph to check
 reproducibility, and native CI builds the same graph on Linux and macOS. Failed
 pin, lock, or vendor validation restores the original pin and lockfile contents,
 including existing local edits. `just update-zoo` refreshes only Zoo and its shared
-Rust toolchain together. Vendor validation uses the exported `zoo` package,
-including any correction scoped to an upstream source revision. The scheduled
+Rust toolchain together. Vendor validation uses the exported `zoo` package. The scheduled
 updater refuses to replace an update branch containing unmerged human repairs;
 those repairs must be resolved or merged before the next generated refresh.
 

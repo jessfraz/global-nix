@@ -534,11 +534,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792159650,
-        "narHash": "sha256-FsyhqA98O4LyJBwC6TgBQqjJNjJaHeXINWynQ5tLC1w=",
+        "lastModified": 1792185020,
+        "narHash": "sha256-7QptpX6EWuA/k755sBB0N49Tu3wwYMPJWCb1IRsvIVQ=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "d6bad2eb81e399f12e6961d85dc7ea12cf9f0554",
+        "rev": "2307f860afd394e896a1adf7d62e7994d3273b00",
         "type": "github"
       },
       "original": {
