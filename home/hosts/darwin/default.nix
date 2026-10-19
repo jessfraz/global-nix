@@ -1,23 +1,36 @@
-{pkgs, ...}: {
-  home.packages = [
-    (pkgs.writeShellApplication {
-      name = "rex";
-      # This launcher uses an app installed outside Nix; keep it local.
-      derivationArgs.preferLocalBuild = true;
-      text = ''
-        # Let the app manage upgrades; resolve its bundled CLI at runtime.
-        for app in "$HOME/Applications/Rex.app" "$HOME/Applications/Rex Beta.app" \
-          /Applications/Rex.app "/Applications/Rex Beta.app"; do
-          cli="$app/Contents/Helpers/Rex Server.rex/Contents/MacOS/rex"
-          if [[ -x "$cli" ]]; then
-            exec "$cli" "$@"
-          fi
-        done
-        printf '%s\n' 'rex: Rex.app or Rex Beta.app not found in /Applications or ~/Applications' >&2
-        exit 127
-      '';
-    })
-  ];
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}: let
+  rexCli = pkgs.writeShellApplication {
+    name = "rex";
+    # This launcher uses an app installed outside Nix; keep it local.
+    derivationArgs.preferLocalBuild = true;
+    text = ''
+      # Let the app manage upgrades; resolve its bundled CLI at runtime.
+      for app in "$HOME/Applications/Rex.app" "$HOME/Applications/Rex Beta.app" \
+        /Applications/Rex.app "/Applications/Rex Beta.app"; do
+        cli="$app/Contents/Helpers/Rex Server.rex/Contents/MacOS/rex"
+        if [[ -x "$cli" ]]; then
+          exec "$cli" "$@"
+        fi
+      done
+      printf '%s\n' 'rex: Rex.app or Rex Beta.app not found in /Applications or ~/Applications' >&2
+      exit 127
+    '';
+  };
+in {
+  home.packages = [rexCli];
+
+  home.activation.rexAgents = lib.hm.dag.entryAfter ["linkGeneration"] ''
+    if ${rexCli}/bin/rex version >/dev/null 2>&1; then
+      $DRY_RUN_CMD ${rexCli}/bin/rex --autostart=false skill setup
+    else
+      printf '%s\n' 'Skipping Rex agent setup: Rex.app is not installed.'
+    fi
+  '';
 
   # Fix for https://github.com/nix-community/home-manager/issues/5997
   programs.bash.initExtra = ''
@@ -54,6 +67,23 @@
       ShowPathbar = true;
       # Show the status bar at the bottom of a Finder window.
       ShowStatusBar = true;
+    };
+
+    # Rex stores app appearance preferences separately from init.lua.
+    "com.superlogical.rex" = {
+      "Workspace.appearance" = "dark";
+      "Workspace.darkThemeID" = "ink-meridian";
+      "Workspace.inactivePaneFadeMode" = "both";
+      "Workspace.interfaceStyle" = "blendTheme";
+      "Workspace.lightThemeID" = "merino-light";
+      "Workspace.sidebarPosition" = "left";
+      "Workspace.tabIconTintMode" = "off";
+      "Workspace.tabStyle" = "vertical";
+      "Workspace.terminalFontName" = "Hack Nerd Font Mono";
+      "Workspace.terminalFontSmoothing" = false;
+      "Workspace.terminalStartupCommand" = "${config.programs.bash.package}/bin/bash";
+      "Workspace.usesPaneGlass" = true;
+      "Workspace.usesStandardInactiveWindowPaneStyles" = true;
     };
 
     "com.apple.controlcenter" = {
