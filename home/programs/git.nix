@@ -7,6 +7,8 @@
   homeDir,
   inputs,
   pkgs,
+  lib,
+  hostname,
   ...
 }: let
   cleanupScripts = pkgs.runCommand "git-cleanup-scripts" {} ''
@@ -41,7 +43,8 @@ in {
 
     signing = {
       key = gitGpgKey;
-      signByDefault = true;
+      # Explicit -S signing remains available; this only selects the host default.
+      signByDefault = lib.mkDefault (hostname != "macmini");
     };
 
     settings = {
