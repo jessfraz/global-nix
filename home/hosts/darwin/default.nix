@@ -2,6 +2,8 @@
   home.packages = [
     (pkgs.writeShellApplication {
       name = "rex";
+      # This launcher uses an app installed outside Nix; keep it local.
+      derivationArgs.preferLocalBuild = true;
       text = ''
         # Let the app manage upgrades; resolve its bundled CLI at runtime.
         for app in "$HOME/Applications/Rex.app" "$HOME/Applications/Rex Beta.app" \
