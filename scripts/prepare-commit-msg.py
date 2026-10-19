@@ -29,8 +29,8 @@ except Exception:  # noqa: BLE001
     HAVE_RICH = False
 
 # Defaults (adjust here rather than via env vars)
-# Use GPT-5.6 Sol for commit message generation.
-MODEL = "gpt-5.6-sol"
+# Use GPT-6.1 Sol for commit message generation.
+MODEL = "gpt-6.1-sol"
 # Narrow string types for clarity.
 Effort = Literal["low", "medium", "high", "xhigh"]
 Verbosity = Literal["low", "medium", "high"]
