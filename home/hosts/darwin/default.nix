@@ -1,4 +1,22 @@
-{...}: {
+{pkgs, ...}: {
+  home.packages = [
+    (pkgs.writeShellApplication {
+      name = "rex";
+      text = ''
+        # Let the app manage upgrades; resolve its bundled CLI at runtime.
+        for app in "$HOME/Applications/Rex.app" "$HOME/Applications/Rex Beta.app" \
+          /Applications/Rex.app "/Applications/Rex Beta.app"; do
+          cli="$app/Contents/Helpers/Rex Server.rex/Contents/MacOS/rex"
+          if [[ -x "$cli" ]]; then
+            exec "$cli" "$@"
+          fi
+        done
+        printf '%s\n' 'rex: Rex.app or Rex Beta.app not found in /Applications or ~/Applications' >&2
+        exit 127
+      '';
+    })
+  ];
+
   # Fix for https://github.com/nix-community/home-manager/issues/5997
   programs.bash.initExtra = ''
     gpgconf --launch gpg-agent
