@@ -170,6 +170,8 @@ in {
   # Start after FileVault unlock without waiting for a desktop login. The GUI
   # client must be retired and this daemon authenticated during migration.
   services.tailscale.enable = true;
+  # tailscaled manages regular resolver files and rejects Nix store symlinks.
+  environment.etc."resolver/ts.net".enable = false;
   launchd.daemons.tailscaled.serviceConfig = {
     KeepAlive = true;
     StandardErrorPath = "/Library/Logs/tailscaled.err";

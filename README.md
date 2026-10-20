@@ -295,18 +295,27 @@ FileVault still needs the initial password over LAN SSH after a cold boot.
 Once macOS starts, Tailscale makes SSH and enabled Screen Sharing reachable
 without a desktop login.
 
-When switching an existing mini from the GUI client, keep the existing GUI
-connection running until the system daemon has been enrolled and a separate
-connection through its own Tailscale IP has been verified. The GUI and system
-daemon have independent login state; the GUI does not control the system
-daemon. Uninstalling the GUI app is optional.
+When switching an existing mini from the GUI client, enroll the system daemon
+while keeping the GUI connection available as a fallback. The clients have
+independent login state, but share the Mac's routing table. An authenticated
+daemon and a successful Tailscale ping do not prove SSH or Screen Sharing can
+reach macOS while the GUI owns those routes. Uninstalling the GUI app is optional.
 
 Pause the system reconciliation job during enrollment so it does not replace
 the temporary hostname: `sudo launchctl bootout system/org.nixos.tailscale-home-server`.
 Authenticate the daemon once with a `tag:home-server` auth key outside Nix and
 Git, using a temporary node name and the explicit system socket. Keep
-`--accept-dns=false` and `--accept-routes=false` during the overlap. After the new
-connection works, disable the GUI connection and login item, stop the old user
+`--accept-dns=false` and `--accept-routes=false` during the overlap. Test the
+handover through an independent management connection with a timed rollback:
+disconnect the GUI VPN, then run
+`sudo launchctl kickstart -k system/com.tailscale.tailscaled` to recreate the
+daemon's routes. Verify fresh SSH and Screen Sharing connections through its
+own IP. If they fail, run
+`sudo tailscale --socket=/var/run/tailscaled.socket down` before reconnecting
+the GUI with `/Applications/Tailscale.app/Contents/MacOS/Tailscale up`.
+
+After the new connection works, keep the GUI disconnected, disable its login
+item if enabled, stop the old user
 job if loaded with `sudo launchctl bootout gui/$(id -u minitron)/org.nixos.tailscale-home-server`,
 and free the final `macmini` name before restoring system reconciliation.
 Bootstrap `/Library/LaunchDaemons/org.nixos.tailscale-home-server.plist` into
