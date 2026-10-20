@@ -30,7 +30,7 @@ jobs:
           skipPush: true
 
       - name: Check formatting, lint, and all-platform evaluation
-        run: nix shell nixpkgs#just nixpkgs#alejandra nixpkgs#ruff --command just ci eval
+        run: nix shell --inputs-from . --no-update-lock-file nixpkgs#just nixpkgs#alejandra nixpkgs#ruff --command just ci eval
 
   nix-build-linux:
     runs-on: ubuntu-latest
