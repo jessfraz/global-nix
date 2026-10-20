@@ -1,5 +1,4 @@
 {
-  homeDir,
   lib,
   pkgs,
   hostname,
@@ -17,9 +16,8 @@
   tailscaleServiceDefinitions = {
     # Epson redirects plaintext HTTP to HTTPS. Let Tailscale terminate the
     # tailnet certificate, then use a localhost relay to wrap the plaintext
-    # request in TLS for the printer. This avoids both the sandboxed app's
-    # non-default-interface limitation and the Go proxy's lack of support for
-    # the printer's legacy static-RSA TLS cipher.
+    # request in TLS for the printer's legacy static-RSA TLS cipher, which
+    # the Go proxy does not support.
     epson-tm-m30 = {
       address = epsonAddress;
       destination = "127.0.0.1:${toString epsonRelayPort}";
@@ -61,7 +59,8 @@
   tailscaleServiceNames = lib.mapAttrsToList (_: service: service.serviceName) tailscaleServices;
   advertisedRoutes = lib.concatStringsSep "," httpDeviceRoutes;
   jq = lib.getExe pkgs.jq;
-  tailscale = lib.getExe pkgs.tailscale;
+  # Always address the system daemon, even if the old GUI client is installed.
+  tailscale = "${lib.getExe pkgs.tailscale} --socket=/var/run/tailscaled.socket";
   retiredTailscaleServices = ["svc:ha" "svc:hb" "svc:matterbridge"];
   tailscaleRetiredServiceCommands =
     lib.concatMapStringsSep "\n" (service: ''
@@ -168,14 +167,19 @@
       ports);
   tailscaleRetiredLegacyServeCleanupCommands = legacyServeCleanupCommands retiredLegacyServePorts;
 in {
-  # The sandboxed GUI owns this Mac's tailnet identity. Do not start a second,
-  # unauthenticated nix-darwin tailscaled alongside it.
-  services.tailscale.enable = false;
+  # Start after FileVault unlock without waiting for a desktop login. The GUI
+  # client must be retired and this daemon authenticated during migration.
+  services.tailscale.enable = true;
+  launchd.daemons.tailscaled.serviceConfig = {
+    KeepAlive = true;
+    StandardErrorPath = "/Library/Logs/tailscaled.err";
+    StandardOutPath = "/Library/Logs/tailscaled.log";
+    ThrottleInterval = 5;
+  };
 
-  # The sandboxed macOS Tailscale app cannot reliably proxy to a remote target
-  # reached through a non-default interface. Keep the workaround loopback-only;
-  # socat itself makes the TLS connection to the printer while Tailscale sends
-  # it plaintext HTTP after terminating the tailnet certificate. Run it as a
+  # Keep the printer relay loopback-only. Socat makes the TLS connection while
+  # Tailscale sends plaintext HTTP after terminating the tailnet certificate.
+  # Run it as a
   # root daemon because macOS grants launchd daemons local-network access while
   # user agents require an interactive privacy grant.
   launchd.daemons.epson-tm-m30-relay = {
@@ -195,18 +199,14 @@ in {
     };
   };
 
-  # The App Store client exposes its LocalAPI in the logged-in user's launchd
-  # domain. Keep this as a user LaunchAgent: a root LaunchDaemon (or `sudo
-  # tailscale`) looks for /var/run/tailscaled.socket and cannot reach the
-  # GUI-owned daemon. The failed-exit keepalive lets a fresh machine wait for
-  # its one-time login.
-  launchd.user.agents.tailscale-home-server = {
+  # Reconciliation belongs to the same system launchd domain as tailscaled;
+  # Serve and subnet routes must also recover before anyone logs in.
+  launchd.daemons.tailscale-home-server = {
     script = ''
       set -euo pipefail
 
-      # A newer GUI-managed tailscaled can emit a harmless client-version
-      # warning on stderr. Keep stderr out of JSON and rerun only failed reads
-      # to preserve a useful diagnostic.
+      # Keep CLI warnings out of JSON and rerun only failed reads to preserve
+      # a useful diagnostic.
       capture_tailscale_json() {
         if tailscale_json="$("$@" 2>/dev/null)"; then
           tailscale_json_error=""
@@ -328,8 +328,8 @@ in {
       KeepAlive.SuccessfulExit = false;
       ProcessType = "Background";
       RunAtLoad = true;
-      StandardErrorPath = "${homeDir}/Library/Logs/tailscale-home-server.err";
-      StandardOutPath = "${homeDir}/Library/Logs/tailscale-home-server.log";
+      StandardErrorPath = "/Library/Logs/tailscale-home-server.err";
+      StandardOutPath = "/Library/Logs/tailscale-home-server.log";
       StartInterval = 300;
       ThrottleInterval = 30;
     };

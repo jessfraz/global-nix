@@ -111,7 +111,7 @@ jobs:
             .#darwinConfigurations.macinator.system \
             .#darwinConfigurations.macmini.system \
             .#checks.aarch64-darwin.package-selection \
-            .#checks.aarch64-darwin.tailscale-home-server-launch-agent
+            .#checks.aarch64-darwin.tailscale-home-server-daemon
 
       - name: Check macOS host package cache coverage
         run: |

@@ -286,6 +286,32 @@ regressions. `just ci` includes these tests.
 - [nix-darwin Module Source](https://github.com/nix-darwin/nix-darwin/tree/master/modules)
 - [Nix lang visual 'splainer](https://zaynetro.com/explainix)
 
+### Mac mini Tailscale startup
+
+Only `macmini` uses the system `tailscaled` LaunchDaemon. It starts after
+FileVault unlock, before desktop login, and its Serve/subnet reconciliation
+runs in the system launchd domain too. Other hosts keep their current clients.
+FileVault still needs the initial password over LAN SSH after a cold boot.
+Once macOS starts, Tailscale makes SSH and enabled Screen Sharing reachable
+without a desktop login.
+
+When switching an existing mini from the GUI client, keep a working LAN SSH
+connection. Quit the GUI, disable its login item, and remove the GUI app before
+activating this configuration. If the old reconciliation job is loaded, stop
+it with `sudo launchctl bootout gui/$(id -u minitron)/org.nixos.tailscale-home-server`.
+The GUI login does not authenticate the system daemon. Authenticate the daemon
+once with a `tag:home-server` auth key outside Nix and Git; keep its persistent
+state in place on subsequent rebuilds. Verify the node name, tag, approved
+routes and Service hosts before retiring the old
+tailnet node. A new node can receive a suffixed DNS name while the old node
+still owns `macmini`.
+
+Use `sudo tailscale --socket=/var/run/tailscaled.socket status` to check the
+system client and `sudo launchctl print system/com.tailscale.tailscaled` to
+check its job. Reconciliation logs are in
+`/Library/Logs/tailscale-home-server.{log,err}`. The system daemon must be
+authenticated and reachable before testing a reboot or logging out.
+
 ### ZNC state and Tailscale IRC
 
 macmini keeps ZNC state in `~/.local/state/znc` on its native filesystem.

@@ -334,23 +334,27 @@
 
     checks.aarch64-darwin.package-selection = nixpkgs.legacyPackages.aarch64-darwin.callPackage ./tests/package-selection.nix {inherit self;};
 
-    checks.aarch64-darwin.tailscale-home-server-launch-agent = let
+    checks.aarch64-darwin.tailscale-home-server-daemon = let
       config = self.darwinConfigurations.macmini.config;
       pkgs = nixpkgs.legacyPackages.aarch64-darwin;
-      script = config.launchd.user.agents.tailscale-home-server.script;
+      script = config.launchd.daemons.tailscale-home-server.script;
       relayScript = config.launchd.daemons.epson-tm-m30-relay.script;
     in
-      assert builtins.hasAttr "tailscale-home-server" config.launchd.user.agents;
+      assert config.services.tailscale.enable;
+      assert config.launchd.daemons.tailscaled.serviceConfig.RunAtLoad;
+      assert config.launchd.daemons.tailscaled.serviceConfig.KeepAlive;
+      assert builtins.hasAttr "tailscale-home-server" config.launchd.daemons;
+      assert config.launchd.daemons.tailscale-home-server.serviceConfig.RunAtLoad;
+      assert !(builtins.hasAttr "tailscale-home-server" config.launchd.user.agents);
       assert builtins.hasAttr "epson-tm-m30-relay" config.launchd.daemons;
       assert !(builtins.hasAttr "epson-tm-m30-relay" config.launchd.user.agents);
-      assert !(builtins.hasAttr "tailscale-home-server" config.launchd.daemons);
       assert nixpkgs.lib.hasInfix "--tls-terminated-tcp=443" script;
       assert nixpkgs.lib.hasInfix "tcp://127.0.0.1:19443" script;
       assert !(nixpkgs.lib.hasInfix "https+insecure://127.0.0.1:19443" script);
       assert nixpkgs.lib.hasInfix "10.42.9.7/32" script;
       assert nixpkgs.lib.hasInfix "TCP4-LISTEN:19443,bind=127.0.0.1" relayScript;
       assert nixpkgs.lib.hasInfix "OPENSSL:10.42.9.7:443,verify=0,nosni" relayScript;
-        pkgs.runCommand "tailscale-home-server-launch-agent-check" {} ''
+        pkgs.runCommand "tailscale-home-server-daemon-check" {} ''
           touch "$out"
         '';
 
