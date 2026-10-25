@@ -1,0 +1,73 @@
+--- a/test/view_test.go
++++ b/test/view_test.go
+@@ -1,7 +1,6 @@
+ package test
+ 
+ import (
+-	"strings"
+ 	"testing"
+ 
+ 	"github.com/coredns/coredns/plugin/test"
+@@ -10,20 +9,12 @@
+ )
+ 
+ func TestView(t *testing.T) {
+-	// Hack to get an available port - We spin up a temporary dummy coredns on :0 to get the port number, then we re-use
+-	// that one port consistently across all server blocks.
+-	corefile := `example.org:0 {
+-		erratic
+-	}`
+-	tmp, addr, _, err := CoreDNSServerAndPorts(corefile)
+-	if err != nil {
+-		t.Fatalf("Could not get CoreDNS serving instance: %s", err)
+-	}
++	// All blocks share one listener group. Bind its ephemeral port directly;
++	// a temporary server can still be starting when Stop is called on macOS.
++	const port = "0"
+ 
+-	port := addr[strings.LastIndex(addr, ":")+1:]
+-
+ 	// Corefile with test views
+-	corefile = `
++	corefile := `
+       # split-type config: splits quries for A/AAAA into separate views
+       split-type:` + port + ` {
+ 		view test-view-a {
+@@ -111,8 +102,6 @@
+ 	}
+ 	// there are multiple sever blocks, but they are all on the same port, so it's a single server instance to stop
+ 	defer i.Stop()
+-	// stop the temporary instance before starting tests.
+-	tmp.Stop()
+ 
+ 	viewTest(t, "split-type A", addr, "test.split-type.", dns.TypeA, dns.RcodeSuccess,
+ 		[]dns.RR{test.A("test.split-type.	303	IN	A	1.2.3.4")})
+@@ -178,16 +167,11 @@
+ 	//
+ 	// See https://github.com/coredns/coredns/issues/7733
+ 
+-	corefile := `example.org:0 {
+-		erratic
+-	}`
+-	tmp, addr, _, err := CoreDNSServerAndPorts(corefile)
+-	if err != nil {
+-		t.Fatalf("Could not get CoreDNS serving instance: %s", err)
+-	}
+-	port := addr[strings.LastIndex(addr, ":")+1:]
++	// All blocks share one listener group. Bind its ephemeral port directly;
++	// a temporary server can still be starting when Stop is called on macOS.
++	const port = "0"
+ 
+-	corefile = `
++	corefile := `
+       # Scenario: filtered blocks before unfiltered (order-test)
+       # Filtered blocks are listed first, unfiltered catch-all is last.
+       # Each view handles its matching queries; the catch-all handles the rest.
+@@ -280,7 +264,6 @@
+ 		t.Fatalf("Could not start server: %s", err)
+ 	}
+ 	defer i.Stop()
+-	tmp.Stop()
+ 
+ 	// filtered blocks before unfiltered — views handle matching types, catch-all handles the rest
+ 	viewTest(t, "A routed to v-a", addr, "test.order-test.", dns.TypeA, dns.RcodeSuccess,
