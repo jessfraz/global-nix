@@ -13,6 +13,7 @@
   openssl,
   zstd,
   vulkan-loader,
+  util-linux,
 }:
 rustPlatform.buildRustPackage {
   pname = "disktree";
@@ -27,6 +28,13 @@ rustPlatform.buildRustPackage {
   checkFlags = lib.optionals stdenv.hostPlatform.isDarwin [
     "--skip=space::tests::the_home_disk_on_macos_is_the_root_and_has_a_device"
   ];
+
+  # Exported deletion scripts require findmnt; keep their safety checks enabled.
+  nativeCheckInputs = lib.optionals stdenv.hostPlatform.isLinux [util-linux];
+  # Remote discovery reads the real macOS mount table and host identity.
+  preCheck = lib.optionalString stdenv.hostPlatform.isDarwin ''
+    export PATH="$PATH:/bin:/sbin"
+  '';
 
   nativeBuildInputs = [pkg-config];
   buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
