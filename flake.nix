@@ -49,7 +49,7 @@
     };
 
     codex = {
-      url = "github:openai/codex/rust-v0.163.0";
+      url = "github:openai/codex/rust-v0.164.0";
       flake = false;
     };
 
@@ -100,6 +100,8 @@
             ./pkgs/coredns-cache-acl-test.patch
             # A 10ms handshake deadline flakes under Darwin's socket scheduling.
             ./pkgs/coredns-test-timeouts.patch
+            # Bind view tests directly instead of racing a temporary DNS server.
+            ./pkgs/coredns-view-test-listener.patch
           ];
       });
       axiomCli = prev.callPackage ./pkgs/axiom-cli.nix {};

@@ -39,6 +39,10 @@ macOS CI checks both hosts' complete runtime closures against `ci-cache`, includ
 
 CoreDNS's cache/ACL regression exercises the configured DNS server and plugin chain with distinct client addresses through its test response writer. All allowed/blocked and cache-isolation assertions remain enabled, without requiring a privileged `127.0.0.2` loopback alias on macOS. Its dnstap tests allow one second for handshakes instead of a fragile 10ms deadline. The full upstream test suite still runs during the package build.
 
+CoreDNS's view tests bind their shared server directly to an ephemeral port.
+This avoids a temporary server racing shutdown on macOS while keeping all
+view-routing, declaration-order, and refusal assertions enabled.
+
 Dependency updates run every three days at 17:17 UTC for both the Nix pins/flake inputs and Dependabot's GitHub Actions checks. The cron schedule runs on days 1, 4, 7, and so on each month, so month-boundary gaps can be shorter than three days. Nix updates merge only after **Test Nix Flake** succeeds and never deploy a host.
 
 The Nix updater uses the private `jessfraz-global-nix-updater` GitHub App,
