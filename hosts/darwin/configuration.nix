@@ -35,6 +35,12 @@ in {
       config.home-manager.users.${username}.home.packages;
   };
 
+  home-manager.users.${username}.programs.agent = {
+    enable = true;
+    package = inputs.agent.packages.${pkgs.stdenv.hostPlatform.system}.default;
+    role = config.services.agent.role;
+  };
+
   launchd.user.agents.agent.serviceConfig = {
     StandardOutPath = "${homeDir}/Library/Logs/agent.log";
     StandardErrorPath = "${homeDir}/Library/Logs/agent.log";
