@@ -20,7 +20,6 @@
 
     casks = [
       "docker"
-      "ghostty"
     ];
   };
 }
