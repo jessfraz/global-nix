@@ -7,6 +7,8 @@
 }: let
   autoDndScript = pkgs.writeShellScript "auto-dnd" (builtins.readFile ./auto-dnd.sh);
 in {
+  services.agent.role = "worker";
+
   environment.systemPackages = [
     pkgs.wireshark
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.disktree

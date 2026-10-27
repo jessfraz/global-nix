@@ -65,6 +65,8 @@
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
+    agent.url = "github:jessfraz/agent";
+
     # FlakeHub CLI (fh)
     fh = {
       url = "https://flakehub.com/f/DeterminateSystems/fh/*.tar.gz";
@@ -85,6 +87,7 @@
     zoo-cli,
     codex,
     switchboard,
+    agent,
     fh,
   } @ inputs: let
     # Global variables
@@ -155,6 +158,7 @@
         ];
       };
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      agentCli = agent.packages.${system}.default;
       cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};
       stripeCli = pkgs."stripe-cli";
       rustPlatform = pkgs.makeRustPlatform {
@@ -203,6 +207,7 @@
       commonPackages =
         (with pkgs; [
           _1password-cli
+          agentCli
           axiomCli
           awscli2
           bash
@@ -320,6 +325,7 @@
         )))
       cachePackages;
     in {
+      agent = agentCli;
       zoo = zooCli;
       codex = codexCli;
       gws = gwsCli;

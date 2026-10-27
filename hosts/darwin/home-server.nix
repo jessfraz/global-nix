@@ -1,4 +1,6 @@
 {...}: {
+  services.agent.role = "coordinator";
+
   imports = [
     ./tailscale-home-server.nix
     ./coredns.nix

@@ -2,13 +2,44 @@
   username,
   hostname,
   homeDir,
+  inputs,
+  config,
+  pkgs,
+  lib,
   ...
 }: let
   maxFilesSoft = 65536;
   maxFilesHard = 200000;
   launchctlPath = "/bin/launchctl";
 in {
-  imports = [../../modules/determinate-nix-settings.nix];
+  imports = [
+    ../../modules/determinate-nix-settings.nix
+    inputs.agent.darwinModules.default
+  ];
+
+  services.agent = {
+    enable = true;
+    configFile = "${homeDir}/.config/agent/config.toml";
+    workingDirectory = homeDir;
+    extraPackages =
+      [
+        inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.gws
+        inputs.switchboard.packages.${pkgs.stdenv.hostPlatform.system}.switchboard
+        inputs.switchboard.packages.${pkgs.stdenv.hostPlatform.system}.messages
+        pkgs.gh
+        pkgs.uv
+        pkgs.ripgrep
+        pkgs.tailscale
+      ]
+      ++ builtins.filter (package: lib.getName package == "rex")
+      config.home-manager.users.${username}.home.packages;
+  };
+
+  launchd.user.agents.agent.serviceConfig = {
+    StandardOutPath = "${homeDir}/Library/Logs/agent.log";
+    StandardErrorPath = "${homeDir}/Library/Logs/agent.log";
+    Umask = 63;
+  };
 
   # Let Determinate Nix handle Nix configuration
   nix.enable = false;
