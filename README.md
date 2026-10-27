@@ -42,6 +42,10 @@ account. It ignores all-day and canceled events, starts two minutes before a
 meeting, and groups overlapping meetings. Calendar changes and wake events
 reschedule the next boundary without repeatedly running Shortcuts.
 
+Calendar selectors live in `~/.config/auto-dnd/config.json`, with `workCalendar`
+and `personalAccount` fields. Provision this owner-only file separately; account
+values never enter the Nix package or public configuration.
+
 On a new laptop, sync the calendar accounts, allow Auto DND to read Calendars,
 and accept the bundled `Auto DND Apply (Nix v2)` shortcut import. The shortcut
 source ships with the Nix package; iCloud shortcut sync is optional. Shortcuts

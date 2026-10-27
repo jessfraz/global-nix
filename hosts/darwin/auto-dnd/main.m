@@ -82,6 +82,24 @@ static void Log(NSString *message) {
   fprintf(stderr, "auto-dnd: %s\n", message.UTF8String);
 }
 
+static NSDictionary<NSString *, NSString *> *ReadConfiguration(NSURL *url, NSError **error) {
+  NSData *data = [NSData dataWithContentsOfURL:url options:0 error:NULL];
+  id config = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL] : nil;
+  if (![config isKindOfClass:NSDictionary.class] ||
+      ![config[@"workCalendar"] isKindOfClass:NSString.class] ||
+      ![config[@"personalAccount"] isKindOfClass:NSString.class] ||
+      [config[@"workCalendar"] length] == 0 || [config[@"personalAccount"] length] == 0) {
+    if (error) {
+      NSString *message = data
+        ? [NSString stringWithFormat:@"Invalid calendar configuration at %@; expected nonempty workCalendar and personalAccount strings", url.path]
+        : [NSString stringWithFormat:@"Could not read calendar configuration at %@", url.path];
+      *error = [NSError errorWithDomain:@"AutoDND" code:2 userInfo:@{NSLocalizedDescriptionKey: message}];
+    }
+    return nil;
+  }
+  return config;
+}
+
 static NSString *RunShortcuts(NSArray<NSString *> *arguments, NSError **error) {
   NSFileManager *files = NSFileManager.defaultManager;
   NSURL *directory = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString]];
@@ -379,14 +397,50 @@ static int TestPlanner(void) {
   return failures ? 1 : 0;
 }
 
+static int TestConfiguration(void) {
+  int failures = 0;
+#define CHECK(condition, message) do { if (!(condition)) { fprintf(stderr, "FAIL: %s\n", message); failures++; } } while (0)
+  NSFileManager *files = NSFileManager.defaultManager;
+  NSURL *directory = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[@"auto-dnd-test-" stringByAppendingString:NSUUID.UUID.UUIDString]]];
+  NSError *error = nil;
+  if (![files createDirectoryAtURL:directory withIntermediateDirectories:NO attributes:@{NSFilePosixPermissions: @0700} error:&error]) {
+    fprintf(stderr, "FAIL: could not prepare configuration test directory\n");
+    return 1;
+  }
+  NSURL *url = [directory URLByAppendingPathComponent:@"config.json"];
+  CHECK(ReadConfiguration(url, &error) == nil, "missing configuration is rejected");
+  CHECK([error.localizedDescription containsString:url.path], "missing configuration reports its path");
+  NSDictionary *fixture = @{@"workCalendar": @"Work Calendar", @"personalAccount": @"personal@example.invalid"};
+  NSData *valid = [NSJSONSerialization dataWithJSONObject:fixture options:0 error:NULL];
+  CHECK([valid writeToURL:url options:NSDataWritingAtomic error:NULL], "valid configuration is written");
+  NSDictionary<NSString *, NSString *> *config = ReadConfiguration(url, &error);
+  CHECK([config isEqualToDictionary:fixture], "native JSON loading preserves both source selectors");
+  for (NSString *invalid in @[
+    @"not JSON", @"[]", @"{}",
+    @"{\"workCalendar\":3,\"personalAccount\":\"private-test-value\"}",
+    @"{\"workCalendar\":\"private-test-value\",\"personalAccount\":null}",
+    @"{\"workCalendar\":\"\",\"personalAccount\":\"private-test-value\"}"
+  ]) {
+    CHECK([[invalid dataUsingEncoding:NSUTF8StringEncoding] writeToURL:url options:NSDataWritingAtomic error:NULL], "invalid fixture is written");
+    error = nil;
+    CHECK(ReadConfiguration(url, &error) == nil, "invalid configuration is rejected before calendar access");
+    CHECK([error.localizedDescription containsString:url.path], "invalid configuration reports its path");
+    CHECK(![error.localizedDescription containsString:@"private-test-value"], "configuration errors do not disclose selector values");
+  }
+  CHECK([files removeItemAtURL:directory error:NULL], "configuration test files are removed");
+  printf("Configuration tests: %s\n", failures ? "FAILED" : "passed");
+#undef CHECK
+  return failures ? 1 : 0;
+}
+
 int main(int argc, const char *argv[]) {
   @autoreleasepool {
-    if (argc == 2 && strcmp(argv[1], "--test") == 0) return TestPlanner();
+    if (argc == 2 && strcmp(argv[1], "--test") == 0) return TestPlanner() | TestConfiguration();
     NSArray<NSString *> *arguments = NSProcessInfo.processInfo.arguments;
-    NSURL *configURL = [NSBundle.mainBundle URLForResource:@"config" withExtension:@"json"];
-    NSData *configData = configURL ? [NSData dataWithContentsOfURL:configURL] : nil;
-    id config = configData ? [NSJSONSerialization JSONObjectWithData:configData options:0 error:NULL] : nil;
-    if (![config isKindOfClass:NSDictionary.class] || ![config[@"workCalendar"] isKindOfClass:NSString.class] || ![config[@"personalAccount"] isKindOfClass:NSString.class]) { Log(@"The app's Nix calendar configuration is missing or invalid"); return 2; }
+    NSURL *configURL = [NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@".config/auto-dnd/config.json"]];
+    NSError *configError = nil;
+    NSDictionary<NSString *, NSString *> *config = ReadConfiguration(configURL, &configError);
+    if (!config) { Log(configError.localizedDescription); return 2; }
     [NSApplication sharedApplication];
     Agent *agent = [[Agent alloc] init];
     agent.calendarName = config[@"workCalendar"];

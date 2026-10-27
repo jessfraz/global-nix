@@ -5,10 +5,7 @@
   hostname,
   ...
 }: let
-  autoDnd = pkgs.callPackage ../../pkgs/auto-dnd.nix {
-    workCalendar = "private-google-work-account";
-    personalAccount = "private-google-personal-account";
-  };
+  autoDnd = pkgs.callPackage ../../pkgs/auto-dnd.nix {};
 in {
   services.agent.role = "worker";
 
