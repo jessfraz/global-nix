@@ -63,6 +63,7 @@
   users.groups.plugdev = {};
   users.users.${username} = {
     isNormalUser = true;
+    linger = true;
     extraGroups = ["audio" "docker" "networkmanager" "wheel" "libvirtd" "plugdev" "onepassword-cli" "onepassword"];
   };
 

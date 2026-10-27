@@ -24,6 +24,12 @@
       url = "github:ghostty-org/ghostty";
     };
 
+    rex = {
+      # Pin the public release artifact so builds need no alpha package token.
+      url = "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/preview/0.1.0-preview.8.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     disktree = {
       url = "github:tobi/disktree";
       flake = false;
@@ -72,6 +78,7 @@
     nix-darwin,
     rust-overlay,
     ghostty,
+    rex,
     disktree,
     dotfiles,
     dotvim,
@@ -335,6 +342,8 @@
     lib.cleanupBuildCachePolicy = "${dotfiles}/bin/build_cache_policy.py";
 
     checks.aarch64-darwin.package-selection = nixpkgs.legacyPackages.aarch64-darwin.callPackage ./tests/package-selection.nix {inherit self;};
+
+    checks.x86_64-linux.rex-runs = rex.checks.x86_64-linux.runs;
 
     checks.aarch64-darwin.tailscale-home-server-daemon = let
       config = self.darwinConfigurations.macmini.config;

@@ -363,6 +363,23 @@
         "type": "github"
       }
     },
+    "rex": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793041098,
+        "narHash": "sha256-dd6GRxsuxMcYbRYP/LtjMm8/NQ+rkEU03b3OA1G0ZJ8=",
+        "type": "tarball",
+        "url": "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/preview/0.1.0-preview.8.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/preview/0.1.0-preview.8.tar.gz"
+      }
+    },
     "root": {
       "inputs": {
         "codex": "codex",
@@ -374,6 +391,7 @@
         "home-manager": "home-manager_2",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs_3",
+        "rex": "rex",
         "rust-overlay": "rust-overlay",
         "switchboard": "switchboard",
         "zoo-cli": "zoo-cli"

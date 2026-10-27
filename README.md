@@ -25,6 +25,12 @@ If nix is already installed, you can just do:
 
 `nixos-rebuild switch --flake .#system76`
 
+Linux keeps Ghostty and runs Rex as a personal systemd user service. User lingering
+keeps Rex sessions alive after logout. The pinned upstream Rex preview uses public
+release artifacts, so builds and CI need no package token. Rex stays outside the
+public package cache. After rebuilding, check it with `rex --autostart=false server status`
+or `systemctl --user status rex`.
+
 ## Shared
 
 To cleanup the world run `nix store gc`

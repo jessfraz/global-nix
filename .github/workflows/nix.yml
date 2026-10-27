@@ -52,6 +52,9 @@ jobs:
           extraPullNames: ghostty
           skipPush: true
 
+      - name: Check Rex Linux startup
+        run: nix build .#checks.x86_64-linux.rex-runs --no-link --no-update-lock-file
+
       - name: Build Linux packages
         run: nix build -L .#ci-cache --out-link result-ci-cache --no-update-lock-file
 
