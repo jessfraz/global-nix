@@ -31,7 +31,8 @@ in {
         pkgs.ripgrep
         pkgs.tailscale
       ]
-      ++ builtins.filter (package: lib.getName package == "rex")
+      ++ builtins.filter
+      (package: builtins.elem (lib.getName package) ["rex" "with-credentials"])
       config.home-manager.users.${username}.home.packages;
   };
 
