@@ -36,6 +36,21 @@ Its pinned preview builds without a package token and stays out of the public ca
 On macOS, the `rex` launcher requires Rex.app or Rex Beta.app in `/Applications`
 or `~/Applications`.
 
+The laptop profile installs Auto DND; the Mac Mini does not run it. Auto DND
+watches the main work calendar and every editable calendar in the personal
+account. It ignores all-day and canceled events, starts two minutes before a
+meeting, and groups overlapping meetings. Calendar changes and wake events
+reschedule the next boundary without repeatedly running Shortcuts.
+
+On a new laptop, sync the calendar accounts, allow Auto DND to read Calendars,
+and accept the bundled `Auto DND Apply (Nix v2)` shortcut import. The shortcut
+source ships with the Nix package; iCloud shortcut sync is optional. Shortcuts
+only applies DND at a meeting boundary and preserves an already active Focus.
+macOS owns the meeting's DND expiry. Use `auto-dnd --check` for a read-only
+calendar check, or `auto-dnd --check-shortcut` to validate the actuator's event
+lookup without changing Focus. A manual override is kept for the handled
+meeting; a subsequently added meeting can request DND at its next boundary.
+
 ## Checks and updates
 
 ```sh

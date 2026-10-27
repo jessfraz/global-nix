@@ -5,7 +5,10 @@
   hostname,
   ...
 }: let
-  autoDndScript = pkgs.writeShellScript "auto-dnd" (builtins.readFile ./auto-dnd.sh);
+  autoDnd = pkgs.callPackage ../../pkgs/auto-dnd.nix {
+    workCalendar = "private-google-work-account";
+    personalAccount = "private-google-personal-account";
+  };
 in {
   services.agent.role = "worker";
 
@@ -14,13 +17,18 @@ in {
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.disktree
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.kicad
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.orca-slicer
+    autoDnd
   ];
 
   launchd.user.agents."${hostname}.auto-dnd" = {
     serviceConfig = {
-      ProgramArguments = ["${autoDndScript}"];
-      StartInterval = 120;
+      ProgramArguments = [
+        "${autoDnd}/Applications/Auto DND.app/Contents/MacOS/auto-dnd"
+      ];
       RunAtLoad = true;
+      KeepAlive.SuccessfulExit = false;
+      ThrottleInterval = 60;
+      ExitTimeOut = 40;
       StandardOutPath = "${homeDir}/Library/Logs/auto-dnd.log";
       StandardErrorPath = "${homeDir}/Library/Logs/auto-dnd.err";
     };
