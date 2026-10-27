@@ -185,14 +185,17 @@
         switchboardPackages.schwab
       ];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      gwsPackage = pkgs.gws.overrideAttrs (old: {
+        patches = (old.patches or []) ++ [./pkgs/gws-header-case.patch];
+      });
       gwsCli = pkgs.symlinkJoin {
-        name = "gws-file-credentials-${pkgs.gws.version}";
-        paths = [pkgs.gws];
+        name = "gws-file-credentials-${gwsPackage.version}";
+        paths = [gwsPackage];
         nativeBuildInputs = [pkgs.makeWrapper];
         postBuild = ''
           wrapProgram "$out/bin/gws" --set GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND file
         '';
-        meta = pkgs.gws.meta;
+        meta = gwsPackage.meta;
       };
       kicadPackage =
         if pkgs.stdenv.hostPlatform.isDarwin

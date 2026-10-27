@@ -1,0 +1,102 @@
+--- a/crates/google-workspace-cli/src/helpers/gmail/mod.rs
++++ b/crates/google-workspace-cli/src/helpers/gmail/mod.rs
+@@ -259,14 +259,24 @@
+         let value = header.get("value").and_then(|v| v.as_str()).unwrap_or("");
+ 
+         match name {
+-            "From" => parsed.from = value.to_string(),
+-            "Reply-To" => append_address_list_header_value(&mut parsed.reply_to, value),
+-            "To" => append_address_list_header_value(&mut parsed.to, value),
+-            "Cc" => append_address_list_header_value(&mut parsed.cc, value),
+-            "Subject" => parsed.subject = value.to_string(),
+-            "Date" => parsed.date = value.to_string(),
+-            "Message-ID" | "Message-Id" => parsed.message_id = value.to_string(),
+-            "References" => append_header_value(&mut parsed.references, value),
++            name if name.eq_ignore_ascii_case("From") => parsed.from = value.to_string(),
++            name if name.eq_ignore_ascii_case("Reply-To") => {
++                append_address_list_header_value(&mut parsed.reply_to, value)
++            }
++            name if name.eq_ignore_ascii_case("To") => {
++                append_address_list_header_value(&mut parsed.to, value)
++            }
++            name if name.eq_ignore_ascii_case("Cc") => {
++                append_address_list_header_value(&mut parsed.cc, value)
++            }
++            name if name.eq_ignore_ascii_case("Subject") => parsed.subject = value.to_string(),
++            name if name.eq_ignore_ascii_case("Date") => parsed.date = value.to_string(),
++            name if name.eq_ignore_ascii_case("Message-ID") => {
++                parsed.message_id = value.to_string()
++            }
++            name if name.eq_ignore_ascii_case("References") => {
++                append_header_value(&mut parsed.references, value)
++            }
+             _ => {}
+         }
+     }
+@@ -2141,6 +2151,66 @@
+     }
+ 
+     #[test]
++    fn test_parse_original_message_case_insensitive_headers() {
++        for from_header in ["From", "fRoM"] {
++            let msg = json!({
++                "threadId": "thread-test",
++                "snippet": "Body text",
++                "payload": {
++                    "headers": [
++                        { "name": from_header, "value": "alice@example.com" },
++                        { "name": "reply-to", "value": "team@example.com" },
++                        { "name": "REPLY-TO", "value": "owner@example.com" },
++                        { "name": "to", "value": "bob@example.com" },
++                        { "name": "TO", "value": "carol@example.com" },
++                        { "name": "cc", "value": "dave@example.com" },
++                        { "name": "CC", "value": "erin@example.com" },
++                        { "name": "sUbJeCt", "value": "Hello" },
++                        { "name": "DATE", "value": "Fri, 6 Mar 2026 12:00:00 +0000" },
++                        { "name": "MESSAGE-ID", "value": "<msg@example.com>" },
++                        { "name": "references", "value": "<ref-1@example.com>" },
++                        { "name": "REFERENCES", "value": "<ref-2@example.com>" }
++                    ]
++                }
++            });
++
++            let original = parse_original_message(&msg).unwrap();
++
++            assert_eq!(original.thread_id.as_deref(), Some("thread-test"));
++            assert_eq!(original.from.email, "alice@example.com");
++            assert_eq!(original.message_id, "msg@example.com");
++            assert_eq!(original.subject, "Hello");
++            assert_eq!(
++                original.date.as_deref(),
++                Some("Fri, 6 Mar 2026 12:00:00 +0000")
++            );
++            assert_eq!(original.body_text, "Body text");
++            let emails = |mailboxes: Vec<Mailbox>| {
++                mailboxes
++                    .into_iter()
++                    .map(|mailbox| mailbox.email)
++                    .collect::<Vec<_>>()
++            };
++            assert_eq!(
++                emails(original.reply_to.unwrap()),
++                ["team@example.com", "owner@example.com"]
++            );
++            assert_eq!(
++                emails(original.to),
++                ["bob@example.com", "carol@example.com"]
++            );
++            assert_eq!(
++                emails(original.cc.unwrap()),
++                ["dave@example.com", "erin@example.com"]
++            );
++            assert_eq!(
++                original.references,
++                ["ref-1@example.com", "ref-2@example.com"]
++            );
++        }
++    }
++
++    #[test]
+     fn test_parse_original_message_bare_message_id() {
+         let msg = json!({
+             "threadId": "t1",
