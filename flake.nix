@@ -174,6 +174,7 @@
         switchboardPackages.switchboard
         switchboardPackages.mychart
         switchboardPackages.mindbody
+        switchboardPackages.messages
         switchboardPackages.momence
         switchboardPackages.phone
         switchboardPackages.plaid
