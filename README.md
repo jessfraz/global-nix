@@ -97,6 +97,19 @@ upstream's Linux conventions. `phone` requires separate local setup through the
 [Switchboard phone guide](https://github.com/jessfraz/switchboard/blob/main/docs/phone.md).
 Keep provider credentials and transcript keys outside Nix and Git.
 
+## Home Assistant API CLIs
+
+The shared package set includes `ha-shipments`, `ha-maintenance`, and
+`ha-filevault`, built by their owning repositories. Use `--help` for commands
+and connection options. FileVault exposes only its external read API, not owner
+unlock or ingress operations. Credentials stay outside Nix and Git.
+
+To install just these tools without activating unrelated host changes:
+
+```sh
+nix profile install .#ha-shipments .#ha-maintenance .#ha-filevault
+```
+
 ## Credentials
 
 `with-credentials PROFILE -- COMMAND` resolves credentials before starting a child

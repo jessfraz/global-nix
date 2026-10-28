@@ -65,6 +65,24 @@
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
+    ha-packages = {
+      url = "github:jessfraz/ha-packages/98a4d75908267b40770a9addcb4be264b4d17114";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
+    ha-maintenance = {
+      url = "github:jessfraz/ha-maintenance/cae078d3c993b6099b41805fad6cd83537d0438d";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
+    ha-filevault = {
+      url = "github:jessfraz/ha-filevault/ba9c7ee8ffaebbbcd98649c90bd414cb6e0e0338";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
     agent.url = "github:jessfraz/agent";
 
     # FlakeHub CLI (fh)
@@ -87,6 +105,9 @@
     zoo-cli,
     codex,
     switchboard,
+    ha-packages,
+    ha-maintenance,
+    ha-filevault,
     agent,
     fh,
   } @ inputs: let
@@ -184,6 +205,10 @@
         switchboardPackages.plaid
         switchboardPackages.schwab
       ];
+      shipmentsCli = ha-packages.packages.${system}.ha-shipments;
+      maintenanceCli = ha-maintenance.packages.${system}.ha-maintenance;
+      filevaultCli = ha-filevault.packages.${system}.ha-filevault;
+      haClis = [shipmentsCli maintenanceCli filevaultCli];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
       gwsPackage = pkgs.gws.overrideAttrs (old: {
         patches = (old.patches or []) ++ [./pkgs/gws-header-case.patch];
@@ -245,6 +270,7 @@
           stripeCli
         ])
         ++ switchboardClis
+        ++ haClis
         ++ (with pkgs; [
           tailscale
           tree
@@ -329,6 +355,9 @@
         )))
       cachePackages;
     in {
+      ha-shipments = shipmentsCli;
+      ha-maintenance = maintenanceCli;
+      ha-filevault = filevaultCli;
       agent = agentCli;
       zoo = zooCli;
       codex = codexCli;

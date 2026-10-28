@@ -217,6 +217,78 @@
         "type": "github"
       }
     },
+    "ha-filevault": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793213497,
+        "narHash": "sha256-16KCDizP8uj860Q7kCFGE/w4Gdc1CK55MtKRz7WoexA=",
+        "owner": "jessfraz",
+        "repo": "ha-filevault",
+        "rev": "ba9c7ee8ffaebbbcd98649c90bd414cb6e0e0338",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jessfraz",
+        "repo": "ha-filevault",
+        "rev": "ba9c7ee8ffaebbbcd98649c90bd414cb6e0e0338",
+        "type": "github"
+      }
+    },
+    "ha-maintenance": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793213478,
+        "narHash": "sha256-Rb4zlboyygHYefHbygM5G5IH/731YV+xd9VLyxpFHGQ=",
+        "owner": "jessfraz",
+        "repo": "ha-maintenance",
+        "rev": "cae078d3c993b6099b41805fad6cd83537d0438d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jessfraz",
+        "repo": "ha-maintenance",
+        "rev": "cae078d3c993b6099b41805fad6cd83537d0438d",
+        "type": "github"
+      }
+    },
+    "ha-packages": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793212816,
+        "narHash": "sha256-a4vQ2KiHiwb5f1wH8IDo7FhvO6QdoNWs+1UvxcfFKYc=",
+        "owner": "jessfraz",
+        "repo": "ha-packages",
+        "rev": "98a4d75908267b40770a9addcb4be264b4d17114",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jessfraz",
+        "repo": "ha-packages",
+        "rev": "98a4d75908267b40770a9addcb4be264b4d17114",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -423,6 +495,9 @@
         "dotvim": "dotvim",
         "fh": "fh",
         "ghostty": "ghostty",
+        "ha-filevault": "ha-filevault",
+        "ha-maintenance": "ha-maintenance",
+        "ha-packages": "ha-packages",
         "home-manager": "home-manager_2",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs_4",
