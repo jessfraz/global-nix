@@ -48,6 +48,58 @@ class CredentialsTests(unittest.TestCase):
             json.dumps(profiles)
         )
 
+    def install_switchboard(self, config: str = "") -> Path:
+        trusted = self.config / "switchboard/config.toml"
+        trusted.parent.mkdir(exist_ok=True)
+        trusted.write_text(config)
+        directory = self.root / "bin"
+        directory.mkdir(exist_ok=True)
+        executable = directory / "switchboard"
+        # This disposable CLI reads the selected config and implements the public
+        # discovery/native envelopes. It never calls a provider or credential store.
+        executable.write_text(
+            f"#!{sys.executable}\n"
+            + r"""
+import json, os, pathlib, sys, tomllib
+root = pathlib.Path(os.environ["HOME"])
+args = sys.argv[1:]
+with (root / "switchboard-calls").open("a") as log:
+    log.write(json.dumps({"argv": args, "op_env": any(k.startswith("OP_") for k in os.environ)}) + "\n")
+if args[:1] == ["--config"]:
+    path = pathlib.Path(args[1])
+    args = args[2:]
+else:
+    path = pathlib.Path(os.environ.get("SWITCHBOARD_CONFIG", "switchboard.toml"))
+settings_path = root / "discovery-settings"
+settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
+if args == ["ns", "list", "--json"]:
+    if "stdout" in settings:
+        sys.stdout.write(settings["stdout"])
+        sys.stderr.write(settings.get("stderr", ""))
+        sys.exit(settings.get("exit", 0))
+    try:
+        config = tomllib.loads(path.read_text())
+        namespaces = [
+            {"id": f"{group}.{name}", "provider": ns["provider"]}
+            for group, accounts in config.get("namespace", {}).items()
+            for name, ns in accounts.items()
+        ]
+    except Exception:
+        print("unsafe-config-diagnostic", file=sys.stderr)
+        sys.exit(1)
+    print(json.dumps({"schema_version": 1, "namespaces": namespaces}))
+else:
+    print(json.dumps({"status": "executed", "fields": {"response": {"config": str(path), "argv": args}}}))
+"""
+        )
+        executable.chmod(0o700)
+        self.env["PATH"] = str(directory)
+        return trusted
+
+    def switchboard_calls(self) -> list[dict]:
+        path = self.root / "switchboard-calls"
+        return [json.loads(line) for line in path.read_text().splitlines()]
+
     def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(SCRIPT), *args],
@@ -902,10 +954,7 @@ class CredentialsTests(unittest.TestCase):
         self.assertNotIn("credential lookup", result.stderr)
 
     def test_configured_provider_cannot_use_direct_profile(self) -> None:
-        (self.config / "switchboard").mkdir()
-        (self.config / "switchboard/config.toml").write_text(
-            '[namespace.google.work]\nprovider="google"\n'
-        )
+        self.install_switchboard('[namespace.google.work]\nprovider="google"\n')
         self.set_profiles({"fixture": {"provider": "google", "secrets": []}})
         result = self.run_cli(
             "fixture", "--", sys.executable, "-c", "raise SystemExit(0)"
@@ -914,15 +963,229 @@ class CredentialsTests(unittest.TestCase):
         self.assertIn("select its namespace", result.stderr)
 
     def test_namespace_requires_its_provider_binary(self) -> None:
-        (self.config / "switchboard").mkdir()
-        (self.config / "switchboard/config.toml").write_text(
-            '[namespace.google.work]\nprovider="google"\n'
-        )
+        self.install_switchboard('[namespace.google.work]\nprovider="google"\n')
         result = self.run_cli(
             "google.work", "--", sys.executable, "-c", "raise SystemExit(0)"
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("cannot bypass Switchboard", result.stderr)
+
+    def test_discovery_and_dispatch_share_trusted_config_despite_overrides(
+        self,
+    ) -> None:
+        trusted = self.install_switchboard(
+            '[namespace.google.work]\nprovider="google"\n'
+        )
+        override = self.root / "override.toml"
+        override.write_text('[namespace.google.other]\nprovider="google"\n')
+        (self.root / "switchboard.toml").write_text(override.read_text())
+        self.env.update(
+            SWITCHBOARD_CONFIG=str(override),
+            OP_SERVICE_ACCOUNT_TOKEN="must-not-inherit",
+        )
+        for flags, tool, intent in (
+            ([], "google.cli.read", []),
+            (["--draft"], "google.cli.write", ["--draft"]),
+            (["--apply"], "google.cli.write", ["--approve-and-apply"]),
+        ):
+            with self.subTest(flags=flags):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(SCRIPT),
+                        *flags,
+                        "google.work",
+                        "--",
+                        "gws",
+                        "gmail",
+                        "argument with spaces",
+                    ],
+                    env=self.env,
+                    cwd=self.root,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                payload = json.loads(result.stdout)
+                response = (
+                    payload["fields"]["response"] if flags == ["--draft"] else payload
+                )
+                self.assertEqual(
+                    response,
+                    {
+                        "config": str(trusted),
+                        "argv": [
+                            tool,
+                            "--ns",
+                            "google.work",
+                            "--json",
+                            *intent,
+                            "--",
+                            "gmail",
+                            "argument with spaces",
+                        ],
+                    },
+                )
+        calls = self.switchboard_calls()
+        self.assertEqual(len(calls), 6)
+        for discovery, dispatch in zip(calls[::2], calls[1::2], strict=True):
+            self.assertEqual(
+                discovery["argv"], ["--config", str(trusted), "ns", "list", "--json"]
+            )
+            self.assertEqual(dispatch["argv"][:2], ["--config", str(trusted)])
+            self.assertFalse(discovery["op_env"])
+            self.assertFalse(dispatch["op_env"])
+
+    def test_discovery_uses_default_home_config(self) -> None:
+        self.install_switchboard('[namespace.google.work]\nprovider="google"\n')
+        self.config.rename(self.root / ".config")
+        self.env.pop("XDG_CONFIG_HOME")
+        result = self.run_cli("google.work", "--", "gws", "gmail")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            json.loads(result.stdout)["config"],
+            str(self.root / ".config/switchboard/config.toml"),
+        )
+
+    def test_relative_config_home_is_not_cwd_authority(self) -> None:
+        self.env["XDG_CONFIG_HOME"] = "relative-config"
+        result = self.run_cli(
+            "fixture",
+            "--",
+            sys.executable,
+            "-c",
+            f"open({str(self.marker)!r}, 'w').close()",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("absolute path", result.stderr)
+        self.assertFalse(self.marker.exists())
+
+    def test_valid_empty_discovery_allows_unconfigured_cached_profile(self) -> None:
+        self.install_switchboard()
+        result = self.run_cli(
+            "fixture",
+            "--",
+            sys.executable,
+            "-c",
+            "import os; assert os.environ['TEST_CREDENTIAL'] == 'test-only-fixture-value'",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(self.switchboard_calls()), 1)
+
+    def test_discovery_failures_are_safe_and_never_fall_back(self) -> None:
+        self.install_switchboard()
+        # A credential lookup, a direct consumer, or a second Switchboard call
+        # would all leave evidence. No live credentials/providers are involved.
+        op = self.root / "bin/op"
+        op.write_text(
+            f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(self.marker)!r}).touch()\n"
+        )
+        op.chmod(0o700)
+        self.set_profiles(
+            {
+                "fixture": {
+                    "secrets": [
+                        {
+                            "account": "fixture.example",
+                            "item": "fixture",
+                            "field": "token",
+                            "env": ["TEST_CREDENTIAL"],
+                        }
+                    ]
+                }
+            }
+        )
+        cases = [
+            {
+                "stdout": "unsafe-json-diagnostic",
+                "stderr": "unsafe-stderr-diagnostic",
+                "exit": 1,
+            },
+            {"stdout": "unsafe-json-diagnostic"},
+            {"stdout": json.dumps({"schema_version": 2, "namespaces": []})},
+            {"stdout": json.dumps({"schema_version": True, "namespaces": []})},
+            {"stdout": json.dumps({"schema_version": 1})},
+            {"stdout": json.dumps({"schema_version": 1, "namespaces": {}})},
+            {
+                "stdout": json.dumps(
+                    {"schema_version": 1, "namespaces": ["unsafe-entry-diagnostic"]}
+                )
+            },
+            {
+                "stdout": json.dumps(
+                    {
+                        "schema_version": 1,
+                        "namespaces": [{"id": "google.work", "provider": None}],
+                    }
+                )
+            },
+            {
+                "stdout": json.dumps(
+                    {
+                        "schema_version": 1,
+                        "namespaces": [{"id": "google.work", "provider": "google"}] * 2,
+                    }
+                )
+            },
+            {"stdout": "\udcff"},
+        ]
+        for settings in cases:
+            (self.root / "discovery-settings").write_text(json.dumps(settings))
+            for arguments in (
+                (
+                    "fixture",
+                    "--",
+                    sys.executable,
+                    "-c",
+                    f"open({str(self.marker)!r}, 'w').close()",
+                ),
+                ("google.work", "--", "gws", "gmail"),
+                ("--shell", "fixture"),
+            ):
+                with self.subTest(settings=settings, arguments=arguments[:1]):
+                    (self.root / "switchboard-calls").unlink(missing_ok=True)
+                    result = self.run_cli(*arguments)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, "")
+                    self.assertIn("discovery", result.stderr)
+                    self.assertNotIn("unsafe-", result.stderr)
+                    self.assertNotIn("Traceback", result.stderr)
+                    self.assertFalse(self.marker.exists())
+                    self.assertEqual(len(self.switchboard_calls()), 1)
+
+    def test_missing_binary_and_broken_config_are_not_unconfigured(self) -> None:
+        trusted = self.install_switchboard()
+        executable = self.root / "bin/switchboard"
+        for failure in (
+            "missing-binary",
+            "invalid-config",
+            "dangling-config",
+            "directory-config",
+        ):
+            with self.subTest(failure=failure):
+                if failure == "missing-binary":
+                    executable.rename(executable.with_suffix(".disabled"))
+                elif failure == "invalid-config":
+                    executable.with_suffix(".disabled").rename(executable)
+                    trusted.write_text('broken = "unsafe-config-diagnostic')
+                elif failure == "dangling-config":
+                    trusted.unlink()
+                    trusted.symlink_to(self.root / "missing-config")
+                else:
+                    trusted.unlink()
+                    trusted.mkdir()
+                result = self.run_cli(
+                    "fixture",
+                    "--",
+                    sys.executable,
+                    "-c",
+                    f"open({str(self.marker)!r}, 'w').close()",
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, "")
+                self.assertNotIn("unsafe-", result.stderr)
+                self.assertFalse(self.marker.exists())
 
     def test_switchboard_argv_preserves_read_and_write_intent(self) -> None:
         spec = importlib.util.spec_from_file_location("credential_launcher", SCRIPT)
@@ -936,9 +1199,12 @@ class CredentialsTests(unittest.TestCase):
                 ["gws", "gmail", "users", "getProfile", "--params", '{"userId":"me"}'],
                 False,
                 False,
+                self.config / "switchboard/config.toml",
             ),
             [
                 "switchboard",
+                "--config",
+                str(self.config / "switchboard/config.toml"),
                 "google.cli.read",
                 "--ns",
                 "google.work",
@@ -959,6 +1225,7 @@ class CredentialsTests(unittest.TestCase):
                 ["gh", "pr", "review", "12", "--approve"],
                 False,
                 True,
+                self.config / "switchboard/config.toml",
             ),
         )
         self.assertIn(
@@ -969,6 +1236,7 @@ class CredentialsTests(unittest.TestCase):
                 ["gh", "pr", "review", "12", "--approve"],
                 True,
                 False,
+                self.config / "switchboard/config.toml",
             ),
         )
 

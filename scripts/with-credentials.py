@@ -14,7 +14,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -180,15 +179,66 @@ def config_home() -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
 
 
-def namespaces() -> dict[str, str]:
+def switchboard_config() -> Path:
+    # Standalone fetch helpers need no Switchboard installation/config. Only
+    # home/XDG is trusted, never CWD or SWITCHBOARD_CONFIG discovery overrides.
     path = config_home() / "switchboard/config.toml"
-    if not path.exists():
+    if not path.is_absolute():
+        raise CredentialError("Switchboard config home must be an absolute path")
+    return path
+
+
+def namespaces(path: Path) -> dict[str, str]:
+    try:
+        path.lstat()
+    except FileNotFoundError:
         return {}
-    config = tomllib.loads(path.read_text())
+    except OSError as error:
+        raise CredentialError("Switchboard configuration is unavailable") from error
+    try:
+        response = subprocess.run(
+            ["switchboard", "--config", str(path), "ns", "list", "--json"],
+            env=child_environment(),
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError, UnicodeError) as error:
+        raise CredentialError(
+            "Switchboard namespace discovery is unavailable"
+        ) from error
+    if response.returncode:
+        raise CredentialError("Switchboard namespace discovery failed")
+    try:
+        payload = json.loads(response.stdout)
+    except ValueError as error:
+        raise CredentialError(
+            "Invalid Switchboard namespace discovery response"
+        ) from error
+    if (
+        not isinstance(payload, dict)
+        or type(payload.get("schema_version")) is not int
+        or payload["schema_version"] != 1
+        or not isinstance(payload.get("namespaces"), list)
+    ):
+        raise CredentialError("Invalid Switchboard namespace discovery response")
     result: dict[str, str] = {}
-    for provider, accounts in config.get("namespace", {}).items():
-        for name, namespace in accounts.items():
-            result[f"{provider}.{name}"] = namespace["provider"]
+    for namespace in payload["namespaces"]:
+        if not isinstance(namespace, dict):
+            raise CredentialError("Invalid Switchboard namespace discovery response")
+        name, provider = namespace.get("id"), namespace.get("provider")
+        if (
+            not isinstance(name, str)
+            or not name
+            or not isinstance(provider, str)
+            or not provider
+            or name in result
+        ):
+            raise CredentialError("Invalid Switchboard namespace discovery response")
+        result[name] = provider
     return result
 
 
@@ -312,7 +362,12 @@ def ssh_socket(launch: bool = False) -> tuple[str | None, str]:
 
 
 def provider_command(
-    profile: str, provider: str, command: list[str], draft: bool, apply: bool
+    profile: str,
+    provider: str,
+    command: list[str],
+    draft: bool,
+    apply: bool,
+    config: Path,
 ) -> list[str]:
     binaries = {"google": "gws", "github": "gh"}
     expected = binaries.get(provider, provider)
@@ -322,6 +377,8 @@ def provider_command(
         )
     args = [
         "switchboard",
+        "--config",
+        str(config),
         f"{provider}.cli.{'write' if draft or apply else 'read'}",
         "--ns",
         profile,
@@ -659,7 +716,8 @@ def main() -> int:
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
-        configured = namespaces()
+        config = switchboard_config()
+        configured = namespaces(config)
         available = profiles()
         if args.doctor:
             _, status = ssh_socket()
@@ -719,7 +777,7 @@ def main() -> int:
                 env["SSH_AUTH_SOCK"] = path
             if provider:
                 command = provider_command(
-                    args.profile, provider, command, args.draft, args.apply
+                    args.profile, provider, command, args.draft, args.apply, config
                 )
                 return run_provider(command, env, args.draft, args.apply)
             elif args.draft or args.apply:
