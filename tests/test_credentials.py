@@ -1431,6 +1431,27 @@ else:
         self.assertIn("absolute path", result.stderr)
         self.assertFalse(self.marker.exists())
 
+    def test_dotted_standalone_profile_injects_credentials_like_plain_name(
+        self,
+    ) -> None:
+        profile = {
+            "provider": "axiom",
+            "secrets": [{"cache_file": str(self.cache), "env": ["TEST_CREDENTIAL"]}],
+        }
+        self.set_profiles({"fixture": profile, "fixture.work": profile})
+        for name in ("fixture", "fixture.work"):
+            with self.subTest(profile=name):
+                result = self.run_cli(
+                    name,
+                    "--",
+                    sys.executable,
+                    "-c",
+                    "import os; assert os.environ['TEST_CREDENTIAL'] == 'test-only-fixture-value'; print('child-started')",
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "child-started\n")
+                self.assertEqual(result.stderr, "")
+
     def test_valid_empty_discovery_allows_unconfigured_cached_profile(self) -> None:
         self.install_switchboard()
         result = self.run_cli(

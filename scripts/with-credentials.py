@@ -1058,7 +1058,7 @@ def main() -> int:
                 )
             return run_child(command, env)
         spec = available.get(args.profile)
-        if "." in args.profile and (spec is None or spec.slack_oauth is None):
+        if spec is None and "." in args.profile:
             raise CredentialError(
                 f"Namespace {args.profile} is not configured in Switchboard"
             )
@@ -1066,7 +1066,6 @@ def main() -> int:
             raise CredentialError(
                 "Write mode requires a configured Switchboard namespace"
             )
-        spec = available.get(args.profile)
         if spec is None:
             raise CredentialError(f"Unknown credential profile: {args.profile}")
         if spec.provider in configured.values():
