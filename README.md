@@ -30,7 +30,12 @@ sudo nixos-rebuild switch --flake .#system76
 
 `nix store gc` removes unused store paths.
 
-Linux installs Ghostty and runs Rex as a systemd user service, with lingering enabled.
+Linux installs Ghostty and runs Rex and the agent worker as systemd user services,
+with account-wide lingering so user services start at boot and survive logout.
+The worker starts after Rex and uses the private
+`~/.config/agent/config.toml`; initialize it once with `agent init --coordinator …`
+before starting the worker. Connection details and credentials stay outside Nix.
+Check the worker with `systemctl --user status agent`.
 Check Rex with `rex --autostart=false server status` or `systemctl --user status rex`.
 Its pinned preview builds without a package token and stays out of the public cache.
 On macOS, the `rex` launcher requires Rex.app or Rex Beta.app in `/Applications`

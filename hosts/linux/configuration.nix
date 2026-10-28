@@ -63,6 +63,7 @@
   users.groups.plugdev = {};
   users.users.${username} = {
     isNormalUser = true;
+    # Account-wide: keep Rex, the agent worker and other user services available after logout.
     linger = true;
     extraGroups = ["audio" "docker" "networkmanager" "wheel" "libvirtd" "plugdev" "onepassword-cli" "onepassword"];
   };
