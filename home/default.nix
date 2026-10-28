@@ -35,6 +35,11 @@ in {
     username = username;
     homeDirectory = lib.mkForce homeDir;
 
+    # Activation resets PATH; the config renderer needs Switchboard to validate.
+    extraActivationPath = [
+      inputs.switchboard.packages.${pkgs.stdenv.hostPlatform.system}.switchboard
+    ];
+
     # This value determines the Home Manager release that your configuration is
     # compatible with. This helps avoid breakage when a new Home Manager release
     # introduces backwards incompatible changes.
