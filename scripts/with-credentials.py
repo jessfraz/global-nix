@@ -2,18 +2,24 @@
 """Run a command with credentials, or restore credentials through a shell helper."""
 
 import argparse
+import fcntl
 import json
+import math
 import netrc
 import os
 import re
 import shlex
 import shutil
+import signal
 import socket
 import stat
 import subprocess
 import sys
 import tempfile
 import time
+import urllib.parse
+import urllib.request
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -139,12 +145,240 @@ class Secret:
 
 
 @dataclass(frozen=True)
+class SlackOAuth:
+    cache_file: str
+    team_id: str
+    user_id: str
+    read_only: bool
+
+    @classmethod
+    def parse(cls, data: object) -> "SlackOAuth":
+        if not isinstance(data, dict) or any(
+            not isinstance(data.get(key), str) or not data[key]
+            for key in ("cache_file", "team_id", "user_id")
+        ):
+            raise CredentialError(
+                "Slack OAuth authorization requires cache and identity"
+            )
+        if type(data.get("read_only")) is not bool:
+            raise CredentialError("Slack OAuth requires an explicit read_only policy")
+        return cls(
+            data["cache_file"], data["team_id"], data["user_id"], data["read_only"]
+        )
+
+    def validate(self, value: object) -> dict:
+        if not isinstance(value, dict):
+            raise CredentialError("Invalid Slack OAuth credential")
+        if value.get("team_id") != self.team_id or value.get("user_id") != self.user_id:
+            raise CredentialError(
+                "Slack OAuth credential belongs to an unexpected identity"
+            )
+        for key in ("access_token", "client_id", "client_secret"):
+            if (
+                not isinstance(value.get(key), str)
+                or not value[key]
+                or any(c.isspace() or c == "\0" for c in value[key])
+            ):
+                raise CredentialError("Incomplete Slack OAuth credential")
+        refresh = value.get("refresh_token")
+        if refresh is not None and (
+            not isinstance(refresh, str)
+            or not refresh
+            or any(c.isspace() or c == "\0" for c in refresh)
+        ):
+            raise CredentialError("Invalid Slack OAuth refresh credential")
+        expiry = value.get("expires_at")
+        if expiry is not None and (
+            type(expiry) not in (int, float) or not math.isfinite(expiry) or expiry <= 0
+        ):
+            raise CredentialError("Invalid Slack OAuth credential expiry")
+        scopes = value.get("scopes")
+        if (
+            not isinstance(scopes, list)
+            or not scopes
+            or any(
+                not isinstance(scope, str)
+                or not scope
+                or any(c.isspace() or c == "\0" for c in scope)
+                for scope in scopes
+            )
+        ):
+            raise CredentialError("Slack OAuth credential has invalid scopes")
+        if self.read_only and any(
+            scope != "identify" and not scope.endswith((":read", ":history"))
+            for scope in scopes
+        ):
+            raise CredentialError(
+                "Slack OAuth credential violates the profile's read-only policy"
+            )
+        return value
+
+    def refresh(self, credential: dict, timeout: float) -> dict:
+        if not credential.get("refresh_token"):
+            raise CredentialError(
+                "Slack OAuth authorization expired; local recovery required"
+            )
+        request = urllib.request.Request(
+            "https://slack.com/api/oauth.v2.access",
+            data=urllib.parse.urlencode(
+                {
+                    "grant_type": "refresh_token",
+                    "refresh_token": credential["refresh_token"],
+                    "client_id": credential["client_id"],
+                    "client_secret": credential["client_secret"],
+                }
+            ).encode(),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            result = json.load(response)
+        if not isinstance(result, dict) or result.get("ok") is not True:
+            code = result.get("error") if isinstance(result, dict) else None
+            safe = (
+                code
+                if code
+                in (
+                    "invalid_refresh_token",
+                    "token_revoked",
+                    "invalid_client_id",
+                    "bad_client_secret",
+                    "invalid_grant",
+                    "invalid_auth",
+                    "account_inactive",
+                )
+                else "refresh_failed"
+            )
+            raise CredentialError(
+                f"Slack OAuth refresh rejected ({safe}); local recovery required"
+            )
+        token = result.get("authed_user", result)
+        if not isinstance(token, dict) or token.get("token_type", "user") != "user":
+            raise CredentialError(
+                "Slack OAuth refresh returned an unexpected token type"
+            )
+        if "team" in result and (
+            not isinstance(result["team"], dict)
+            or result["team"].get("id") != self.team_id
+        ):
+            raise CredentialError(
+                "Slack OAuth refresh returned an unexpected workspace"
+            )
+        for source, key, expected in (
+            (result, "team_id", self.team_id),
+            (result, "user_id", self.user_id),
+            (token, "id", self.user_id),
+        ):
+            if key in source and source[key] != expected:
+                raise CredentialError(
+                    "Slack OAuth refresh returned an unexpected identity"
+                )
+        duration = token.get("expires_in")
+        if type(duration) is not int or duration <= 0 or not token.get("refresh_token"):
+            raise CredentialError(
+                "Slack OAuth refresh lacks replacement expiry or refresh token"
+            )
+        scope = token.get("scope")
+        return self.validate(
+            {
+                **credential,
+                "access_token": token.get("access_token"),
+                "refresh_token": token["refresh_token"],
+                "expires_at": time.time() + duration,
+                "scopes": scope.split(",") if isinstance(scope, str) else None,
+            }
+        )
+
+    def token(self) -> str:
+        cache = credential_path(self.cache_file)
+        try:
+            directory = os.open(
+                cache.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            )
+            try:
+                self.check_file(os.fstat(directory), 0o700, directory=True)
+                descriptor = os.open(
+                    ".refresh.lock",
+                    os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK,
+                    0o600,
+                    dir_fd=directory,
+                )
+                with os.fdopen(descriptor, "r+") as lock:
+                    self.check_file(os.fstat(lock.fileno()), 0o600)
+                    try:
+                        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        raise CredentialError(
+                            "Slack OAuth refresh is already in progress; try again after it finishes"
+                        ) from None
+                    # Single-use refresh tokens must be re-read under the lock.
+                    descriptor = os.open(
+                        cache.name,
+                        os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                        dir_fd=directory,
+                    )
+                    with os.fdopen(descriptor) as source:
+                        self.check_file(os.fstat(source.fileno()), 0o600)
+                        credential = self.validate(json.load(source))
+                    if (
+                        credential.get("expires_at") is not None
+                        and credential["expires_at"] <= time.time() + 60
+                    ):
+                        credential = self.refresh(credential, 60)
+                        temporary = ".credential-" + uuid.uuid4().hex
+                        try:
+                            descriptor = os.open(
+                                temporary,
+                                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                                0o600,
+                                dir_fd=directory,
+                            )
+                            with os.fdopen(descriptor, "w") as target:
+                                os.fchmod(target.fileno(), 0o600)
+                                json.dump(credential, target)
+                                target.write("\n")
+                                target.flush()
+                                os.fsync(target.fileno())
+                            os.replace(
+                                temporary,
+                                cache.name,
+                                src_dir_fd=directory,
+                                dst_dir_fd=directory,
+                            )
+                            os.fsync(directory)
+                        finally:
+                            try:
+                                os.unlink(temporary, dir_fd=directory)
+                            except FileNotFoundError:
+                                pass
+                    return credential["access_token"]
+            finally:
+                os.close(directory)
+        except (OSError, ValueError, UnicodeError, OverflowError):
+            raise CredentialError(
+                "Slack OAuth authorization unavailable; check cache access or local recovery, not developer login"
+            ) from None
+
+    @staticmethod
+    def check_file(info: os.stat_result, mode: int, *, directory: bool = False) -> None:
+        valid = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
+        if (
+            not valid
+            or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) != mode
+        ):
+            raise CredentialError(
+                "Slack OAuth cache must be owned, directory 0700 and files 0600"
+            )
+
+
+@dataclass(frozen=True)
 class Profile:
     environment: dict[str, str]
     secrets: tuple[Secret, ...]
     provider: str | None
     unset: tuple[str, ...]
     github_username: str | None
+    slack_oauth: SlackOAuth | None
 
     @classmethod
     def parse(cls, data: object) -> "Profile":
@@ -166,12 +400,18 @@ class Profile:
         unset = data.get("unset", [])
         if not isinstance(unset, list):
             raise CredentialError("Credential unset must be a list of variable names")
+        slack = SlackOAuth.parse(data["slack_oauth"]) if "slack_oauth" in data else None
+        if slack and (environment or secrets or data.get("provider") != "slack"):
+            raise CredentialError(
+                "Slack OAuth authorization cannot mix credential sources"
+            )
         return cls(
             environment,
             tuple(Secret.parse(secret) for secret in secrets),
             optional_string(data, "provider"),
             tuple(environment_name(name) for name in unset),
             optional_string(data, "github_username"),
+            slack,
         )
 
 
@@ -483,6 +723,12 @@ def selected_field_values(output: str, selectors: list[str]) -> dict[str, str]:
 def resolve(
     profile: str, spec: Profile, directory: Path, *, shell: bool = False
 ) -> dict[str, str]:
+    if spec.slack_oauth:
+        if shell:
+            raise CredentialError(
+                "Slack OAuth authorization is child-only; use PROFILE -- COMMAND"
+            )
+        return {"SLACK_USER_TOKEN": spec.slack_oauth.token()}
     result = dict(spec.environment)
     deadline = time.monotonic() + 60
     resolved: list[tuple[Secret, str]] = []
@@ -683,6 +929,28 @@ def shell_exports(profile: str, spec: Profile) -> str:
     return "\n".join(assignments)
 
 
+def run_child(command: list[str], env: dict[str, str]) -> int:
+    def terminated(signum: int, _frame: object) -> None:
+        raise SystemExit(128 + signum)
+
+    # The credential-bearing child owns a session, including any helpers it
+    # starts. Cancel the whole group and reap before deleting temporary files.
+    previous = signal.signal(signal.SIGTERM, terminated)
+    try:
+        with subprocess.Popen(command, env=env, start_new_session=True) as child:
+            try:
+                return child.wait()
+            except BaseException:
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                child.wait()
+                raise
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -742,6 +1010,10 @@ def main() -> int:
             spec = available.get(args.profile)
             if spec is None:
                 raise CredentialError(f"Unknown credential profile: {args.profile}")
+            if spec.slack_oauth:
+                raise CredentialError(
+                    "Slack OAuth authorization is child-only; use PROFILE -- COMMAND"
+                )
             if args.accounts:
                 accounts = {
                     secret.account
@@ -784,8 +1056,9 @@ def main() -> int:
                 raise CredentialError(
                     "Write mode requires a configured Switchboard namespace"
                 )
-            return subprocess.run(command, env=env, check=False).returncode
-        if "." in args.profile:
+            return run_child(command, env)
+        spec = available.get(args.profile)
+        if "." in args.profile and (spec is None or spec.slack_oauth is None):
             raise CredentialError(
                 f"Namespace {args.profile} is not configured in Switchboard"
             )
@@ -803,8 +1076,16 @@ def main() -> int:
         # Resolve the entire set before starting the child; temporary files outlive
         # that child only. Shell exports require the explicit shell-helper mode.
         with tempfile.TemporaryDirectory(prefix="with-credentials-") as temporary:
+            for name in spec.unset:
+                env.pop(name, None)
+            if spec.slack_oauth:
+                env = {
+                    name: value
+                    for name, value in env.items()
+                    if not name.startswith("SLACK_")
+                }
             env.update(resolve(args.profile, spec, Path(temporary)))
-            return subprocess.run(command, env=env, check=False).returncode
+            return run_child(command, env)
     except (CredentialError, OSError, ValueError, KeyError, TypeError) as error:
         print(f"with-credentials: {error}", file=sys.stderr)
         return 1

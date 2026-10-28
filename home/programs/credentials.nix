@@ -111,6 +111,15 @@ in {
         (agent "bx3bb7ime32avadk4vs3tmvone" "credential" ["GOOGLE_WORKSPACE_CLI_CLIENT_SECRET"])
       ];
     };
+    "slack.work" = {
+      provider = "slack";
+      slack_oauth = {
+        cache_file = "${config.home.homeDirectory}/.slack/read-auth/credential.json";
+        team_id = "T025UH7US95";
+        user_id = "U02668PTUTF";
+        read_only = true;
+      };
+    };
     "schwab.personal" = {
       environment.SCHWAB_CONFIG = "${config.home.homeDirectory}/.config/schwab-personal/config.json";
       secrets = [

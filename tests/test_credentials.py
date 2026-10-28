@@ -1,6 +1,7 @@
 """Exercise the executable with real cached files and child processes."""
 
 import base64
+import concurrent.futures
 import http.server
 import importlib.util
 import json
@@ -8,12 +9,17 @@ import netrc
 import os
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
+import urllib.parse
+import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/with-credentials.py"
 
@@ -929,6 +935,370 @@ else:
                     "argument with spaces",
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+    def slack_profile(self) -> Path:
+        cache = self.root / ".slack/read-auth/credential.json"
+        cache.parent.mkdir(parents=True, mode=0o700)
+        cache.write_text(
+            json.dumps(
+                {
+                    "access_token": "test-only-current-access",
+                    "refresh_token": "test-only-current-refresh",
+                    "client_id": "test-only-client",
+                    "client_secret": "test-only-client-secret",
+                    "expires_at": None,
+                    "scopes": ["identify", "groups:history", "search:read"],
+                    "team_id": "TEXAMPLE",
+                    "user_id": "UEXAMPLE",
+                }
+            )
+        )
+        cache.chmod(0o600)
+        self.set_profiles(
+            {
+                "slack.work": {
+                    "provider": "slack",
+                    "slack_oauth": {
+                        "cache_file": str(cache),
+                        "team_id": "TEXAMPLE",
+                        "user_id": "UEXAMPLE",
+                        "read_only": True,
+                    },
+                }
+            }
+        )
+        return cache
+
+    def test_slack_oauth_profile_uses_current_cache_not_environment(self) -> None:
+        self.slack_profile()
+        self.env.update(
+            {
+                "SLACK_BOT_TOKEN": "test-only-broad",
+                "SLACK_USER_TOKEN": "test-only-stale",
+                "SLACK_API_HOST": "invalid",
+                "OP_SERVICE_ACCOUNT_TOKEN": "test-only-bootstrap",
+            }
+        )
+        result = self.run_cli(
+            "slack.work",
+            "--",
+            sys.executable,
+            "-c",
+            "import os; assert os.environ['SLACK_USER_TOKEN']=='test-only-current-access'; assert [k for k in os.environ if k.startswith('SLACK_')]==['SLACK_USER_TOKEN']; assert not any(k.startswith('OP_') for k in os.environ); print('native output')",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "native output\n")
+        self.assertEqual(result.stderr, "")
+
+    def test_slack_oauth_permission_policy_is_profile_data(self) -> None:
+        cache = self.slack_profile()
+        credential = json.loads(cache.read_text())
+        credential["scopes"] = ["chat:write"]
+        cache.write_text(json.dumps(credential))
+        path = self.config / "with-credentials/profiles.json"
+        profile = json.loads(path.read_text())["slack.work"]
+        for policy in (True, False, None, "false"):
+            with self.subTest(policy=policy):
+                profile["slack_oauth"]["read_only"] = policy
+                self.set_profiles({"slack.fixture": profile})
+                result = self.run_cli(
+                    "slack.fixture",
+                    "--",
+                    sys.executable,
+                    "-c",
+                    "import os; assert os.environ['SLACK_USER_TOKEN']=='test-only-current-access'",
+                )
+                self.assertEqual(result.returncode == 0, policy is False, result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertNotIn("test-only-", result.stderr)
+
+    def test_slack_oauth_never_exports_or_falls_back(self) -> None:
+        cache = self.slack_profile()
+        for mode in ("--shell", "--accounts"):
+            result = self.run_cli(mode, "slack.work")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+            self.assertIn("child-only", result.stderr)
+        cache.unlink()
+        result = self.run_cli(
+            "slack.work", "--", sys.executable, "-c", "raise SystemExit(0)"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertNotIn("test-only-", result.stderr)
+
+    def test_slack_oauth_rejects_bad_identity_scopes_and_expiry(self) -> None:
+        cache = self.slack_profile()
+        original = json.loads(cache.read_text())
+        for key, value in (
+            ("team_id", "OTHER"),
+            ("user_id", "OTHER"),
+            ("scopes", ["chat:write"]),
+            ("scopes", []),
+            ("expires_at", True),
+            ("expires_at", float("nan")),
+            ("refresh_token", 12),
+        ):
+            with self.subTest(key=key, value=value):
+                cache.write_text(json.dumps({**original, key: value}))
+                result = self.run_cli(
+                    "slack.work", "--", sys.executable, "-c", "raise SystemExit(0)"
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, "")
+                self.assertNotIn("test-only-", result.stderr)
+
+    def test_slack_oauth_rejects_insecure_cache_paths(self) -> None:
+        cache = self.slack_profile()
+        for path, bad_mode, good_mode in (
+            (cache, 0o640, 0o600),
+            (cache.parent, 0o750, 0o700),
+        ):
+            path.chmod(bad_mode)
+            result = self.run_cli(
+                "slack.work", "--", sys.executable, "-c", "raise SystemExit(0)"
+            )
+            self.assertNotEqual(result.returncode, 0)
+            path.chmod(good_mode)
+        for path in (cache, cache.parent / ".refresh.lock", cache.parent):
+            with self.subTest(path=path.name):
+                target = path.with_name(path.name + "-real")
+                path.rename(target)
+                path.symlink_to(target)
+                try:
+                    result = self.run_cli(
+                        "slack.work", "--", sys.executable, "-c", "raise SystemExit(0)"
+                    )
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, "")
+                finally:
+                    path.unlink()
+                    target.rename(path)
+
+    def test_slack_refresh_serializes_single_use_token_and_replaces_atomically(
+        self,
+    ) -> None:
+        cache = self.slack_profile()
+        original = json.loads(cache.read_text())
+        cache.write_text(json.dumps({**original, "expires_at": 1}))
+        spec = importlib.util.spec_from_file_location(
+            "slack_credentials_fixture", SCRIPT
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        auth = module.SlackOAuth(str(cache), "TEXAMPLE", "UEXAMPLE", True)
+        requests = []
+        refresh_started, release_refresh = threading.Event(), threading.Event()
+        payload = {
+            "ok": True,
+            "team": {"id": "TEXAMPLE"},
+            "authed_user": {
+                "id": "UEXAMPLE",
+                "token_type": "user",
+                "access_token": "test-only-new-access",
+                "refresh_token": "test-only-new-refresh",
+                "expires_in": 3600,
+                "scope": "groups:history,search:read",
+            },
+        }
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                requests.append(
+                    urllib.parse.parse_qs(
+                        self.rfile.read(int(self.headers["Content-Length"])).decode()
+                    )
+                )
+                refresh_started.set()
+                release_refresh.wait(timeout=5)
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(json.dumps(payload).encode())
+
+            def log_message(self, _format: str, *args: object) -> None:
+                pass
+
+        real_urlopen = urllib.request.urlopen
+
+        def local_request(request: urllib.request.Request, timeout: float):
+            self.assertEqual(request.full_url, "https://slack.com/api/oauth.v2.access")
+            return real_urlopen(
+                f"http://127.0.0.1:{server.server_port}/",
+                data=request.data,
+                timeout=timeout,
+            )
+
+        with http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                before_inode = cache.stat().st_ino
+                # Readers holding the old descriptor still see a complete old file.
+                with (
+                    cache.open() as old,
+                    patch.object(module.urllib.request, "urlopen", local_request),
+                    concurrent.futures.ThreadPoolExecutor(max_workers=1) as readers,
+                ):
+                    owner = readers.submit(auth.token)
+                    try:
+                        self.assertTrue(refresh_started.wait(timeout=2))
+                        before = cache.read_bytes()
+                        real_open = module.os.open
+                        with (
+                            patch.object(module.os, "open", wraps=real_open) as opened,
+                            self.assertRaisesRegex(
+                                module.CredentialError, "already in progress"
+                            ),
+                        ):
+                            auth.token()
+                        self.assertEqual(
+                            [call.args[0] for call in opened.call_args_list],
+                            [cache.parent, ".refresh.lock"],
+                        )
+                        self.assertEqual(len(requests), 1)
+                        self.assertEqual(cache.read_bytes(), before)
+                    finally:
+                        release_refresh.set()
+                    self.assertEqual(owner.result(timeout=2), "test-only-new-access")
+                    self.assertEqual(auth.token(), "test-only-new-access")
+                    self.assertEqual(
+                        json.load(old)["access_token"], original["access_token"]
+                    )
+                self.assertNotEqual(cache.stat().st_ino, before_inode)
+                self.assertEqual(cache.stat().st_mode & 0o777, 0o600)
+                self.assertEqual(cache.parent.stat().st_mode & 0o777, 0o700)
+                self.assertEqual(
+                    json.loads(cache.read_text())["refresh_token"],
+                    "test-only-new-refresh",
+                )
+                self.assertEqual(len(requests), 1)
+                self.assertEqual(
+                    requests[0],
+                    {
+                        "grant_type": ["refresh_token"],
+                        "refresh_token": [original["refresh_token"]],
+                        "client_id": [original["client_id"]],
+                        "client_secret": [original["client_secret"]],
+                    },
+                )
+                self.assertEqual(
+                    sorted(p.name for p in cache.parent.iterdir()),
+                    [".refresh.lock", "credential.json"],
+                )
+                # Invalid refresh responses must never replace the valid cache.
+                for replacement in (
+                    {"ok": False, "error": "test-only-private"},
+                    {**payload, "team": {"id": "OTHER"}},
+                    {
+                        **payload,
+                        "authed_user": {
+                            **payload["authed_user"],
+                            "scope": "chat:write",
+                        },
+                    },
+                    {
+                        **payload,
+                        "authed_user": {
+                            **payload["authed_user"],
+                            "refresh_token": None,
+                        },
+                    },
+                ):
+                    payload = replacement
+                    cache.write_text(json.dumps({**original, "expires_at": 1}))
+                    before = cache.read_bytes()
+                    with (
+                        patch.object(module.urllib.request, "urlopen", local_request),
+                        self.assertRaises(module.CredentialError),
+                    ):
+                        auth.token()
+                    self.assertEqual(cache.read_bytes(), before)
+                with (
+                    patch.object(module.os, "getuid", return_value=os.getuid() + 1),
+                    self.assertRaisesRegex(module.CredentialError, "owned"),
+                ):
+                    auth.token()
+            finally:
+                server.shutdown()
+                worker.join()
+
+    def test_slack_refresh_failure_does_not_change_cache_or_leak_diagnostics(
+        self,
+    ) -> None:
+        cache = self.slack_profile()
+        original = json.loads(cache.read_text())
+        cache.write_text(json.dumps({**original, "expires_at": 1}))
+        spec = importlib.util.spec_from_file_location("slack_failure_fixture", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        auth = module.SlackOAuth(str(cache), "TEXAMPLE", "UEXAMPLE", True)
+        before = cache.read_bytes()
+        with (
+            patch.object(
+                module.urllib.request,
+                "urlopen",
+                side_effect=OSError("test-only-private"),
+            ),
+            self.assertRaises(module.CredentialError) as error,
+        ):
+            auth.token()
+        self.assertNotIn("test-only-", str(error.exception))
+        self.assertEqual(cache.read_bytes(), before)
+        cache.write_text(
+            json.dumps({**original, "expires_at": 1, "refresh_token": None})
+        )
+        with self.assertRaisesRegex(module.CredentialError, "expired"):
+            auth.token()
+
+    def test_cancelled_child_group_is_killed_and_reaped(self) -> None:
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            with self.subTest(signal=signum):
+                self.marker.unlink(missing_ok=True)
+                code = "import os,pathlib,subprocess,sys,time; subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']); pathlib.Path.home().joinpath('started').write_text(str(os.getpid())); time.sleep(60)"
+                with subprocess.Popen(
+                    [
+                        sys.executable,
+                        str(SCRIPT),
+                        "fixture",
+                        "--",
+                        sys.executable,
+                        "-c",
+                        code,
+                    ],
+                    env=self.env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                ) as process:
+                    try:
+                        deadline = time.monotonic() + 5
+                        while not self.marker.exists() and time.monotonic() < deadline:
+                            time.sleep(0.01)
+                        self.assertTrue(self.marker.exists())
+                        child_pid = int(self.marker.read_text())
+                        process.send_signal(signum)
+                        stdout, stderr = process.communicate(timeout=5)
+                        self.assertEqual(process.returncode, 128 + signum)
+                        self.assertEqual(stdout, "")
+                        self.assertNotIn("test-only-", stderr)
+                        for _ in range(100):
+                            try:
+                                os.killpg(child_pid, 0)
+                            except ProcessLookupError:
+                                break
+                            time.sleep(0.01)
+                        else:
+                            self.fail(
+                                "credential-bearing child group survived cancellation"
+                            )
+                    finally:
+                        if process.poll() is None:
+                            process.kill()
+                        if self.marker.exists():
+                            try:
+                                os.killpg(int(self.marker.read_text()), signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
 
     def test_child_exit_status_is_preserved(self) -> None:
         result = self.run_cli(
