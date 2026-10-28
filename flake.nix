@@ -309,6 +309,7 @@
           ghostty.packages.${system}.default
         ]
         ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+          (pkgs.callPackage ./pkgs/auto-dnd.nix {})
           pkgs.coredns
           pkgs.mas
           pkgs.socat
