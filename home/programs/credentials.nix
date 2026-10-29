@@ -168,6 +168,12 @@ in {
     ];
     agent-chrome-macinator = one (agent "k644y4by4poouyvlur2pwjddhm" "macinator" ["PLAYWRIGHT_MCP_EXTENSION_TOKEN"]);
     agent-chrome-macmini = one (agent "k644y4by4poouyvlur2pwjddhm" "macmini" ["PLAYWRIGHT_MCP_EXTENSION_TOKEN"]);
+    agent-browser-apple = {
+      secrets = [
+        (agent "d64oyfudaeuq7h3ccgnckl7fu4" "username" ["BROWSER_LOGIN_USERNAME"])
+        (agent "d64oyfudaeuq7h3ccgnckl7fu4" "password" ["BROWSER_LOGIN_PASSWORD"])
+      ];
+    };
     vault.environment.VAULT_ADDR = "http://vault.hawk-dinosaur.ts.net";
   };
 }
