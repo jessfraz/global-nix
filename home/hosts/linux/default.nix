@@ -12,6 +12,7 @@
 
   services.rex = {
     enable = true;
+    environment.SHELL = "${config.programs.bash.package}/bin/bash";
     tailscale = {
       enable = true;
       hostname = "${hostname}-rex";

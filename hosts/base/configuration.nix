@@ -7,7 +7,7 @@
 }: {
   users.users.${username} = {
     description = "Jessie Frazelle";
-    shell = pkgs.bash;
+    shell = pkgs.bashInteractive;
     home = homeDir;
   };
 
