@@ -30,6 +30,10 @@ sudo nixos-rebuild switch --flake .#system76
 
 `nix store gc` removes unused store paths.
 
+Linux starts Tailscale automatically and applies the Tailscale SSH setting at
+startup. A new machine still needs its initial `tailscale up` login and tailnet
+policy permission for SSH.
+
 Linux installs Ghostty and runs Rex and the agent worker as systemd user services,
 with account-wide lingering so user services start at boot and survive logout.
 The worker starts after Rex and uses the private
@@ -37,9 +41,31 @@ The worker starts after Rex and uses the private
 before starting the worker. Connection details and credentials stay outside Nix.
 Check the worker with `systemctl --user status agent`.
 Check Rex with `rex --autostart=false server status` or `systemctl --user status rex`.
+Its own Tailscale node is named `system76-rex`. On first setup, follow the sign-in
+link from `rex server status`; `rex server tailscale login` requests a new link.
 Its pinned preview builds without a package token and stays out of the public cache.
 On macOS, the `rex` launcher requires Rex.app or Rex Beta.app in `/Applications`
 or `~/Applications`.
+
+System76 also provides wired pre-boot disk unlocking through OpenSSH in the
+systemd initrd. It uses DHCP on Ethernet and port 2222, with the configured
+YubiKey public key restricted to the disk-unlock prompt. Wi-Fi and Tailscale
+start in the normal OS; no cable is required for local unlocking.
+
+Before the first bootloader update with this configuration, generate a separate
+initrd host key on Linux:
+
+```sh
+sudo install -d -m 0700 /etc/secrets/initrd
+sudo ssh-keygen -t ed25519 -N '' -f /etc/secrets/initrd/ssh_host_ed25519_key
+sudo nixos-rebuild boot --flake .#system76
+```
+
+Keep that private key outside Git. The bootloader injects it into the initrd on
+the unencrypted boot partition, so it must be separate from normal SSH host keys.
+After rebooting with Ethernet connected, use `ssh -t -p 2222 root@LAN_IP` from a
+machine with the authorized key. Unlocking continues normal startup and ends the
+initrd SSH connection.
 
 The laptop profile installs Auto DND; the Mac Mini does not run it. Auto DND
 watches the main work calendar and every editable calendar in the personal

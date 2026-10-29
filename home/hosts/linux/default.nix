@@ -3,13 +3,20 @@
   inputs,
   config,
   lib,
+  hostname,
   ...
 }: {
   imports = [
     inputs.rex.homeManagerModules.default
   ];
 
-  services.rex.enable = true;
+  services.rex = {
+    enable = true;
+    tailscale = {
+      enable = true;
+      hostname = "${hostname}-rex";
+    };
+  };
 
   systemd.user.services.agent = {
     Unit = {

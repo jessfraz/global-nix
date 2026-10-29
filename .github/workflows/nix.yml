@@ -55,6 +55,9 @@ jobs:
       - name: Check Rex Linux startup
         run: nix build .#checks.x86_64-linux.rex-runs --no-link --no-update-lock-file
 
+      - name: Check local and SSH disk unlocking
+        run: nix build -L .#checks.x86_64-linux.initrd-ssh-unlock --no-link --no-update-lock-file
+
       - name: Build Linux packages
         run: nix build -L .#ci-cache --out-link result-ci-cache --no-update-lock-file
 

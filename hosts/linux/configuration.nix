@@ -149,7 +149,7 @@
     tailscale = {
       enable = true;
 
-      extraUpFlags = ["--ssh"];
+      extraSetFlags = ["--ssh"];
     };
 
     openssh = {

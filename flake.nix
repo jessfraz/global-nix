@@ -385,6 +385,11 @@
 
     checks.x86_64-linux.rex-runs = rex.checks.x86_64-linux.runs;
 
+    checks.x86_64-linux.initrd-ssh-unlock = import ./tests/initrd-ssh-unlock.nix {
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      nixpkgsPath = nixpkgs;
+    };
+
     checks.aarch64-darwin.tailscale-home-server-daemon = let
       config = self.darwinConfigurations.macmini.config;
       pkgs = nixpkgs.legacyPackages.aarch64-darwin;

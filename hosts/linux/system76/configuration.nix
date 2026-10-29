@@ -8,6 +8,7 @@
   imports = [
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
+    ../../../modules/initrd-ssh-unlock.nix
 
     # Desktop configurations.
     ../desktops/minimal-gnome.nix
@@ -22,7 +23,11 @@
 
   boot = {
     kernelPackages = pkgs.linuxPackages;
-    initrd.kernelModules = ["nvidia"];
+    initrd = {
+      kernelModules = ["nvidia"];
+      availableKernelModules = ["r8169"];
+      network.ssh.authorizedKeyFiles = [./initrd-authorized-key.pub];
+    };
     kernelParams = ["nvidia-drm.fbdev=1"];
     extraModprobeConfig = ''
       options nvidia_uvm uvm_disable_hmm=1
