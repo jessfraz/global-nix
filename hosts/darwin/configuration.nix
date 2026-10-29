@@ -91,11 +91,6 @@ in {
 
   # MacOS system preferences.
   system.primaryUser = username;
-  # nix-darwin leaves existing administrator accounts outside users.knownUsers.
-  # Manage only the login shell so Rex's server-created terminals use Nix Bash.
-  system.activationScripts.postActivation.text = lib.mkAfter ''
-    /usr/bin/dscl . -create ${lib.escapeShellArg "/Users/${username}"} UserShell /run/current-system/sw/bin/bash
-  '';
   system.defaults = {
     NSGlobalDomain = {
       # Whether to always show hidden files.
