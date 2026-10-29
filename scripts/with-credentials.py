@@ -569,6 +569,73 @@ def child_environment() -> dict[str, str]:
     }
 
 
+def run_onepassword(profile: str, command: list[str]) -> int:
+    """Authenticate credential reads in the CLI, without exporting its bootstrap."""
+    reads = [
+        ("read",),
+        ("item", "get"),
+        ("item", "list"),
+        ("item", "ls"),
+        ("vault", "get"),
+        ("vault", "list"),
+        ("vault", "ls"),
+        ("whoami",),
+    ]
+    if command[:1] != ["op"] or not any(
+        tuple(command[1 : 1 + len(prefix)]) == prefix for prefix in reads
+    ):
+        raise CredentialError(
+            "Machine 1Password access requires an op credential-read command"
+        )
+    token = AuthProfile.load(profile).token()
+    env = child_environment()
+    env["OP_SERVICE_ACCOUNT_TOKEN"] = token
+    env["OP_BIOMETRIC_UNLOCK_ENABLED"] = "false"
+
+    def terminated(signum: int, _frame: object) -> None:
+        raise SystemExit(128 + signum)
+
+    previous = signal.signal(signal.SIGTERM, terminated)
+    try:
+        with subprocess.Popen(
+            command,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        ) as child:
+            try:
+                output, _ = child.communicate(timeout=60)
+            except BaseException:
+                # The isolated lookup owns any helpers it starts, just like
+                # run_child. Cancellation must not leave its bootstrap alive.
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                child.wait()
+                raise
+    except (OSError, subprocess.SubprocessError) as error:
+        raise CredentialError(
+            "1Password CLI lookup unavailable or timed out"
+        ) from error
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+    if child.returncode:
+        print(
+            f"with-credentials: 1Password CLI lookup failed (exit {child.returncode}); desktop fallback is disabled",
+            file=sys.stderr,
+        )
+        return child.returncode
+    # The vault can hold a recovery copy of this very bootstrap. It must stay
+    # private even when a read command succeeds.
+    if token.encode() in output:
+        raise CredentialError("1Password CLI output contained its bootstrap token")
+    sys.stdout.buffer.write(output)
+    return 0
+
+
 def ssh_socket(launch: bool = False) -> tuple[str | None, str]:
     executable = shutil.which("gpgconf")
     if executable is None:
@@ -985,6 +1052,15 @@ def main() -> int:
     args = parser.parse_args()
     try:
         config = switchboard_config()
+        if args.profile and args.profile.startswith("op.") and not args.doctor:
+            if args.draft or args.apply:
+                raise CredentialError("Machine 1Password access is read-only")
+            if args.shell or args.accounts:
+                raise CredentialError(
+                    "Machine 1Password access is child-only; use op.AUTH_PROFILE -- op credential-read command"
+                )
+            command = args.command[1:] if args.command[:1] == ["--"] else args.command
+            return run_onepassword(args.profile.removeprefix("op."), command)
         configured = namespaces(config)
         available = profiles()
         if args.doctor:

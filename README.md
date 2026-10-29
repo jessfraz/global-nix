@@ -151,6 +151,7 @@ with-credentials axiom -- axiom query "['corp-kubernetes'] | take 5"
 fetch-axiom-key axiom query "['corp-kubernetes'] | take 5"
 with-credentials google.personal -- gws gmail users getProfile --params '{"userId":"me"}'
 with-credentials ssh -- git fetch origin
+with-credentials op.personal -- op item list --categories Login --format json
 with-credentials --doctor
 ```
 
@@ -169,6 +170,16 @@ is enough. Profile mappings are in [credentials.nix](home/programs/credentials.n
 Configured provider namespaces use Switchboard. Add `--draft` before the profile
 to prepare a write, or `--apply` to approve and execute it. Exit 70 means the write
 outcome is uncertain: reconcile it before retrying.
+
+`op.AUTH_PROFILE` runs read-only 1Password CLI commands with that configured
+service account. The agent chooses the vault, item and fields at runtime;
+websites need no Nix entries. Only the CLI receives its bootstrap token, and
+lookup failures stop without desktop fallback. Supported commands are `read`,
+`item get/list/ls`, `vault get/list/ls` and `whoami`, with flags after the command.
+Capture successful CLI stdout privately inside the consuming script; failed CLI
+output and any response containing its bootstrap token are withheld. Never
+print returned credentials in routine output or save them in Git. This route
+does not depend on website profiles or Switchboard namespace discovery.
 
 Provision scoped 1Password access separately. Store the `personal` service-account
 token at `~/.config/agent-credentials/personal.token` (under `XDG_CONFIG_HOME` when

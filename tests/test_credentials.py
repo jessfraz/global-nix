@@ -607,6 +607,167 @@ else:
                 self.assertFalse(self.marker.exists())
                 self.assertNotIn("test-only-", result.stdout + result.stderr)
 
+    def test_machine_op_cli_selects_items_without_website_profiles(self) -> None:
+        self.scoped_profile()
+        profile_path = self.config / "with-credentials/profiles.json"
+        (self.root / "bin/op").write_text(
+            f"#!{sys.executable}\n"
+            "import json,os,sys\n"
+            "assert os.environ['OP_SERVICE_ACCOUNT_TOKEN'] == 'test-only-bootstrap-token'\n"
+            "assert os.environ['OP_BIOMETRIC_UNLOCK_ENABLED'] == 'false'\n"
+            "assert {k for k in os.environ if k.startswith('OP_')} == "
+            "{'OP_SERVICE_ACCOUNT_TOKEN','OP_BIOMETRIC_UNLOCK_ENABLED'}\n"
+            "print(json.dumps({'arguments':sys.argv[1:],'value':'test-only-login-value'}))\n"
+        )
+        self.env["OP_BIOMETRIC_UNLOCK_ENABLED"] = "true"
+        for configuration in ("absent", "malformed"):
+            profile_path.unlink(missing_ok=True)
+            if configuration == "malformed":
+                profile_path.write_text("not valid JSON")
+            for arguments in [
+                ["item", "get", "first-login", "--format", "json"],
+                ["item", "get", "second-login", "--format", "json"],
+                ["item", "list", "--vault", "Fixture Vault", "--format", "json"],
+                ["read", "op://Fixture Vault/selected-login/username"],
+            ]:
+                with self.subTest(configuration=configuration, arguments=arguments):
+                    result = self.run_cli("op.fixture-auth", "--", "op", *arguments)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(
+                        json.loads(result.stdout),
+                        {"arguments": arguments, "value": "test-only-login-value"},
+                    )
+                    self.assertNotIn(
+                        "test-only-bootstrap", result.stdout + result.stderr
+                    )
+
+    def test_machine_op_cli_never_exports_bootstrap_to_arbitrary_commands_or_falls_back(
+        self,
+    ) -> None:
+        token = self.scoped_profile()
+        self.set_profiles({})
+        command = [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; Path.home().joinpath('started').touch()",
+        ]
+        for arguments in [
+            command,
+            ["op", "run", "--", *command],
+            ["op", "item", "edit", "fixture", "password=unexpected"],
+            [str(self.root / "bin/op"), "item", "list"],
+        ]:
+            with self.subTest(arguments=arguments):
+                rejected = self.run_cli("op.fixture-auth", "--", *arguments)
+                self.assertNotEqual(rejected.returncode, 0)
+                self.assertEqual(rejected.stdout, "")
+                self.assertFalse(self.marker.exists())
+                self.assertFalse((self.root / "op-called").exists())
+                self.assertNotIn("test-only-", rejected.stdout + rejected.stderr)
+        for case in ("permissions", "directory", "symlink", "missing", "empty"):
+            with self.subTest(token=case):
+                token.unlink(missing_ok=True)
+                token.write_text("test-only-bootstrap-token\n")
+                token.chmod(0o600)
+                token.parent.chmod(0o700)
+                if case == "permissions":
+                    token.chmod(0o644)
+                elif case == "directory":
+                    token.parent.chmod(0o755)
+                elif case == "symlink":
+                    token.unlink()
+                    token.symlink_to(self.cache)
+                elif case == "missing":
+                    token.unlink()
+                else:
+                    token.write_text("")
+                rejected = self.run_cli("op.fixture-auth", "--", "op", "item", "list")
+                self.assertNotEqual(rejected.returncode, 0)
+                self.assertEqual(rejected.stdout, "")
+                self.assertFalse((self.root / "op-called").exists())
+                self.assertNotIn("test-only-", rejected.stdout + rejected.stderr)
+        token.write_text("test-only-bootstrap-token\n")
+        token.chmod(0o600)
+        (self.root / "bin/op").write_text(
+            f"#!{sys.executable}\n"
+            "import os,pathlib,sys\n"
+            "assert sys.argv[1:] == ['item','list']\n"
+            "assert os.environ['OP_BIOMETRIC_UNLOCK_ENABLED'] == 'false'\n"
+            "assert os.environ['OP_SERVICE_ACCOUNT_TOKEN'] == 'test-only-bootstrap-token'\n"
+            "pathlib.Path(os.environ['HOME'],'op-called').touch()\n"
+            "print(os.environ['OP_SERVICE_ACCOUNT_TOKEN'])\n"
+            "if os.environ['FIXTURE_OP_MODE'] == 'failure':\n"
+            "    print(os.environ['OP_SERVICE_ACCOUNT_TOKEN'],file=sys.stderr)\n"
+            "    raise SystemExit(23)\n"
+        )
+        for mode in ("failure", "bootstrap-output"):
+            with self.subTest(provider=mode):
+                (self.root / "op-called").unlink(missing_ok=True)
+                self.env["FIXTURE_OP_MODE"] = mode
+                rejected = self.run_cli("op.fixture-auth", "--", "op", "item", "list")
+                self.assertNotEqual(rejected.returncode, 0)
+                if mode == "failure":
+                    self.assertEqual(rejected.returncode, 23)
+                self.assertTrue((self.root / "op-called").exists())
+                self.assertEqual(rejected.stdout, "")
+                self.assertNotIn("test-only-", rejected.stdout + rejected.stderr)
+
+    def test_machine_op_cli_cancellation_reaps_the_credential_bearing_group(
+        self,
+    ) -> None:
+        self.scoped_profile()
+        self.set_profiles({})
+        (self.root / "bin/op").write_text(
+            f"#!{sys.executable}\n"
+            "import os,pathlib,subprocess,sys,time\n"
+            "assert os.environ['OP_SERVICE_ACCOUNT_TOKEN'] == 'test-only-bootstrap-token'\n"
+            "subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'])\n"
+            "pathlib.Path(os.environ['HOME'],'started').write_text(str(os.getpid()))\n"
+            "time.sleep(60)\n"
+        )
+        with subprocess.Popen(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "op.fixture-auth",
+                "--",
+                "op",
+                "item",
+                "list",
+            ],
+            env=self.env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ) as process:
+            try:
+                deadline = time.monotonic() + 5
+                while not self.marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(self.marker.exists(), "The real op child must start")
+                child_pid = int(self.marker.read_text())
+                process.send_signal(signal.SIGTERM)
+                stdout, stderr = process.communicate(timeout=5)
+                self.assertEqual(process.returncode, 128 + signal.SIGTERM)
+                self.assertEqual(stdout, "")
+                self.assertNotIn("test-only-", stderr)
+                for _ in range(100):
+                    try:
+                        os.killpg(child_pid, 0)
+                    except ProcessLookupError:
+                        break
+                    time.sleep(0.01)
+                else:
+                    self.fail("Credential-bearing op group survived cancellation")
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                if self.marker.exists():
+                    try:
+                        os.killpg(int(self.marker.read_text()), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+
     def test_scoped_lookup_failure_does_not_fall_back_or_expose_stderr(self) -> None:
         self.scoped_profile()
         self.env["FIXTURE_OP_FAIL"] = "1"
