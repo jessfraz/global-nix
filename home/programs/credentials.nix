@@ -166,6 +166,8 @@ in {
           strip_quotes = true;
         })
     ];
+    agent-chrome-macinator = one (agent "k644y4by4poouyvlur2pwjddhm" "macinator" ["PLAYWRIGHT_MCP_EXTENSION_TOKEN"]);
+    agent-chrome-macmini = one (agent "k644y4by4poouyvlur2pwjddhm" "macmini" ["PLAYWRIGHT_MCP_EXTENSION_TOKEN"]);
     vault.environment.VAULT_ADDR = "http://vault.hawk-dinosaur.ts.net";
   };
 }
