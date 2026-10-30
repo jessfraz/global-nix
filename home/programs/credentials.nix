@@ -73,6 +73,12 @@ in {
 
   home.packages =
     [launcher]
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+      (pkgs.writeShellScriptBin "nas-smb-mount" ''
+        exec ${pkgs.python3}/bin/python3 ${../../scripts/nas-smb-mount.py} \
+          --credentials-command ${launcher}/bin/with-credentials "$@"
+      '')
+    ]
     ++ lib.mapAttrsToList (name: profile:
       pkgs.writeShellScriptBin name ''
         exec ${launcher}/bin/with-credentials ${profile} -- "$@"
@@ -137,6 +143,11 @@ in {
       (agent "u67k6tivychxtzjq27yvpr5s7u" "wzuup7ye2mbzheqyt2l5hvf54e" ["UNIFI_PROTECT_API_KEY" "UNIFI_ACCESS_API_KEY"])
       (agent "u67k6tivychxtzjq27yvpr5s7u" "drive-api-key" ["UNIFI_DRIVE_API_KEY"])
       (agent "u67k6tivychxtzjq27yvpr5s7u" "remote-network" ["UNIFI_REMOTE_API_KEY"])
+    ];
+    nas-smb.secrets = [
+      (agent "u67k6tivychxtzjq27yvpr5s7u" "nas-smb-url" ["NAS_SMB_URL"])
+      (agent "u67k6tivychxtzjq27yvpr5s7u" "nas-smb-username" ["NAS_SMB_USERNAME"])
+      (agent "u67k6tivychxtzjq27yvpr5s7u" "nas-smb-password" ["NAS_SMB_PASSWORD"])
     ];
     tailscale = one (agent "wtljtr2cgswlvjmxzjd7j7bph4" "apikey" ["TAILSCALE_API_KEY"]);
     home-assistant = {

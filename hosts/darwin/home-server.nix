@@ -4,6 +4,7 @@
   imports = [
     ./tailscale-home-server.nix
     ./coredns.nix
+    ./nas-smb.nix
     ./containers/tripitcalb0t.nix
     ./containers/znc.nix
   ];
