@@ -4,6 +4,7 @@
   config,
   lib,
   hostname,
+  osConfig,
   ...
 }: {
   imports = [
@@ -29,7 +30,12 @@
       ExecStart = "${inputs.agent.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/agent --config ${config.xdg.configHome}/agent/config.toml maintain";
       WorkingDirectory = config.home.homeDirectory;
       # Workers need the same provider and credential tools as interactive shells.
-      Environment = ["PATH=${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin"];
+      Environment =
+        ["PATH=${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin"]
+        # User managers can retain a previous login's driver environment.
+        ++ lib.optionals (hostname == "system76") [
+          "VK_DRIVER_FILES=${osConfig.environment.sessionVariables.VK_DRIVER_FILES}"
+        ];
       Restart = "on-failure";
       RestartSec = 10;
       # The worker handles SIGINT to stop its registration and background tasks.
