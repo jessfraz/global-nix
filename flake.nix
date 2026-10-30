@@ -180,6 +180,7 @@
       };
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
       agentCli = agent.packages.${system}.default;
+      chromeControl = pkgs.callPackage ./pkgs/chrome-control.nix {};
       cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};
       stripeCli = pkgs."stripe-cli";
       rustPlatform = pkgs.makeRustPlatform {
@@ -297,6 +298,7 @@
           # macOS-specific packages
           with pkgs; [
             # Add macOS-specific packages here
+            chromeControl
             mole
             pinentry_mac
           ];
@@ -354,27 +356,31 @@
           ++ builtins.filter (output: builtins.hasAttr output package) ["man" "info"]
         )))
       cachePackages;
-    in {
-      ha-shipments = shipmentsCli;
-      ha-maintenance = maintenanceCli;
-      ha-filevault = filevaultCli;
-      agent = agentCli;
-      zoo = zooCli;
-      codex = codexCli;
-      gws = gwsCli;
-      cli-completions = cliCompletions;
-      disktree = disktreePackage;
-      kicad = kicadPackage;
-      orca-slicer = orcaSlicerPackage;
-      default = packageBundle;
-      # Only package outputs belong in the public cache, never generated host
-      # configurations or Home Manager generations.
-      ci-cache = pkgs.linkFarm "ci-cache" (map (package: {
-          name = builtins.unsafeDiscardStringContext (builtins.baseNameOf package.outPath);
-          path = package;
-        })
-        cacheOutputs);
-    };
+    in
+      {
+        ha-shipments = shipmentsCli;
+        ha-maintenance = maintenanceCli;
+        ha-filevault = filevaultCli;
+        agent = agentCli;
+        zoo = zooCli;
+        codex = codexCli;
+        gws = gwsCli;
+        cli-completions = cliCompletions;
+        disktree = disktreePackage;
+        kicad = kicadPackage;
+        orca-slicer = orcaSlicerPackage;
+        default = packageBundle;
+        # Only package outputs belong in the public cache, never generated host
+        # configurations or Home Manager generations.
+        ci-cache = pkgs.linkFarm "ci-cache" (map (package: {
+            name = builtins.unsafeDiscardStringContext (builtins.baseNameOf package.outPath);
+            path = package;
+          })
+          cacheOutputs);
+      }
+      // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+        chrome-control = chromeControl;
+      };
   in {
     # Generate packages for all supported systems
     packages = forAllSystems mkPackages;

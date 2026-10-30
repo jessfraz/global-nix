@@ -128,6 +128,13 @@ upstream's Linux conventions. `phone` requires separate local setup through the
 [Switchboard phone guide](https://github.com/jessfraz/switchboard/blob/main/docs/phone.md).
 Keep provider credentials and transcript keys outside Nix and Git.
 
+`chrome-control --user-data-dir PATH --port 9222` recovers unattended native
+debugging in an existing nondefault macOS Chrome data root. It reuses a working
+connection or quits Chrome normally and restores its session with the debugging
+flag. Unsaved work can cancel the restart; Chrome is never force-killed. The data
+root must already exist. No accounts, credentials, or website settings belong in
+Nix.
+
 ## Home Assistant API CLIs
 
 The shared package set includes `ha-shipments`, `ha-maintenance`, and
