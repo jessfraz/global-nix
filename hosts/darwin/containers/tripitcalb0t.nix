@@ -1,8 +1,11 @@
 {
   hostname,
-  volumesPath,
+  homeDir,
   ...
-}: {
+}: let
+  # Live credentials are private runtime files, not removable-drive state.
+  credentialsPath = "${homeDir}/.config/tripitcalb0t";
+in {
   launchd.user.agents."${hostname}.tripitcalb0t" = {
     serviceConfig = {
       ProgramArguments = [
@@ -11,11 +14,11 @@
         "--rm"
         "--name=tripitcalb0t"
         "-v"
-        "${volumesPath}/tripitcalb0t-service-auth.json:/root/.tripitcalb0t/google.json:ro"
+        "${credentialsPath}/google.json:/root/.tripitcalb0t/google.json:ro"
         "-v"
         "/etc/localtime:/etc/localtime:ro"
         "--env-file"
-        "${volumesPath}/tripitcalb0t-env-file.txt"
+        "${credentialsPath}/environment"
         "jess/tripitcalb0t"
         "--interval"
         "5m"

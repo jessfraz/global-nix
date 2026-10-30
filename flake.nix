@@ -523,14 +523,13 @@
         username = "minitron";
         homeDir = "/Users/${username}";
         hostname = "macmini";
-        volumesPath = "/Volumes/XTRM-Q/volumes";
         system = "aarch64-darwin";
       in
         nix-darwin.lib.darwinSystem {
           system = system;
 
           specialArgs = {
-            inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath tplIpPrefix tplResolverFile;
+            inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname tplIpPrefix tplResolverFile;
           };
           modules = [
             {
@@ -548,7 +547,7 @@
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.extraSpecialArgs = {
-                inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname volumesPath tplIpPrefix tplResolverFile;
+                inherit inputs username githubUsername gitGpgKey gitName gitEmail homeDir hostname tplIpPrefix tplResolverFile;
               };
               home-manager.users.${username}.imports = [
                 dotfiles.homeManagerModules.default
