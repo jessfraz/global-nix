@@ -7,9 +7,11 @@ import inspect
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +19,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class DaemonStatus:
     status: str
+    pid: int | None
     managed_path: Path
     managed_version: str | None
     server_version: str | None
@@ -27,6 +30,7 @@ class DaemonStatus:
         value = json.loads(output)
         return cls(
             status=value["status"],
+            pid=value.get("pid"),
             managed_path=Path(value["managedCodexPath"]),
             managed_version=value.get("managedCodexVersion"),
             server_version=value.get("appServerVersion"),
@@ -37,6 +41,37 @@ class DaemonStatus:
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
+
+
+def finish_process_group(group: int) -> None:
+    def running() -> bool:
+        result = subprocess.run(
+            ["ps", "-A", "-o", "pgid=,stat="],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+        return any(
+            int(pid_group) == group and not state.startswith("Z")
+            for pid_group, state in (
+                line.split() for line in result.stdout.splitlines()
+            )
+        )
+
+    for termination in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(group, termination)
+        except ProcessLookupError:
+            return
+        deadline = time.monotonic() + 5
+        while running():
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(0.05)
+        else:
+            return
+    raise RuntimeError("isolated daemon process group survived cleanup")
 
 
 def validate_layout(package: Path, source: Path) -> bool:
@@ -120,6 +155,7 @@ def check_package(
         return DaemonStatus.parse(run(codex, "app-server", "daemon", action))
 
     started: DaemonStatus | None = None
+    process_group: int | None = None
     daemon_attempted = False
     try:
         includes_zsh = validate_layout(package, source)
@@ -145,6 +181,14 @@ def check_package(
             started.socket_path.is_relative_to(codex_home),
             "daemon socket is not scoped to the isolated home",
         )
+        if started.pid is None:
+            raise RuntimeError("started daemon did not return its PID")
+        group = os.getpgid(started.pid)
+        require(
+            group == started.pid and group != os.getpgrp(),
+            "daemon did not create its own process group",
+        )
+        process_group = group
         running = lifecycle("version")
         require(
             running.status == "running"
@@ -195,6 +239,15 @@ def check_package(
                     and not started.socket_path.is_symlink(),
                     f"daemon socket survived shutdown; inspect {home}",
                 )
+            if process_group is not None:
+                # Plugin Git children can outlive the stopped daemon. Only its
+                # verified isolated group belongs to this check.
+                try:
+                    finish_process_group(process_group)
+                except Exception as error:
+                    raise RuntimeError(
+                        f"daemon cleanup failed; inspect {home}"
+                    ) from error
         shutil.rmtree(home)
     print(
         f"Codex {version}: package layout, helpers, daemon startup/version/shutdown passed"
