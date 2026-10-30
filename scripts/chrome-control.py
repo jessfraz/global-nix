@@ -409,8 +409,11 @@ class ChromeControl:
                 request = self.system.quit(current)
                 while True:
                     current = self.process()
-                    if current is None and request.poll() is not None:
+                    exit_code = request.poll()
+                    if current is None and exit_code is not None:
                         break
+                    if exit_code is not None and exit_code != 0:
+                        raise ControlError("normal_quit_unavailable")
                     if current is not None and (current.pid, current.started) != (
                         process.pid,
                         process.started,

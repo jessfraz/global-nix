@@ -12,6 +12,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -39,7 +40,7 @@ class IsolatedChromeFixture(control.ChromeSystem):
         # Cold start and every recovery relaunch use this same boundary.
         child = super().start(
             [
-                "--headless=new",
+                # Normal macOS Quit requires the GUI application's lifecycle.
                 "--use-mock-keychain",
                 "--password-store=basic",
                 "--no-first-run",
@@ -53,11 +54,30 @@ class IsolatedChromeFixture(control.ChromeSystem):
             for argument in arguments
             if argument.startswith("--user-data-dir=")
         )
-        metadata = {"pid": child.pid, "pgid": child.pid, "root": root}
+        metadata = {"pid": child.pid, "pgid": child.pid, "root": root, "tabs": []}
         self.created.append(metadata)
         self.receipt.write_text(json.dumps(self.created))
         print(json.dumps({"fixture_created": metadata}), flush=True)
         return child
+
+    def endpoint_ready(self, port):
+        if not super().endpoint_ready(port):
+            return False
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), control.NoRedirect()
+        )
+        with opener.open(f"http://127.0.0.1:{port}/json/list", timeout=1) as response:
+            targets = json.load(response)
+        tabs = sorted(
+            target["id"]
+            for target in targets
+            if target.get("type") == "page" and isinstance(target.get("id"), str)
+        )
+        if tabs != self.created[-1]["tabs"]:
+            self.created[-1]["tabs"] = tabs
+            self.receipt.write_text(json.dumps(self.created))
+            print(json.dumps({"fixture_targets": self.created[-1]}), flush=True)
+        return True
 
     def close(self, grace=3):
         # These groups were created with start_new_session by this fixture.
@@ -108,12 +128,13 @@ class IsolatedChromeFixture(control.ChromeSystem):
 
 
 class Forwarder:
-    def __init__(self, pending: bool = False):
+    def __init__(self, pending: bool = False, exit_code: int = 0):
         self.pending = pending
+        self.exit_code = exit_code
         self.pid = 202
 
     def poll(self):
-        return None if self.pending else 0
+        return None if self.pending else self.exit_code
 
 
 class FixtureSystem:
@@ -290,6 +311,23 @@ class ChromeControlTests(unittest.TestCase):
         self.assertEqual(self.system.launches, [])
         self.assertEqual(self.state_path.read_bytes(), before)
 
+    def test_rejected_quit_is_reported_without_waiting_or_relaunching(self):
+        before = self.state_path.read_bytes()
+
+        def reject(process):
+            self.system.quits.append(process.pid)
+            return Forwarder(exit_code=1)
+
+        with (
+            patch.object(self.system, "quit", side_effect=reject),
+            self.assertRaisesRegex(control.ControlError, "normal_quit_unavailable"),
+        ):
+            self.helper(timeout=0.12).ensure()
+        self.assertEqual(self.system.quits, [101])
+        self.assertEqual(self.system.launches, [])
+        self.assertTrue(self.system.running)
+        self.assertEqual(self.state_path.read_bytes(), before)
+
     def test_unconfirmed_root_owner_is_never_quit(self):
         self.system.foreign_root = True
         with self.assertRaisesRegex(
@@ -444,8 +482,18 @@ class ChromeControlTests(unittest.TestCase):
         self.assertEqual(
             json.loads(receipt.read_text()),
             [
-                {"pid": child.pid, "pgid": child.pid, "root": str(self.root)},
-                {"pid": child.pid, "pgid": child.pid, "root": str(self.root)},
+                {
+                    "pid": child.pid,
+                    "pgid": child.pid,
+                    "root": str(self.root),
+                    "tabs": [],
+                },
+                {
+                    "pid": child.pid,
+                    "pgid": child.pid,
+                    "root": str(self.root),
+                    "tabs": [],
+                },
             ],
         )
         with self.assertRaisesRegex(ValueError, "Only Chrome for Testing"):
