@@ -94,6 +94,7 @@ in {
     personal.token_file = "${config.xdg.configHome}/agent-credentials/personal.token";
   };
 
+  xdg.configFile."with-credentials/profiles.json".force = true;
   xdg.configFile."with-credentials/profiles.json".text = builtins.toJSON {
     "github.personal" = {
       github_username = githubUsername;
