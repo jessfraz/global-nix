@@ -46,6 +46,8 @@ link from `rex server status`; `rex server tailscale login` requests a new link.
 Its pinned preview builds without a package token and stays out of the public cache.
 On macOS, the `rex` launcher requires Rex.app or Rex Beta.app in `/Applications`
 or `~/Applications`.
+The macOS Agent service uses the system and Home Manager package environments
+so provider backends resolve to the same pinned tools as interactive shells.
 
 System76 also provides wired pre-boot disk unlocking through OpenSSH in the
 systemd initrd. It uses DHCP on Ethernet and port 2222, with the configured

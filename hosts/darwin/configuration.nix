@@ -5,7 +5,6 @@
   inputs,
   config,
   pkgs,
-  lib,
   ...
 }: let
   maxFilesSoft = 65536;
@@ -21,19 +20,11 @@ in {
     enable = true;
     configFile = "${homeDir}/.config/agent/config.toml";
     workingDirectory = homeDir;
-    extraPackages =
-      [
-        inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.gws
-        inputs.switchboard.packages.${pkgs.stdenv.hostPlatform.system}.switchboard
-        inputs.switchboard.packages.${pkgs.stdenv.hostPlatform.system}.messages
-        pkgs.gh
-        pkgs.uv
-        pkgs.ripgrep
-        pkgs.tailscale
-      ]
-      ++ builtins.filter
-      (package: builtins.elem (lib.getName package) ["rex" "with-credentials"])
-      config.home-manager.users.${username}.home.packages;
+    extraPackages = [
+      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.default
+      config.home-manager.users.${username}.home.path
+      pkgs.tailscale
+    ];
   };
 
   home-manager.users.${username}.programs.agent = {
