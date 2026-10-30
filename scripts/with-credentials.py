@@ -636,7 +636,22 @@ def run_onepassword(profile: str, command: list[str]) -> int:
     return 0
 
 
+def ssh_socket_available(path: str) -> bool:
+    try:
+        if not stat.S_ISSOCK(Path(path).stat().st_mode):
+            return False
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(1)
+            connection.connect(path)
+        return True
+    except OSError:
+        return False
+
+
 def ssh_socket(launch: bool = False) -> tuple[str | None, str]:
+    inherited = os.environ.get("SSH_AUTH_SOCK")
+    if inherited and ssh_socket_available(inherited):
+        return inherited, "ready"
     executable = shutil.which("gpgconf")
     if executable is None:
         return None, "gpgconf_unavailable"
@@ -658,11 +673,8 @@ def ssh_socket(launch: bool = False) -> tuple[str | None, str]:
                 timeout=5,
                 check=True,
             )
-        if not Path(path).exists() or not stat.S_ISSOCK(Path(path).stat().st_mode):
+        if not ssh_socket_available(path):
             return None, "socket_unavailable"
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-            connection.settimeout(1)
-            connection.connect(path)
         return path, "ready"
     except (OSError, subprocess.SubprocessError):
         return None, "socket_unavailable"

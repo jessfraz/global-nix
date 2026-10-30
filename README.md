@@ -145,6 +145,8 @@ nix profile install .#ha-shipments .#ha-maintenance .#ha-filevault
 
 `with-credentials PROFILE -- COMMAND` resolves credentials before starting a child
 command and preserves its exit status. It works in scripts and GUI jobs too.
+The `ssh` profile preserves a reachable inherited `SSH_AUTH_SOCK`; when it is
+missing or stale, it restores the configured GPG agent socket.
 
 ```sh
 with-credentials axiom -- axiom query "['corp-kubernetes'] | take 5"

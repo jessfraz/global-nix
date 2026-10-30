@@ -10,6 +10,7 @@ import os
 import shlex
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -1848,16 +1849,36 @@ else:
                     self.assertTrue(self.marker.exists())
                     self.assertEqual(result.stderr, "")
 
+    def test_ssh_launcher_preserves_a_live_inherited_agent(self) -> None:
+        path = self.root / "ssh-agent.sock"
+        self.env["SSH_AUTH_SOCK"] = str(path)
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as agent:
+            agent.bind(str(path))
+            agent.listen(4)
+            result = self.run_cli(
+                "ssh",
+                "--",
+                sys.executable,
+                "-c",
+                "import os,socket; p=os.environ['SSH_AUTH_SOCK']; "
+                "s=socket.socket(socket.AF_UNIX); s.connect(p); print(p)",
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), str(path))
+
     def test_ssh_launcher_repairs_socket_with_an_empty_isolated_agent(self) -> None:
         executable = shutil.which("gpgconf")
         if executable is None:
             self.skipTest("gpgconf unavailable")
         directory = self.root / "gnupg"
         directory.mkdir(mode=0o700)
+        stale = self.root / "stale-agent.sock"
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as agent:
+            agent.bind(str(stale))
         self.env.update(
             PATH=os.environ["PATH"],
             GNUPGHOME=str(directory),
-            SSH_AUTH_SOCK="/nonexistent-agent",
+            SSH_AUTH_SOCK=str(stale),
         )
         self.addCleanup(
             lambda: subprocess.run(
@@ -1872,7 +1893,8 @@ else:
             "--",
             sys.executable,
             "-c",
-            "import os,socket; p=os.environ['SSH_AUTH_SOCK']; assert p != '/nonexistent-agent'; s=socket.socket(socket.AF_UNIX); s.connect(p)",
+            "import os,socket,sys; p=os.environ['SSH_AUTH_SOCK']; assert p != sys.argv[1]; s=socket.socket(socket.AF_UNIX); s.connect(p)",
+            str(stale),
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
