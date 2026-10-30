@@ -232,7 +232,8 @@ worktree sweep. `cleanup-worktrees --dry-run` saves just worktree plans under
 `$XDG_STATE_HOME/cleanup` (default `~/.local/state/cleanup`);
 `cleanup-worktrees --execute DIRECTORY` executes reviewed plans. Busy, dirty,
 locked or unverifiable worktrees are skipped. Sweeps retain primary clones and
-submodule checkouts, even when their `.git` entry is a file.
+their submodule checkouts. Removing a finished linked worktree also removes its
+checked-out submodules.
 Use existing home clones for normal work, or `wknew <branch>` for a sibling
 worktree. See [git-cleanup](scripts/git-cleanup) and
 [cleanup-worktrees.py](scripts/cleanup-worktrees.py) for options and refusal rules.
