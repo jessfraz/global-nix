@@ -35,7 +35,13 @@
       protocol = "tls-terminated-tcp";
     };
   };
-  httpDeviceRoutes = lib.mapAttrsToList (_: definition: "${definition.address}/32") (lib.filterAttrs (_: definition: definition ? address) tailscaleServiceDefinitions);
+  subnetRoutes =
+    lib.mapAttrsToList (_: definition: "${definition.address}/32") (lib.filterAttrs (_: definition: definition ? address) tailscaleServiceDefinitions)
+    ++ [
+      # Reach the UniFi consoles without installing agents on their firmware.
+      "192.168.1.140/32"
+      "192.168.1.175/32"
+    ];
   tailscaleServices =
     lib.mapAttrs (
       name: definition: let
@@ -57,7 +63,7 @@
     )
     tailscaleServiceDefinitions;
   tailscaleServiceNames = lib.mapAttrsToList (_: service: service.serviceName) tailscaleServices;
-  advertisedRoutes = lib.concatStringsSep "," httpDeviceRoutes;
+  advertisedRoutes = lib.concatStringsSep "," subnetRoutes;
   jq = lib.getExe pkgs.jq;
   # Always address the system daemon, even if the old GUI client is installed.
   tailscale = "${lib.getExe pkgs.tailscale} --socket=/var/run/tailscaled.socket";
@@ -268,7 +274,7 @@ in {
       fi
       if ! printf '%s' "$prefs_json" | ${jq} -e \
         --arg hostname ${lib.escapeShellArg hostname} \
-        --argjson routes ${lib.escapeShellArg (builtins.toJSON httpDeviceRoutes)} \
+        --argjson routes ${lib.escapeShellArg (builtins.toJSON subnetRoutes)} \
         '."advertise-exit-node" == false
           and ."shields-up" == false
           and .hostname == $hostname

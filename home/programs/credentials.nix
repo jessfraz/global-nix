@@ -135,6 +135,7 @@ in {
     unifi.secrets = [
       (agent "u67k6tivychxtzjq27yvpr5s7u" "hxisub665xrph6eyepsgqgccnq" ["UNIFI_NETWORK_API_KEY"])
       (agent "u67k6tivychxtzjq27yvpr5s7u" "wzuup7ye2mbzheqyt2l5hvf54e" ["UNIFI_PROTECT_API_KEY" "UNIFI_ACCESS_API_KEY"])
+      (agent "u67k6tivychxtzjq27yvpr5s7u" "drive-api-key" ["UNIFI_DRIVE_API_KEY"])
       (agent "u67k6tivychxtzjq27yvpr5s7u" "remote-network" ["UNIFI_REMOTE_API_KEY"])
     ];
     tailscale = one (agent "wtljtr2cgswlvjmxzjd7j7bph4" "apikey" ["TAILSCALE_API_KEY"]);
