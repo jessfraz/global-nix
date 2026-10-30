@@ -343,7 +343,16 @@ def prepare(root: Path, remote: str, base: str | None, force: bool) -> Plan:
         for record in records
         if record
     ]
-    primary = Path(worktrees[0]["worktree"]).resolve()
+    git_directory = Path(
+        value(root, "rev-parse", "--path-format=absolute", "--git-dir")
+    ).resolve()
+    # Submodules can report their metadata directory as the primary worktree.
+    # Only linked worktrees have per-worktree storage distinct from common Git.
+    primary = (
+        root
+        if git_directory == Path(repository).resolve()
+        else Path(worktrees[0]["worktree"]).resolve()
+    )
     if "bare" in worktrees[0]:
         raise CleanupError("Cleanup from a bare primary repository is not supported")
     for worktree in worktrees:
