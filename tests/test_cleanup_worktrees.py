@@ -47,6 +47,26 @@ class SweepTests(unittest.TestCase):
         self.repo.git(self.repo.primary, "worktree", "add", "-b", branch, str(path))
         return path
 
+    def test_sweep_never_plans_a_submodule_primary_checkout(self) -> None:
+        submodule = self.repo.primary / "vendor" / "dependency"
+        self.repo.git(
+            self.repo.primary,
+            "submodule",
+            "add",
+            str(self.repo.remote),
+            "vendor/dependency",
+        )
+        self.repo.git(submodule, "switch", "--detach")
+        head = self.repo.git(submodule, "rev-parse", "HEAD")
+        result = self.run_sweep("--root", str(self.repo.primary), "--dry-run")
+        plans = list((self.repo.root / "state/cleanup").glob("*/*.plan.json"))
+        self.assertEqual(plans, [], result.stdout)
+        self.assertNotIn("WOULD REMOVE", result.stdout)
+        executed = self.run_sweep("--root", str(self.repo.primary))
+        self.assertNotIn("REMOVED", executed.stdout)
+        self.assertTrue(submodule.is_dir())
+        self.assertEqual(self.repo.git(submodule, "rev-parse", "HEAD"), head)
+
     def test_sweep_removes_merged_checkout_but_keeps_unmerged_and_primary(self) -> None:
         container = self.repo.root / "finished"
         container.mkdir()
