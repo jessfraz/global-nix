@@ -21,16 +21,16 @@
     "codex": {
       "flake": false,
       "locked": {
-        "lastModified": 1793125159,
-        "narHash": "sha256-b9PpwNQeZsJIN4wbGA3FLfWAKd2EDMN5E/zj/Y62/vk=",
+        "lastModified": 1793295870,
+        "narHash": "sha256-4zxnVT9PxIj0+ULQ4LSA46GmvfyNTueZ+BsQ2SZwk1I=",
         "owner": "openai",
         "repo": "codex",
-        "rev": "360319d8dee62d87e2d59fc0c21805d79519cfed",
+        "rev": "6ff1e1ca3b30fc8b914720681fcf5fe62e95f856",
         "type": "github"
       },
       "original": {
         "owner": "openai",
-        "ref": "rust-v0.165.0",
+        "ref": "rust-v0.166.0",
         "repo": "codex",
         "type": "github"
       }
@@ -102,11 +102,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792435427,
-        "narHash": "sha256-bUGr58fYK5ySvYz55D4UsT6xGsPKJg+/Tdg5zfzEi+U=",
+        "lastModified": 1793383843,
+        "narHash": "sha256-/ASWi9eUwJgGSdg9SkGZukkv1Pmxxawa4SwnjcAdrY8=",
         "ref": "refs/heads/main",
-        "rev": "3bb809c2aa3a4f53be1151732f2e70fa1869748d",
-        "revCount": 881,
+        "rev": "c3f0f9a77af40879cc7f0ad9297a4add7ae98b25",
+        "revCount": 882,
         "type": "git",
         "url": "https://github.com/jessfraz/.vim"
       },
@@ -204,11 +204,11 @@
         "zon2nix": "zon2nix"
       },
       "locked": {
-        "lastModified": 1793207264,
-        "narHash": "sha256-M7Q+t6bva5ipTCuArQIxFujeEZdIXg9Y+5fB65OO58o=",
+        "lastModified": 1793464451,
+        "narHash": "sha256-gnkiDou7XnlwHox+FIpD6+NM2inHFSKzBI2YgaOrwLw=",
         "owner": "ghostty-org",
         "repo": "ghostty",
-        "rev": "20ba6462d7de682a43839a469717f0cf3d5ceb5a",
+        "rev": "3bd54e025cc3349ee76ab1af7ec1ff8f7353632b",
         "type": "github"
       },
       "original": {
@@ -381,11 +381,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792737899,
-        "narHash": "sha256-P0/GhewcEQmAbzq3QunNWY2jLJaYH9F6c/5dEM/jQ4M=",
+        "lastModified": 1793418699,
+        "narHash": "sha256-+RpTlcdh9KqZ+ZiLkNSTvibQWm935EcIdBzRPCTFsrQ=",
         "owner": "LnL7",
         "repo": "nix-darwin",
-        "rev": "bb0b90dbd54e207100de72b5dcbe3188c98a4b69",
+        "rev": "ff0e21a414d4547183396da1b44a66f2577b65e9",
         "type": "github"
       },
       "original": {
@@ -439,11 +439,11 @@
     },
     "nixpkgs_4": {
       "locked": {
-        "lastModified": 1793110635,
-        "narHash": "sha256-dhoW6VgFWlaodSY5jrBn+CF2FLmaUvDVgM7+C7T2+NM=",
+        "lastModified": 1793341285,
+        "narHash": "sha256-Y1CiZ4SoBUjLQyQM/pY+rS2dXD3CHLPstF0lmOc73D4=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "31ecbaca1bdefa45dffc409f0250bd8039ea0010",
+        "rev": "1c89083e451e891152365b799595cf7790a43325",
         "type": "github"
       },
       "original": {
@@ -548,11 +548,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793174968,
-        "narHash": "sha256-u5nUf4cewaT36iIzG1s/VECktqUMiZaGF5BsgervsvQ=",
+        "lastModified": 1793434469,
+        "narHash": "sha256-+sgVNI2c67di+XIeMaz5KSei4T65kX68s5Nl0E5Gzbc=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "19ecdd08213836b36c4296a3a4f4af5a3d5308db",
+        "rev": "6ecf534a7c16e7c969f26838fdd8c93597ae93f3",
         "type": "github"
       },
       "original": {
@@ -572,11 +572,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793347073,
-        "narHash": "sha256-lYQ0NlKmg2fjt775Whs3iY0mNwKAWNvivuV5brN9Ls8=",
+        "lastModified": 1793461912,
+        "narHash": "sha256-eLIfhmLZYE+BPQaHPXsRGbB+qaBEN93EKWTrkm+JwdE=",
         "owner": "jessfraz",
         "repo": "switchboard",
-        "rev": "4cdd631be677fad41a70347b583331820d483b0b",
+        "rev": "4ce67fd4e8bb819bc2ec077dcf825e880e708b59",
         "type": "github"
       },
       "original": {
@@ -661,11 +661,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793208172,
-        "narHash": "sha256-heJKVZ/AJNTMPIlDfjn+Akn0cpwhZIlqQ5S8rq3ZtKI=",
+        "lastModified": 1793377875,
+        "narHash": "sha256-vatu1nOAykX0cU/7Djcpk+7KsEli+6nvNmzaX0wppRE=",
         "owner": "kittycad",
         "repo": "cli",
-        "rev": "f4b953c49e4f88a4f03444ea8c401df00294aab6",
+        "rev": "11d52fa35100e0a6bfaad2620f7f4d9bd0847daa",
         "type": "github"
       },
       "original": {
