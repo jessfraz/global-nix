@@ -78,7 +78,7 @@
     };
 
     ha-filevault = {
-      url = "github:jessfraz/ha-filevault/ba9c7ee8ffaebbbcd98649c90bd414cb6e0e0338";
+      url = "github:jessfraz/ha-filevault/98fb2ab4be4ddb1990c566ccf1cf9fc8069d33ae";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
