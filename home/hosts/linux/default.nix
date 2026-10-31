@@ -20,6 +20,9 @@
     };
   };
 
+  # Recover the managed unit after a partial Home Manager activation.
+  xdg.configFile."systemd/user/agent.service".force = true;
+
   systemd.user.services.agent = {
     Unit = {
       Description = "Agent worker";
