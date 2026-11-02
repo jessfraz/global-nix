@@ -27,7 +27,7 @@
     ratgdo-small-garage = mkPlainHttpService "192.168.1.12";
     ratgdo-gate = mkPlainHttpService "192.168.1.241";
     plex = {
-      destination = "127.0.0.1:32400";
+      destination = "ha:32400";
       protocol = "tls-terminated-tcp";
     };
     irc = {
