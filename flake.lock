@@ -5,11 +5,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1793646060,
-        "narHash": "sha256-AdOToTl+RjKRpQCsSipiFzHDEIJvgVyrBp5BG+sPEQc=",
+        "lastModified": 1793654458,
+        "narHash": "sha256-0vQaXwc9H4T3vgSUnnL3vDZftWyKOWuYrQC4P5oMbp4=",
         "owner": "jessfraz",
         "repo": "agent",
-        "rev": "863ebe7750aa45427e18b37d18a86dc0166b8766",
+        "rev": "6950ff52aa40d909a4a9db66c2e71955e6d5140a",
         "type": "github"
       },
       "original": {
@@ -572,11 +572,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793461912,
-        "narHash": "sha256-eLIfhmLZYE+BPQaHPXsRGbB+qaBEN93EKWTrkm+JwdE=",
+        "lastModified": 1793654311,
+        "narHash": "sha256-Uh2Zl8f9n5ZZwSHpI+/YAVTwoENejsguH9kMcC/X2qQ=",
         "owner": "jessfraz",
         "repo": "switchboard",
-        "rev": "4ce67fd4e8bb819bc2ec077dcf825e880e708b59",
+        "rev": "55aa115be3fdf1d20d51663f55c413680af34c0f",
         "type": "github"
       },
       "original": {
