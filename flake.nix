@@ -83,7 +83,7 @@
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
-    agent.url = "github:jessfraz/agent";
+    agent.url = "github:jessfraz/beep-boop";
 
     # FlakeHub CLI (fh)
     fh = {
