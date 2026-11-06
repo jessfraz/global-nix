@@ -37,7 +37,8 @@ policy permission for SSH.
 Linux installs Ghostty and runs Rex and the agent worker as systemd user services,
 with account-wide lingering so user services start at boot and survive logout.
 The worker starts after Rex and uses the private
-`~/.config/agent/config.toml`; initialize it once with `agent init --coordinator …`
+`~/.config/agent/config.toml`; initialize it once with
+`beep-boop init --coordinator …`
 before starting the worker. Connection details and credentials stay outside Nix.
 Check the worker with `systemctl --user status agent`.
 Check Rex with `rex --autostart=false server status` or `systemctl --user status rex`.

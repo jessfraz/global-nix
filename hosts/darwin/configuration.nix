@@ -13,7 +13,7 @@
 in {
   imports = [
     ../../modules/determinate-nix-settings.nix
-    inputs.agent.darwinModules.default
+    inputs.beep-boop.darwinModules.default
   ];
 
   services.agent = {
@@ -29,7 +29,7 @@ in {
 
   home-manager.users.${username}.programs.agent = {
     enable = true;
-    package = inputs.agent.packages.${pkgs.stdenv.hostPlatform.system}.default;
+    package = inputs.beep-boop.packages.${pkgs.stdenv.hostPlatform.system}.beep-boop;
     role = config.services.agent.role;
   };
 

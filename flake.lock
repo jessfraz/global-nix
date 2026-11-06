@@ -1,15 +1,15 @@
 {
   "nodes": {
-    "agent": {
+    "beep-boop": {
       "inputs": {
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1793937010,
-        "narHash": "sha256-kgRz8UmSZwnT+4CDlxhXc0tgUwyLvY587D9A8OW0swo=",
+        "lastModified": 1793996324,
+        "narHash": "sha256-azCaTgXz8U9kRUcr1Z3uLm+8GPO8kjAQz5eG+EoxQ5c=",
         "owner": "jessfraz",
         "repo": "beep-boop",
-        "rev": "51df07eb0265deb26c86b665ceeab5d13d7df114",
+        "rev": "6a2644e49588fad56b524ef94f19a9455d80ac42",
         "type": "github"
       },
       "original": {
@@ -75,11 +75,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793397487,
-        "narHash": "sha256-1Tt5YeE551WWH9g6YIlCGC/UYkqBFngBzro5uLh+XgI=",
+        "lastModified": 1793993676,
+        "narHash": "sha256-dwWnnzwi1G8P8cVBUHMCaFz40kk5QDqrYOSBdwwiUOI=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "cf538e077a54aa701745c784035af211ef523464",
+        "rev": "840bf82166079aba320050eed0917d115356b7fb",
         "type": "github"
       },
       "original": {
@@ -488,7 +488,7 @@
     },
     "root": {
       "inputs": {
-        "agent": "agent",
+        "beep-boop": "beep-boop",
         "codex": "codex",
         "disktree": "disktree",
         "dotfiles": "dotfiles",

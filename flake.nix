@@ -83,7 +83,7 @@
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
-    agent.url = "github:jessfraz/beep-boop";
+    beep-boop.url = "github:jessfraz/beep-boop";
 
     # FlakeHub CLI (fh)
     fh = {
@@ -108,7 +108,7 @@
     ha-packages,
     ha-maintenance,
     ha-filevault,
-    agent,
+    beep-boop,
     fh,
   } @ inputs: let
     # Global variables
@@ -179,7 +179,7 @@
         ];
       };
       zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
-      agentCli = agent.packages.${system}.default;
+      beepBoopCli = beep-boop.packages.${system}.beep-boop;
       chromeControl = pkgs.callPackage ./pkgs/chrome-control.nix {};
       cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};
       stripeCli = pkgs."stripe-cli";
@@ -236,7 +236,7 @@
       commonPackages =
         (with pkgs; [
           _1password-cli
-          agentCli
+          beepBoopCli
           axiomCli
           awscli2
           bash
@@ -361,7 +361,7 @@
         ha-shipments = shipmentsCli;
         ha-maintenance = maintenanceCli;
         ha-filevault = filevaultCli;
-        agent = agentCli;
+        beep-boop = beepBoopCli;
         zoo = zooCli;
         codex = codexCli;
         gws = gwsCli;

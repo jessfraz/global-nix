@@ -30,7 +30,7 @@
       Wants = ["rex.service"];
     };
     Service = {
-      ExecStart = "${inputs.agent.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/agent --config ${config.xdg.configHome}/agent/config.toml maintain";
+      ExecStart = "${inputs.beep-boop.packages.${pkgs.stdenv.hostPlatform.system}.beep-boop}/bin/beep-boop --config ${config.xdg.configHome}/agent/config.toml maintain";
       WorkingDirectory = config.home.homeDirectory;
       # Workers need the same provider and credential tools as interactive shells.
       Environment =
