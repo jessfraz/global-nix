@@ -71,14 +71,20 @@
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
+    ha-downloads = {
+      url = "github:jessfraz/ha-downloads";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
     ha-maintenance = {
-      url = "github:jessfraz/ha-maintenance/cae078d3c993b6099b41805fad6cd83537d0438d";
+      url = "github:jessfraz/ha-maintenance/09e91475f83b8d17c5dc28f4ebdc53987b77fb32";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-filevault = {
-      url = "github:jessfraz/ha-filevault/98fb2ab4be4ddb1990c566ccf1cf9fc8069d33ae";
+      url = "github:jessfraz/ha-filevault/8f234a71d11062f7232275563398ad4798193c52";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
@@ -106,6 +112,7 @@
     codex,
     switchboard,
     ha-packages,
+    ha-downloads,
     ha-maintenance,
     ha-filevault,
     beep-boop,
@@ -209,7 +216,8 @@
       shipmentsCli = ha-packages.packages.${system}.ha-shipments;
       maintenanceCli = ha-maintenance.packages.${system}.ha-maintenance;
       filevaultCli = ha-filevault.packages.${system}.ha-filevault;
-      haClis = [shipmentsCli maintenanceCli filevaultCli];
+      downloadsCli = ha-downloads.packages.${system}.ha-downloads;
+      haClis = [shipmentsCli maintenanceCli filevaultCli downloadsCli];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
       gwsPackage = pkgs.gws.overrideAttrs (old: {
         patches = (old.patches or []) ++ [./pkgs/gws-header-case.patch];
@@ -361,6 +369,7 @@
         ha-shipments = shipmentsCli;
         ha-maintenance = maintenanceCli;
         ha-filevault = filevaultCli;
+        ha-downloads = downloadsCli;
         beep-boop = beepBoopCli;
         zoo = zooCli;
         codex = codexCli;
