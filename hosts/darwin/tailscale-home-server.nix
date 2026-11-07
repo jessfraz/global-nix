@@ -40,7 +40,8 @@
     ++ [
       # Reach the UniFi consoles without installing agents on their firmware.
       "192.168.1.140/32"
-      "192.168.1.175/32"
+      "192.168.1.176/32"
+      "192.168.1.177/32"
     ];
   tailscaleServices =
     lib.mapAttrs (
