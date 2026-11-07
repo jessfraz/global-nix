@@ -275,11 +275,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794062410,
-        "narHash": "sha256-6K2TlfRicVI1TNqeabpsEq5jIBVmdPDKttnnW9nakfY=",
+        "lastModified": 1794081543,
+        "narHash": "sha256-wmEdLx4yW2+eZ2u3JOiuNoeFy6QCYJaQj8MVDTBprYY=",
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "877722f70368a5d6eb38effa7afd53b10b5ed362",
+        "rev": "ef46f3230b65897e5569aaec1945e887dc41f8f4",
         "type": "github"
       },
       "original": {
