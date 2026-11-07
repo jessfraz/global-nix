@@ -6,11 +6,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "kicad-bin";
-  version = "10.0.7";
+  version = "10.0.8";
 
   src = fetchurl {
     url = "https://github.com/KiCad/kicad-source-mirror/releases/download/${finalAttrs.version}/kicad-unified-universal-${finalAttrs.version}.dmg";
-    hash = "sha256-+8J0GbhBqaKosUO1h1qHuL2UP/z0h9U8eKj7bSTFnic=";
+    hash = "sha256-UB0+KTOjhfGDNJdGn1UyZmLffl1AQBI5gmxA1vpYPxY=";
   };
 
   nativeBuildInputs = [undmg];
