@@ -140,15 +140,24 @@ Nix.
 
 ## Home Assistant API CLIs
 
-The shared package set includes `ha-shipments`, `ha-maintenance`, and
-`ha-filevault`, built by their owning repositories. Use `--help` for commands
-and connection options. FileVault exposes only its external read API, not owner
-unlock or ingress operations. Credentials stay outside Nix and Git.
+The shared package set includes `ha-shipments`, `ha-maintenance`,
+`ha-filevault`, and `ha-downloads`, built by their owning repositories. Use
+`--help` for commands and connection options. FileVault and Downloads expose
+read-only status. Credentials stay outside Nix and Git.
+
+Use the selected Home Assistant credential for native integration access:
+
+```sh
+fetch-home-assistant -- ha-shipments --transport home-assistant system
+fetch-home-assistant -- ha-maintenance --transport home-assistant health
+fetch-home-assistant -- ha-filevault --transport home-assistant status
+fetch-home-assistant -- ha-downloads --transport home-assistant status
+```
 
 To install just these tools without activating unrelated host changes:
 
 ```sh
-nix profile install .#ha-shipments .#ha-maintenance .#ha-filevault
+nix profile install .#ha-shipments .#ha-maintenance .#ha-filevault .#ha-downloads
 ```
 
 ## Credentials
