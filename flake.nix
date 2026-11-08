@@ -89,6 +89,12 @@
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
+    ha-closet = {
+      url = "github:jessfraz/ha-closet/v0.1.4";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
     beep-boop.url = "github:jessfraz/beep-boop";
 
     # FlakeHub CLI (fh)
@@ -115,6 +121,7 @@
     ha-downloads,
     ha-maintenance,
     ha-filevault,
+    ha-closet,
     beep-boop,
     fh,
   } @ inputs: let
@@ -217,7 +224,8 @@
       maintenanceCli = ha-maintenance.packages.${system}.ha-maintenance;
       filevaultCli = ha-filevault.packages.${system}.ha-filevault;
       downloadsCli = ha-downloads.packages.${system}.ha-downloads;
-      haClis = [shipmentsCli maintenanceCli filevaultCli downloadsCli];
+      closetCli = ha-closet.packages.${system}.ha-closet;
+      haClis = [shipmentsCli maintenanceCli filevaultCli downloadsCli closetCli];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
       gwsPackage = pkgs.gws.overrideAttrs (old: {
         patches = (old.patches or []) ++ [./pkgs/gws-header-case.patch];
@@ -370,6 +378,7 @@
         ha-maintenance = maintenanceCli;
         ha-filevault = filevaultCli;
         ha-downloads = downloadsCli;
+        ha-closet = closetCli;
         beep-boop = beepBoopCli;
         zoo = zooCli;
         codex = codexCli;
