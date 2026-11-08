@@ -227,11 +227,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794091580,
-        "narHash": "sha256-M6svOQUXJRK9aspQcZl+J7Ih52MbJEXt8Xd7Jpywr6A=",
+        "lastModified": 1794099555,
+        "narHash": "sha256-9Zd3MjB68Hhs/qzWMK57xny+XRXcBcBJ/Owu3I+daMM=",
         "owner": "jessfraz",
         "repo": "ha-downloads",
-        "rev": "6da55f0cf23af7c1c14a7eb5ffe22bf678086480",
+        "rev": "29089c564e4b45e7eab4079de888416472aae71d",
         "type": "github"
       },
       "original": {
