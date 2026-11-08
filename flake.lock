@@ -217,6 +217,30 @@
         "type": "github"
       }
     },
+    "ha-closet": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794102991,
+        "narHash": "sha256-4B84YFysDR+39kEgOSDlxUdSNj60a9V33QWcB1blwDU=",
+        "owner": "jessfraz",
+        "repo": "ha-closet",
+        "rev": "c53f7af259eb9e2464ee3471616ada0214d4f0e7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jessfraz",
+        "ref": "v0.1.3",
+        "repo": "ha-closet",
+        "type": "github"
+      }
+    },
     "ha-downloads": {
       "inputs": {
         "nixpkgs": [
@@ -298,11 +322,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794090613,
-        "narHash": "sha256-7mlXgKbtgLtIUgeoJj1xbPoSwxeNNIYApnUaW0TneO0=",
+        "lastModified": 1794106588,
+        "narHash": "sha256-4NJWgUWA0NujHafn4dKG2gk8dIXC+ZRx5KL6V5ocmTE=",
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "1ea8064ec3ae339e4a20bada41f718be13340a18",
+        "rev": "039db5da9b4ef3520a8dee4168783c1fd40a30dd",
         "type": "github"
       },
       "original": {
@@ -517,6 +541,7 @@
         "dotvim": "dotvim",
         "fh": "fh",
         "ghostty": "ghostty",
+        "ha-closet": "ha-closet",
         "ha-downloads": "ha-downloads",
         "ha-filevault": "ha-filevault",
         "ha-maintenance": "ha-maintenance",
