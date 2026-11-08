@@ -227,16 +227,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794134793,
-        "narHash": "sha256-IWpauBAzSX74ILdXQc6IvpqV3TuDiQtXplB2Czxh0+Y=",
+        "lastModified": 1794143061,
+        "narHash": "sha256-H7dUUafyHgfvV0l6c5eKqUsycn325RgditdwvuTOoRQ=",
         "owner": "jessfraz",
         "repo": "ha-closet",
-        "rev": "1b32ce066b041215d96a71427eadc1d3342954cc",
+        "rev": "17d49480137eb090169b8390f0607aadc5c776f3",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
-        "ref": "v0.1.10",
+        "ref": "v0.1.11",
         "repo": "ha-closet",
         "type": "github"
       }
