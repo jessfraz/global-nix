@@ -5,12 +5,12 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1794203317,
+        "lastModified": 1794211455,
         "owner": "jessfraz",
         "repo": "beep-boop",
-        "rev": "6d6d27b70b2c30648bef3858a59cca1f8f6d49a5",
+        "rev": "38d019a2eb6cb2118e4af27e18e3570e2a4b0ab8",
         "type": "github",
-        "narHash": "sha256-Gym/7Sc9vnTYHZRWI0l0tTORnHTQq0DqtP5k4t6aDWg="
+        "narHash": "sha256-jr8Zb8jXJ5G4FRrNwGLAqSyPlR72KXvC3g3Ee7GiWdw="
       },
       "original": {
         "owner": "jessfraz",
