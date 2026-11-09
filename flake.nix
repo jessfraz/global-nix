@@ -90,7 +90,7 @@
     };
 
     ha-closet = {
-      url = "github:jessfraz/ha-closet/v0.3.1";
+      url = "github:jessfraz/ha-closet/eaf393e37baf58f5749a28944a8ce21444c3318c";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
