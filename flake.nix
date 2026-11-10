@@ -66,7 +66,7 @@
     };
 
     ha-packages = {
-      url = "github:jessfraz/ha-packages/5e5204931fe32b43186ec8a1833a31b410b31789";
+      url = "github:jessfraz/ha-packages/0e7d5690e149beba3ac34015044ca98803326856";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
