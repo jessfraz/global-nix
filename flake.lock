@@ -228,17 +228,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794342799,
-        "narHash": "sha256-8VhPGQn8fm22SD4dOk0CObuub/vHoi6vZvzpDE+tvEo=",
+        "lastModified": 1794351930,
+        "narHash": "sha256-DVcI6BO/RB+lkjmCWSJi3wZgDIcCb8Y2x7mmewxGlCY=",
         "owner": "jessfraz",
         "repo": "ha-closet",
-        "rev": "886782c37d5d6017416c243093dbdebaf81dae2f",
+        "rev": "eae57f0db2da1d038bca3feef1e03b3ce9f30963",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-closet",
-        "rev": "886782c37d5d6017416c243093dbdebaf81dae2f",
+        "rev": "eae57f0db2da1d038bca3feef1e03b3ce9f30963",
         "type": "github"
       }
     },
@@ -300,17 +300,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794341749,
-        "narHash": "sha256-2Q9H7lAGm6nutC8WHJxvyaL2pBYaghtOztp3XOxYMAQ=",
+        "lastModified": 1794352134,
+        "narHash": "sha256-olr+HGZUiZblN/l34HFNuTPmrgH/7dVnYQAN0iExWRM=",
         "owner": "jessfraz",
         "repo": "ha-mail",
-        "rev": "c3e5bd5b6e6fd292df81e76322941003bf86a7eb",
+        "rev": "25f81bdf2085194636db7b6246380c299bc7870e",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-mail",
-        "rev": "c3e5bd5b6e6fd292df81e76322941003bf86a7eb",
+        "rev": "25f81bdf2085194636db7b6246380c299bc7870e",
         "type": "github"
       }
     },
@@ -324,17 +324,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794345031,
-        "narHash": "sha256-C94PUl+LpCe2QnQAU1Ww3pI8thAWUiTOCJ1v7ErKKWc=",
+        "lastModified": 1794351918,
+        "narHash": "sha256-D3QYZYYIgTgk9Nq9K+3tW1xGsSXWjS661KSYi1YSpRo=",
         "owner": "jessfraz",
         "repo": "ha-maintenance",
-        "rev": "a1d427aa21d7a51b4446f9e8731a247132133842",
+        "rev": "1fb72cf3e09a187f9ddf08ff578c56714b47c60f",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-maintenance",
-        "rev": "a1d427aa21d7a51b4446f9e8731a247132133842",
+        "rev": "1fb72cf3e09a187f9ddf08ff578c56714b47c60f",
         "type": "github"
       }
     },

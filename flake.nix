@@ -78,7 +78,7 @@
     };
 
     ha-maintenance = {
-      url = "github:jessfraz/ha-maintenance/a1d427aa21d7a51b4446f9e8731a247132133842";
+      url = "github:jessfraz/ha-maintenance/1fb72cf3e09a187f9ddf08ff578c56714b47c60f";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
@@ -90,7 +90,7 @@
     };
 
     ha-closet = {
-      url = "github:jessfraz/ha-closet/886782c37d5d6017416c243093dbdebaf81dae2f";
+      url = "github:jessfraz/ha-closet/eae57f0db2da1d038bca3feef1e03b3ce9f30963";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
@@ -102,7 +102,7 @@
     };
 
     ha-mail = {
-      url = "github:jessfraz/ha-mail/c3e5bd5b6e6fd292df81e76322941003bf86a7eb";
+      url = "github:jessfraz/ha-mail/25f81bdf2085194636db7b6246380c299bc7870e";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
