@@ -72,19 +72,19 @@
     };
 
     ha-downloads = {
-      url = "github:jessfraz/ha-downloads";
+      url = "github:jessfraz/ha-downloads/411751a91bfcfb0f4c04d058a34c1077ca057b6c";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-maintenance = {
-      url = "github:jessfraz/ha-maintenance/09e91475f83b8d17c5dc28f4ebdc53987b77fb32";
+      url = "github:jessfraz/ha-maintenance/1e432f71612f591bd7d42f53594e42f06538cece";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-filevault = {
-      url = "github:jessfraz/ha-filevault/8f234a71d11062f7232275563398ad4798193c52";
+      url = "github:jessfraz/ha-filevault/24d93714b6cc4de0c79ce58b6130d1cd3202efbe";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
@@ -402,6 +402,14 @@
   in {
     # Generate packages for all supported systems
     packages = forAllSystems mkPackages;
+
+    devShells = forAllSystems (system: let
+      pkgs = nixpkgs.legacyPackages.${system};
+    in {
+      default = pkgs.mkShell {
+        packages = with pkgs; [python3 ruff just alejandra];
+      };
+    });
 
     lib.cleanupBuildCachePolicy = "${dotfiles}/bin/build_cache_policy.py";
 

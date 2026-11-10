@@ -251,16 +251,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794303903,
-        "narHash": "sha256-SWvADhtHCr9tvRejTlb/N6jWtjBt8n9ytkgcAyiz9+M=",
+        "lastModified": 1794316823,
+        "narHash": "sha256-4i54endercIXXLznifcFhGmLyXkrxvjELvzhrLNtWoA=",
         "owner": "jessfraz",
         "repo": "ha-downloads",
-        "rev": "2f17ee2d82660d9af32934f7aab07754b384314b",
+        "rev": "411751a91bfcfb0f4c04d058a34c1077ca057b6c",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-downloads",
+        "rev": "411751a91bfcfb0f4c04d058a34c1077ca057b6c",
         "type": "github"
       }
     },
@@ -274,17 +275,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794086070,
-        "narHash": "sha256-QndT8HOBHybdSe5tzTSkPBq/H44ZSSGOdHMXm0DhBoc=",
+        "lastModified": 1794317652,
+        "narHash": "sha256-Ip2EodxpavolAsyDILPB1pH4yp+vocWOKct5voEPVTw=",
         "owner": "jessfraz",
         "repo": "ha-filevault",
-        "rev": "8f234a71d11062f7232275563398ad4798193c52",
+        "rev": "24d93714b6cc4de0c79ce58b6130d1cd3202efbe",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-filevault",
-        "rev": "8f234a71d11062f7232275563398ad4798193c52",
+        "rev": "24d93714b6cc4de0c79ce58b6130d1cd3202efbe",
         "type": "github"
       }
     },
@@ -298,17 +299,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794087026,
-        "narHash": "sha256-5Ynv1lBXikPg/4Ibd+sT35u9L7l6Ps4akWnlBMvZRi4=",
+        "lastModified": 1794318316,
+        "narHash": "sha256-hUnhFkrmJwoEn4dk4TY7XuQuBtd1JbWmC0vEJGz0ph8=",
         "owner": "jessfraz",
         "repo": "ha-maintenance",
-        "rev": "09e91475f83b8d17c5dc28f4ebdc53987b77fb32",
+        "rev": "1e432f71612f591bd7d42f53594e42f06538cece",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-maintenance",
-        "rev": "09e91475f83b8d17c5dc28f4ebdc53987b77fb32",
+        "rev": "1e432f71612f591bd7d42f53594e42f06538cece",
         "type": "github"
       }
     },
