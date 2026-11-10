@@ -251,11 +251,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794114461,
-        "narHash": "sha256-jE2OV8L3PKSq2KznVUzmpxT+b66jKn8eDqFjr4qxoOs=",
+        "lastModified": 1794303903,
+        "narHash": "sha256-SWvADhtHCr9tvRejTlb/N6jWtjBt8n9ytkgcAyiz9+M=",
         "owner": "jessfraz",
         "repo": "ha-downloads",
-        "rev": "ecc4bd23b1f4584dc95aaad6f9e7fbd5eb07ea1b",
+        "rev": "2f17ee2d82660d9af32934f7aab07754b384314b",
         "type": "github"
       },
       "original": {
@@ -322,11 +322,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794106588,
-        "narHash": "sha256-4NJWgUWA0NujHafn4dKG2gk8dIXC+ZRx5KL6V5ocmTE=",
+        "lastModified": 1794304095,
+        "narHash": "sha256-H8IXEdaEaM5u83BJAinvfok2QwW+tl7NGDXB3NvIN8Y=",
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "039db5da9b4ef3520a8dee4168783c1fd40a30dd",
+        "rev": "1e259f43b7284fab43d49f57a0fb169feb926542",
         "type": "github"
       },
       "original": {

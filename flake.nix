@@ -220,12 +220,12 @@
         switchboardPackages.plaid
         switchboardPackages.schwab
       ];
-      shipmentsCli = ha-packages.packages.${system}.ha-shipments;
+      packagesCli = ha-packages.packages.${system}.ha-packages;
       maintenanceCli = ha-maintenance.packages.${system}.ha-maintenance;
       filevaultCli = ha-filevault.packages.${system}.ha-filevault;
       downloadsCli = ha-downloads.packages.${system}.ha-downloads;
       closetCli = ha-closet.packages.${system}.ha-closet;
-      haClis = [shipmentsCli maintenanceCli filevaultCli downloadsCli closetCli];
+      haClis = [packagesCli maintenanceCli filevaultCli downloadsCli closetCli];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
       gwsPackage = pkgs.gws.overrideAttrs (old: {
         patches = (old.patches or []) ++ [./pkgs/gws-header-case.patch];
@@ -374,7 +374,7 @@
       cachePackages;
     in
       {
-        ha-shipments = shipmentsCli;
+        ha-packages = packagesCli;
         ha-maintenance = maintenanceCli;
         ha-filevault = filevaultCli;
         ha-downloads = downloadsCli;

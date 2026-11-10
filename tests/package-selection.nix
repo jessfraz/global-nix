@@ -7,7 +7,7 @@
   hasOrcaSlicer = lib.any (package: lib.hasPrefix "orca-slicer" (package.pname or package.name));
   hasHaClis = system: packages:
     lib.all (name: lib.any (package: package.outPath == self.packages.${system}.${name}.outPath) packages)
-    ["ha-shipments" "ha-maintenance" "ha-filevault" "ha-downloads" "ha-closet"];
+    ["ha-packages" "ha-maintenance" "ha-filevault" "ha-downloads" "ha-closet"];
   hasSharedBundle = system: packages:
     lib.any (package: package.outPath == self.packages.${system}.default.outPath) packages;
   sharedPackages = self.packages.aarch64-darwin.default.paths;
