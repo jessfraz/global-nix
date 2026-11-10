@@ -252,17 +252,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794341953,
-        "narHash": "sha256-NHhayYVtV1U3yRpGYSql/uJZRqBqr5a2aj/NekWeQJw=",
+        "lastModified": 1794353226,
+        "narHash": "sha256-JrE8PVsyE/eBx0UJRcwlBFdjM/Yr22muXzLIu01/g9c=",
         "owner": "jessfraz",
         "repo": "ha-downloads",
-        "rev": "9da28453f1c644702e2dce4d95dc15ba875d5fc8",
+        "rev": "b16560d01e47b09ea17accba837fe4d9f8705d43",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-downloads",
-        "rev": "9da28453f1c644702e2dce4d95dc15ba875d5fc8",
+        "rev": "b16560d01e47b09ea17accba837fe4d9f8705d43",
         "type": "github"
       }
     },
@@ -348,17 +348,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794346271,
-        "narHash": "sha256-C75HnYqlacOpWAsCOeyrg4pzkTPCA0LCc27/mFjvses=",
+        "lastModified": 1794351605,
+        "narHash": "sha256-e6/Y/QV9J7+0DfBL5skj+as8p31ywECd95jWPP+qZWo=",
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "e426b4caf29428b8218aa4cd6b615b15987bccfa",
+        "rev": "0b47e762051bab667c4b2d75fee5e23e2137edc5",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "e426b4caf29428b8218aa4cd6b615b15987bccfa",
+        "rev": "0b47e762051bab667c4b2d75fee5e23e2137edc5",
         "type": "github"
       }
     },
@@ -372,17 +372,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794341593,
-        "narHash": "sha256-swSQ+ZP2PvoGX048Kx/IJEpsivLs3D52DfEBG26cNDc=",
+        "lastModified": 1794353227,
+        "narHash": "sha256-8dJ0FwsMEJdvY8cm2ABGYi2ILwOKqEQ0J5sdy5FCeUM=",
         "owner": "jessfraz",
         "repo": "ha-property",
-        "rev": "7d537d867b739cffa2af3259aa4c986a6f7475fa",
+        "rev": "e0e92c4564adb59bf07d5f9e837e9508b92139a1",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-property",
-        "rev": "7d537d867b739cffa2af3259aa4c986a6f7475fa",
+        "rev": "e0e92c4564adb59bf07d5f9e837e9508b92139a1",
         "type": "github"
       }
     },
