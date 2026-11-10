@@ -222,7 +222,10 @@
           "rustfmt"
         ];
       };
-      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      # Zoo uses rustls with system AWS-LC, not the OpenSSL library.
+      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo.overrideAttrs (old: {
+        buildInputs = pkgs.lib.remove pkgs.openssl (old.buildInputs or []) ++ [pkgs.aws-lc];
+      });
       beepBoopCli = beep-boop.packages.${system}.beep-boop;
       chromeControl = pkgs.callPackage ./pkgs/chrome-control.nix {};
       cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};

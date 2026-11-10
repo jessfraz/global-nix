@@ -27,6 +27,16 @@ python3Packages.buildPythonApplication rec {
     questionary
     textual
     tomli-w
+    # Ramp requires websockets <17; keep the compatible version local to Ramp.
+    (websockets.overridePythonAttrs (_: rec {
+      version = "16.1";
+      src = fetchFromGitHub {
+        owner = "aaugustin";
+        repo = "websockets";
+        tag = version;
+        hash = "sha256-YbiDoL4edb6QGDOBRBJliRhEOs5UvZUgWO9f+ooyBcc=";
+      };
+    }))
     zstandard
   ];
 
