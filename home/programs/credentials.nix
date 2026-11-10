@@ -32,6 +32,7 @@
     fetch-google-ai-key = "google-ai";
     fetch-deepseek-key = "deepseek";
     fetch-grok-key = "grok";
+    fetch-bayou-key = "bayou";
     fetch-unifi-keys = "unifi";
     fetch-unifi = "unifi";
     fetch-ubiquiti = "unifi";
@@ -136,6 +137,7 @@ in {
     };
     openai = one (agent "4h647lw22xr6jjsqokq2kaxb4a" "apikey" ["OPENAI_API_KEY"]);
     anthropic = one (agent "mj7p4uvfro3d7e6ispuyfv4x5i" "apikey" ["ANTHROPIC_API_KEY"]);
+    bayou = one (agent "6cwnp6sf3fstecpd7zeapjxdxa" "apikey" ["BAYOU_API_KEY"]);
     google-ai = one (agent "r4lg7dwtp6kj4gb2zfcym234ai" "credential" ["GOOGLE_API_KEY"]);
     deepseek = one (agent "7brerhra2hwrnuvdq7jlacrcny" "apikey" ["DEEPSEEK_API_KEY"]);
     grok = one (agent "yufotbvsqml3lxcs5rkxmcsozu" "credential" ["GROK_API_KEY"]);

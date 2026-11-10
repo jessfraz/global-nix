@@ -322,16 +322,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794304095,
-        "narHash": "sha256-H8IXEdaEaM5u83BJAinvfok2QwW+tl7NGDXB3NvIN8Y=",
+        "lastModified": 1794310321,
+        "narHash": "sha256-0r1F4hwbJgdmmNPiBr4nkdpwIf93UzjrDkPD7lfQjKs=",
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "1e259f43b7284fab43d49f57a0fb169feb926542",
+        "rev": "f0c80162c8ae423a208b9f798c78989d2c1d7b17",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-packages",
+        "rev": "f0c80162c8ae423a208b9f798c78989d2c1d7b17",
         "type": "github"
       }
     },
