@@ -140,10 +140,11 @@ Nix.
 
 ## Home Assistant API CLIs
 
-The shared package set includes `ha-packages`, `ha-maintenance`,
-`ha-filevault`, and `ha-downloads`, built by their owning repositories. Use
-`--help` for commands and connection options. FileVault and Downloads expose
-read-only status. Credentials stay outside Nix and Git.
+The shared package set includes `ha-packages`, `ha-maintenance`, `ha-filevault`,
+`ha-downloads`, `ha-closet`, `ha-utilities`, `ha-mail`, and `ha-property`, built by
+their owning repositories. Use `--help` for commands and connection options.
+FileVault and Downloads expose read-only status. Credentials stay outside Nix
+and Git.
 
 Use the selected Home Assistant credential for native integration access:
 
@@ -152,12 +153,16 @@ fetch-home-assistant -- ha-packages --transport home-assistant system
 fetch-home-assistant -- ha-maintenance --transport home-assistant health
 fetch-home-assistant -- ha-filevault --transport home-assistant status
 fetch-home-assistant -- ha-downloads --transport home-assistant status
+fetch-home-assistant -- ha-mail --transport home-assistant health
+fetch-home-assistant -- ha-utilities --transport home-assistant summary
+fetch-home-assistant -- ha-property --transport home-assistant summary
 ```
 
 To install just these tools without activating unrelated host changes:
 
 ```sh
 nix profile install .#ha-packages .#ha-maintenance .#ha-filevault .#ha-downloads
+nix profile install .#ha-closet .#ha-utilities .#ha-mail .#ha-property
 ```
 
 ## Credentials
@@ -196,18 +201,28 @@ outcome is uncertain: reconcile it before retrying.
 service account. The agent chooses the vault, item and fields at runtime;
 websites need no Nix entries. Only the CLI receives its bootstrap token, and
 lookup failures stop without desktop fallback. Supported commands are `read`,
-`item get/list/ls`, `vault get/list/ls` and `whoami`, with flags after the command.
+`item get/list/ls`, `item template get`, `vault get/list/ls` and `whoami`, with flags
+after the command.
 Capture successful CLI stdout privately inside the consuming script; failed CLI
 output and any response containing its bootstrap token are withheld. Never
 print returned credentials in routine output or save them in Git. This route
 does not depend on website profiles or Switchboard namespace discovery.
+
+Carrier API credentials have a separate write command:
+`with-credentials --apply --store-carrier-api ups op.personal`.
+Pipe JSON with `client_id`, `client_secret` and optional `account_number`;
+`{}` initializes an empty record. `fedex` and `usps` are also supported. Only
+dedicated API items in the configured vault can change; website logins stay
+untouched. An uncertain write requires verified readback, not a blind retry.
 
 Provision scoped 1Password access separately. Store the `personal` service-account
 token at `~/.config/agent-credentials/personal.token` (under `XDG_CONFIG_HOME` when
 set). Its directory must be owned by the current user with mode `0700`; the token
 must be a regular, user-owned file with mode `0600` or `0400`. Missing tokens,
 symlinks and invalid permissions fail without desktop fallback. Verify read-only
-vault grants before enabling a profile. Never export the token globally or put it
+vault grants before enabling a profile. Carrier storage additionally needs
+provider-granted write access to its configured vault; the helper does not add
+grants or change service accounts. Never export the token globally or put it
 in Nix, Git or logs.
 
 Rotate the token by atomically replacing its file. Revoke the service account and

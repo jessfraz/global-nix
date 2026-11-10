@@ -629,6 +629,7 @@ else:
                 ["item", "get", "first-login", "--format", "json"],
                 ["item", "get", "second-login", "--format", "json"],
                 ["item", "list", "--vault", "Fixture Vault", "--format", "json"],
+                ["item", "template", "get", "API Credential"],
                 ["read", "op://Fixture Vault/selected-login/username"],
             ]:
                 with self.subTest(configuration=configuration, arguments=arguments):
@@ -641,6 +642,349 @@ else:
                     self.assertNotIn(
                         "test-only-bootstrap", result.stdout + result.stderr
                     )
+
+    def carrier_store(self) -> None:
+        self.scoped_profile()
+        auth = self.config / "with-credentials/auth-profiles.json"
+        settings = json.loads(auth.read_text())
+        settings["fixture-auth"]["carrier_api_vault"] = "fixture-vault"
+        auth.write_text(json.dumps(settings))
+        (self.root / "carrier-items.json").write_text("[]")
+        (self.root / "bin/op").write_text(
+            f"#!{sys.executable}\n"
+            + r"""
+import json, os, pathlib, subprocess, sys, time
+root = pathlib.Path(os.environ['HOME'])
+assert {name for name in os.environ if name.startswith('OP_')} == {
+    'OP_SERVICE_ACCOUNT_TOKEN', 'OP_BIOMETRIC_UNLOCK_ENABLED'
+}
+assert os.environ['OP_SERVICE_ACCOUNT_TOKEN'] == 'test-only-bootstrap-token'
+assert os.environ['OP_BIOMETRIC_UNLOCK_ENABLED'] == 'false'
+args = sys.argv[1:]
+assert '--vault' in args and args[args.index('--vault') + 1] == 'fixture-vault'
+assert not any('test-only-' in arg for arg in args)
+with (root / 'carrier-calls.jsonl').open('a') as log:
+    log.write(json.dumps(args) + '\n')
+path = root / 'carrier-items.json'
+items = json.loads(path.read_text())
+mode = os.environ.get('FIXTURE_CARRIER_MODE', '')
+if args[:2] == ['item', 'list']:
+    print(json.dumps([{k: item[k] for k in ('id','title','category','vault','tags')} for item in items]))
+elif args[:2] == ['item', 'get']:
+    print(json.dumps(next(item for item in items if item['id'] == args[2])))
+else:
+    assert args[:2] in (['item','create'], ['item','edit'])
+    data = json.load(sys.stdin)
+    if mode == 'wait':
+        subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        (root / 'started').write_text(str(os.getpid()))
+        time.sleep(60)
+    if mode == 'denied':
+        print(os.environ['OP_SERVICE_ACCOUNT_TOKEN'], file=sys.stderr)
+        sys.exit(23)
+    if args[1] == 'create':
+        data['id'] = 'fixture-api-item'
+        items.append(data)
+    else:
+        assert data['id'] == args[2]
+        items = [data if item['id'] == data['id'] else item for item in items]
+    if mode == 'mismatch':
+        data['fields'][0]['value'] = 'test-only-unexpected-value'
+    path.write_text(json.dumps(items))
+    if mode == 'applied-error':
+        print('test-only-client-secret', file=sys.stderr)
+        sys.exit(23)
+    print(json.dumps(data))
+"""
+        )
+
+    def store_carrier(
+        self, payload: object, carrier: str = "ups", *, apply: bool = True
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                *(["--apply"] if apply else []),
+                "--store-carrier-api",
+                carrier,
+                "op.fixture-auth",
+            ],
+            input=json.dumps(payload),
+            env=self.env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def carrier_calls(self) -> list[list[str]]:
+        path = self.root / "carrier-calls.jsonl"
+        return [json.loads(line) for line in path.read_text().splitlines()]
+
+    def test_carrier_api_initialize_store_rotate_and_verify_without_secret_output(
+        self,
+    ) -> None:
+        self.carrier_store()
+        initial = self.store_carrier({})
+        self.assertEqual(initial.returncode, 0, initial.stderr)
+        self.assertFalse(json.loads(initial.stdout)["configured"])
+        payload = {
+            "client_id": "test-only-client-id",
+            "client_secret": "test-only-client-secret",
+            "account_number": "test-only-account-number",
+        }
+        saved = self.store_carrier(payload)
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        receipt = json.loads(saved.stdout)
+        self.assertEqual(receipt["status"], "verified")
+        self.assertEqual(receipt["item_id"], "fixture-api-item")
+        self.assertTrue(receipt["configured"])
+        replay = self.store_carrier(payload)
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        payload["client_secret"] = "test-only-rotated-client-secret"
+        rotated = self.store_carrier(payload)
+        self.assertEqual(rotated.returncode, 0, rotated.stderr)
+        items = json.loads((self.root / "carrier-items.json").read_text())
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["category"], "API_CREDENTIAL")
+        fields = {field["id"]: field["value"] for field in items[0]["fields"]}
+        self.assertEqual(fields, payload)
+        calls = self.carrier_calls()
+        self.assertEqual(sum(call[:2] == ["item", "create"] for call in calls), 1)
+        self.assertEqual(sum(call[:2] == ["item", "edit"] for call in calls), 2)
+        for response in (initial, saved, replay, rotated):
+            self.assertNotIn("test-only-", response.stdout + response.stderr)
+
+    def test_carrier_api_requires_explicit_scope_apply_and_valid_fields(self) -> None:
+        self.carrier_store()
+        for payload in (
+            {"password": "test-only-nope"},
+            {"client_id": "test-only-id"},
+            {"client_id": "", "client_secret": "test-only-secret"},
+            {"client_id": "test-only-id", "client_secret": 7},
+            [],
+        ):
+            with self.subTest(payload=payload):
+                response = self.store_carrier(payload)
+                self.assertNotEqual(response.returncode, 0)
+                self.assertNotIn("test-only-", response.stdout + response.stderr)
+        response = self.store_carrier({}, apply=False)
+        self.assertNotEqual(response.returncode, 0)
+        auth = self.config / "with-credentials/auth-profiles.json"
+        settings = json.loads(auth.read_text())
+        del settings["fixture-auth"]["carrier_api_vault"]
+        auth.write_text(json.dumps(settings))
+        response = self.store_carrier({})
+        self.assertNotEqual(response.returncode, 0)
+        self.assertFalse((self.root / "carrier-calls.jsonl").exists())
+
+    def test_carrier_api_refuses_duplicate_unmanaged_or_login_items(self) -> None:
+        self.carrier_store()
+        initial = self.store_carrier({})
+        self.assertEqual(initial.returncode, 0, initial.stderr)
+        path = self.root / "carrier-items.json"
+        original = json.loads(path.read_text())
+        variants = [
+            original + original,
+            [{**original[0], "category": "LOGIN"}],
+            [{**original[0], "tags": []}],
+        ]
+        for items in variants:
+            with self.subTest(items=items):
+                path.write_text(json.dumps(items))
+                before = path.read_bytes()
+                response = self.store_carrier(
+                    {"client_id": "test-only-id", "client_secret": "test-only-secret"}
+                )
+                self.assertNotEqual(response.returncode, 0)
+                self.assertEqual(before, path.read_bytes())
+        self.assertEqual(
+            sum(call[:2] == ["item", "edit"] for call in self.carrier_calls()), 0
+        )
+
+    def test_carrier_api_uncertain_creation_is_readback_only_on_retry(self) -> None:
+        self.carrier_store()
+        self.env["FIXTURE_CARRIER_MODE"] = "applied-error"
+        payload = {"client_id": "test-only-id", "client_secret": "test-only-secret"}
+        first = self.store_carrier(payload)
+        self.assertNotEqual(first.returncode, 0)
+        self.assertNotIn("test-only-", first.stdout + first.stderr)
+        self.env.pop("FIXTURE_CARRIER_MODE")
+        retry = self.store_carrier(payload)
+        self.assertEqual(retry.returncode, 0, retry.stderr)
+        self.assertEqual(json.loads(retry.stdout)["status"], "verified")
+        self.assertEqual(
+            sum(call[:2] == ["item", "create"] for call in self.carrier_calls()), 1
+        )
+
+    def test_carrier_api_failed_or_mismatched_write_cannot_blindly_retry(self) -> None:
+        self.carrier_store()
+        for mode in ("denied", "mismatch"):
+            with self.subTest(mode=mode):
+                self.env["FIXTURE_CARRIER_MODE"] = mode
+                first = self.store_carrier(
+                    {"client_id": "test-only-id", "client_secret": "test-only-secret"},
+                    mode == "denied" and "ups" or "fedex",
+                )
+                self.assertNotEqual(first.returncode, 0)
+                self.assertNotIn("test-only-", first.stdout + first.stderr)
+                self.env.pop("FIXTURE_CARRIER_MODE")
+                before = len(self.carrier_calls())
+                retry = self.store_carrier(
+                    {"client_id": "test-only-id", "client_secret": "test-only-secret"},
+                    mode == "denied" and "ups" or "fedex",
+                )
+                self.assertNotEqual(retry.returncode, 0)
+                self.assertFalse(
+                    any(
+                        call[:2] in (["item", "create"], ["item", "edit"])
+                        for call in self.carrier_calls()[before:]
+                    )
+                )
+
+    def test_carrier_api_empty_initialization_recovers_uncertain_response(self) -> None:
+        self.carrier_store()
+        self.env["FIXTURE_CARRIER_MODE"] = "applied-error"
+        first = self.store_carrier({})
+        self.assertNotEqual(first.returncode, 0)
+        self.env.pop("FIXTURE_CARRIER_MODE")
+        readback = self.store_carrier({})
+        self.assertEqual(readback.returncode, 0, readback.stderr)
+        self.assertFalse(json.loads(readback.stdout)["configured"])
+        self.assertEqual(
+            sum(call[:2] == ["item", "create"] for call in self.carrier_calls()), 1
+        )
+
+    def test_carrier_api_retains_native_empty_builtins_and_never_touches_login(
+        self,
+    ) -> None:
+        self.carrier_store()
+        initial = self.store_carrier({})
+        self.assertEqual(initial.returncode, 0, initial.stderr)
+        path = self.root / "carrier-items.json"
+        items = json.loads(path.read_text())
+        blank_field = {
+            "id": "notesPlain",
+            "label": "notesPlain",
+            "type": "STRING",
+            "purpose": "NOTES",
+            "value": "",
+        }
+        items[0]["fields"].append(blank_field)
+        login = {
+            "id": "fixture-login",
+            "title": "UPS",
+            "category": "LOGIN",
+            "vault": {"id": "fixture-vault"},
+            "tags": [],
+            "fields": [{"id": "password", "value": "test-only-website-password"}],
+            "passkeys": ["test-only-passkey"],
+        }
+        items.append(login)
+        path.write_text(json.dumps(items))
+        saved = self.store_carrier(
+            {"client_id": "test-only-id", "client_secret": "test-only-secret"}
+        )
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        result = json.loads(path.read_text())
+        self.assertEqual(result[1], login)
+        self.assertIn(blank_field, result[0]["fields"])
+
+    def test_carrier_api_cancellation_reaps_group_and_blocks_concurrent_writer(
+        self,
+    ) -> None:
+        self.carrier_store()
+        self.env["FIXTURE_CARRIER_MODE"] = "wait"
+        with subprocess.Popen(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--apply",
+                "--store-carrier-api",
+                "ups",
+                "op.fixture-auth",
+            ],
+            env=self.env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ) as process:
+            try:
+                process.stdin.write("{}")
+                process.stdin.close()
+                process.stdin = None
+                deadline = time.monotonic() + 5
+                while not self.marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(
+                    self.marker.exists(), "The real op write child must start"
+                )
+                child_pid = int(self.marker.read_text())
+                before = len(self.carrier_calls())
+                concurrent = self.store_carrier({})
+                self.assertNotEqual(concurrent.returncode, 0)
+                self.assertIn("already running", concurrent.stderr)
+                self.assertEqual(len(self.carrier_calls()), before)
+                process.send_signal(signal.SIGTERM)
+                stdout, stderr = process.communicate(timeout=5)
+                self.assertEqual(process.returncode, 128 + signal.SIGTERM)
+                self.assertEqual(stdout, "")
+                self.assertNotIn("test-only-", stderr)
+                for _ in range(100):
+                    try:
+                        os.killpg(child_pid, 0)
+                    except ProcessLookupError:
+                        break
+                    time.sleep(0.01)
+                else:
+                    self.fail("Credential-bearing write group survived cancellation")
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                if self.marker.exists():
+                    try:
+                        os.killpg(int(self.marker.read_text()), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+        self.env.pop("FIXTURE_CARRIER_MODE")
+        retry = self.store_carrier({})
+        self.assertNotEqual(retry.returncode, 0)
+        self.assertIn("uncertain", retry.stderr)
+        self.assertEqual(
+            sum(call[:2] == ["item", "create"] for call in self.carrier_calls()), 1
+        )
+
+    def test_carrier_api_unsafe_journal_refuses_provider_access(self) -> None:
+        self.carrier_store()
+        initial = self.store_carrier({})
+        self.assertEqual(initial.returncode, 0, initial.stderr)
+        directory = self.config / "with-credentials/carrier-api-state"
+        journal = directory / "fixture-auth-ups.json"
+        original = journal.read_bytes()
+        for case in ("permissions", "symlink", "hardlink", "corrupt", "directory"):
+            with self.subTest(case=case):
+                journal.unlink(missing_ok=True)
+                journal.write_bytes(original)
+                journal.chmod(0o600)
+                directory.chmod(0o700)
+                if case == "permissions":
+                    journal.chmod(0o644)
+                elif case == "symlink":
+                    journal.unlink()
+                    journal.symlink_to(self.cache)
+                elif case == "hardlink":
+                    journal.unlink()
+                    journal.hardlink_to(self.cache)
+                elif case == "corrupt":
+                    journal.write_text("not JSON")
+                else:
+                    directory.chmod(0o755)
+                before = len(self.carrier_calls())
+                response = self.store_carrier({})
+                self.assertNotEqual(response.returncode, 0)
+                self.assertEqual(len(self.carrier_calls()), before)
+                self.assertNotIn("test-only-", response.stdout + response.stderr)
 
     def test_machine_op_cli_never_exports_bootstrap_to_arbitrary_commands_or_falls_back(
         self,

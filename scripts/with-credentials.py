@@ -495,6 +495,7 @@ def profiles() -> dict[str, Profile]:
 @dataclass(frozen=True)
 class AuthProfile:
     token_file: Path
+    carrier_api_vault: str | None = None
 
     @classmethod
     def load(cls, name: str) -> "AuthProfile":
@@ -517,7 +518,12 @@ class AuthProfile:
         path = credential_path(token_file)
         if not path.is_absolute():
             raise CredentialError("Bootstrap token paths must be absolute")
-        return cls(path)
+        vault = optional_string(configured[name], "carrier_api_vault")
+        if vault is not None and (
+            not vault or not re.fullmatch(r"[A-Za-z0-9_-]+", vault)
+        ):
+            raise CredentialError("Carrier API storage requires a vault ID")
+        return cls(path, vault)
 
     def token(self) -> str:
         """Read a private runtime file without following a symlink or entering a TTY."""
@@ -569,25 +575,10 @@ def child_environment() -> dict[str, str]:
     }
 
 
-def run_onepassword(profile: str, command: list[str]) -> int:
-    """Authenticate credential reads in the CLI, without exporting its bootstrap."""
-    reads = [
-        ("read",),
-        ("item", "get"),
-        ("item", "list"),
-        ("item", "ls"),
-        ("vault", "get"),
-        ("vault", "list"),
-        ("vault", "ls"),
-        ("whoami",),
-    ]
-    if command[:1] != ["op"] or not any(
-        tuple(command[1 : 1 + len(prefix)]) == prefix for prefix in reads
-    ):
-        raise CredentialError(
-            "Machine 1Password access requires an op credential-read command"
-        )
-    token = AuthProfile.load(profile).token()
+def onepassword_request(
+    token: str, command: list[str], data: bytes | None = None
+) -> subprocess.CompletedProcess[bytes]:
+    """Keep the scoped bootstrap inside a bounded, isolated op process group."""
     env = child_environment()
     env["OP_SERVICE_ACCOUNT_TOKEN"] = token
     env["OP_BIOMETRIC_UNLOCK_ENABLED"] = "false"
@@ -600,13 +591,13 @@ def run_onepassword(profile: str, command: list[str]) -> int:
         with subprocess.Popen(
             command,
             env=env,
-            stdin=subprocess.DEVNULL,
+            stdin=subprocess.PIPE if data is not None else subprocess.DEVNULL,
             start_new_session=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         ) as child:
             try:
-                output, _ = child.communicate(timeout=60)
+                output, _ = child.communicate(input=data, timeout=60)
             except BaseException:
                 # The isolated lookup owns any helpers it starts, just like
                 # run_child. Cancellation must not leave its bootstrap alive.
@@ -622,17 +613,309 @@ def run_onepassword(profile: str, command: list[str]) -> int:
         ) from error
     finally:
         signal.signal(signal.SIGTERM, previous)
+    # The vault can hold a recovery copy of this very bootstrap. It must stay
+    # private even when a request succeeds.
     if child.returncode:
+        output = b""
+    elif token.encode() in output:
+        raise CredentialError("1Password CLI output contained its bootstrap token")
+    return subprocess.CompletedProcess(command, child.returncode, output)
+
+
+def run_onepassword(profile: str, command: list[str]) -> int:
+    """Authenticate credential reads in the CLI, without exporting its bootstrap."""
+    reads = [
+        ("read",),
+        ("item", "get"),
+        ("item", "list"),
+        ("item", "ls"),
+        ("item", "template", "get"),
+        ("vault", "get"),
+        ("vault", "list"),
+        ("vault", "ls"),
+        ("whoami",),
+    ]
+    if command[:1] != ["op"] or not any(
+        tuple(command[1 : 1 + len(prefix)]) == prefix for prefix in reads
+    ):
+        raise CredentialError(
+            "Machine 1Password access requires an op credential-read command"
+        )
+    response = onepassword_request(AuthProfile.load(profile).token(), command)
+    if response.returncode:
         print(
-            f"with-credentials: 1Password CLI lookup failed (exit {child.returncode}); desktop fallback is disabled",
+            f"with-credentials: 1Password CLI lookup failed (exit {response.returncode}); desktop fallback is disabled",
             file=sys.stderr,
         )
-        return child.returncode
-    # The vault can hold a recovery copy of this very bootstrap. It must stay
-    # private even when a read command succeeds.
-    if token.encode() in output:
-        raise CredentialError("1Password CLI output contained its bootstrap token")
-    sys.stdout.buffer.write(output)
+        return response.returncode
+    sys.stdout.buffer.write(response.stdout)
+    return 0
+
+
+@dataclass(frozen=True)
+class CarrierApiCredential:
+    client_id: str | None = None
+    client_secret: str | None = None
+    account_number: str | None = None
+
+    @classmethod
+    def read(cls) -> "CarrierApiCredential":
+        # Payloads go only from this pipe to op's stdin, never argv or disk.
+        if sys.stdin.isatty():
+            raise CredentialError("Carrier API credentials require piped JSON input")
+        source = sys.stdin.buffer.read(32769)
+        try:
+            data = json.loads(source)
+        except ValueError as error:
+            raise CredentialError("Invalid carrier API credential JSON") from error
+        if (
+            len(source) > 32768
+            or not isinstance(data, dict)
+            or data.keys() - {"client_id", "client_secret", "account_number"}
+            or any(
+                not isinstance(value, str)
+                or not value
+                or len(value) > 8192
+                or any(char.isspace() or char == "\0" for char in value)
+                for value in data.values()
+            )
+            or (data and not {"client_id", "client_secret"} <= data.keys())
+        ):
+            raise CredentialError(
+                "Use client_id and client_secret, optional account_number, or {} to initialize"
+            )
+        return cls(**data)
+
+    def values(self) -> dict[str, str]:
+        return {
+            name: value
+            for name in ("client_id", "client_secret", "account_number")
+            if (value := getattr(self, name)) is not None
+        }
+
+
+def store_carrier_api(profile: str, carrier: str) -> int:
+    """Create or rotate only dedicated, marked carrier API items, never logins."""
+    auth = AuthProfile.load(profile)
+    vault = auth.carrier_api_vault
+    if not vault or re.fullmatch(r"[A-Za-z0-9_-]+", profile) is None:
+        raise CredentialError("Carrier API storage is not configured for this profile")
+    requested = CarrierApiCredential.read().values()
+    token = auth.token()
+    title = {"ups": "UPS API", "fedex": "FedEx API", "usps": "USPS API"}[carrier]
+    marker = "managed/carrier-api"
+    api_fields = {"client_id", "client_secret", "account_number"}
+    # The native API Credential template may retain these empty built-ins.
+    # Preserve them, but never accept unrelated nonempty fields for rewriting.
+    empty_builtin_fields = {
+        "notesPlain",
+        "username",
+        "credential",
+        "type",
+        "filename",
+        "validFrom",
+        "expires",
+        "hostname",
+    }
+
+    def request(arguments: list[str], data: dict | None = None) -> object:
+        response = onepassword_request(
+            token,
+            ["op", "item", *arguments, "--vault", vault, "--format", "json"],
+            json.dumps(data).encode() if data is not None else None,
+        )
+        if response.returncode:
+            raise CredentialError(
+                f"1Password carrier request failed (exit {response.returncode}); no credential fallback"
+            )
+        try:
+            return json.loads(response.stdout)
+        except ValueError as error:
+            raise CredentialError("Invalid 1Password carrier response") from error
+
+    def current() -> dict | None:
+        items = request(["list", "--include-archive"])
+        if not isinstance(items, list) or any(
+            not isinstance(item, dict) for item in items
+        ):
+            raise CredentialError("Invalid 1Password carrier inventory")
+        matches = [item for item in items if item.get("title") == title]
+        if len(matches) > 1:
+            raise CredentialError("Duplicate carrier API items require reconciliation")
+        if not matches:
+            return None
+        item_id = matches[0].get("id")
+        if (
+            not isinstance(item_id, str)
+            or re.fullmatch(r"[A-Za-z0-9_-]+", item_id) is None
+        ):
+            raise CredentialError("Invalid carrier API item ID")
+        item = request(["get", item_id, "--reveal"])
+        if (
+            not isinstance(item, dict)
+            or item.get("id") != item_id
+            or item.get("title") != title
+            or item.get("category") != "API_CREDENTIAL"
+            or not isinstance(item.get("vault"), dict)
+            or item.get("vault", {}).get("id") != vault
+            or not isinstance(item.get("tags"), list)
+            or marker not in item.get("tags", [])
+            or item.get("state", "ACTIVE") != "ACTIVE"
+            or item.get("files")
+            or item.get("sections")
+            or item.get("passkeys")
+            or item.get("fido2Credentials")
+            or not isinstance(item.get("fields"), list)
+            or any(
+                not isinstance(field, dict)
+                or not isinstance(field.get("value", ""), str)
+                or not (
+                    (field.get("id") in api_fields and field.get("type") == "CONCEALED")
+                    or (
+                        field.get("id") in empty_builtin_fields
+                        and not field.get("value")
+                    )
+                )
+                for field in item["fields"]
+            )
+            or len({field["id"] for field in item["fields"]}) != len(item["fields"])
+        ):
+            raise CredentialError(
+                "Carrier API item is not an unmodified managed API record"
+            )
+        return item
+
+    def values(item: dict) -> dict[str, str]:
+        return {
+            field["id"]: field.get("value", "")
+            for field in item["fields"]
+            if field["id"] in api_fields
+        }
+
+    state_directory = config_home() / "with-credentials/carrier-api-state"
+    state_directory.mkdir(mode=0o700, exist_ok=True)
+    directory_fd = os.open(
+        state_directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    )
+    try:
+        metadata = os.fstat(directory_fd)
+        if metadata.st_uid != os.getuid() or metadata.st_mode & 0o077:
+            raise CredentialError(
+                "Carrier API journal directory must be owned and private"
+            )
+        descriptor = os.open(
+            f"{profile}-{carrier}.json",
+            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK,
+            0o600,
+            dir_fd=directory_fd,
+        )
+        try:
+            os.fsync(directory_fd)
+        except BaseException:
+            os.close(descriptor)
+            raise
+    finally:
+        os.close(directory_fd)
+    with os.fdopen(descriptor, "r+") as journal:
+        metadata = os.fstat(journal.fileno())
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != os.getuid()
+            or metadata.st_mode & 0o077
+            or metadata.st_nlink != 1
+        ):
+            raise CredentialError(
+                "Carrier API journal must be owned, regular and private"
+            )
+        try:
+            fcntl.flock(journal, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise CredentialError(
+                "A carrier API storage operation is already running"
+            ) from error
+        previous = journal.read()
+        state = json.loads(previous) if previous else {}
+        if not isinstance(state, dict) or (
+            state
+            and (
+                type(state.get("pending")) is not bool
+                or not isinstance(state.get("operation_id"), str)
+                or re.fullmatch(r"[0-9a-f-]{36}", state["operation_id"]) is None
+            )
+        ):
+            raise CredentialError(
+                "Invalid carrier API journal; reconcile before writing"
+            )
+
+        def record(pending: bool, operation_id: str) -> None:
+            journal.seek(0)
+            journal.truncate()
+            json.dump({"operation_id": operation_id, "pending": pending}, journal)
+            journal.flush()
+            os.fsync(journal.fileno())
+
+        operation_id = state.get("operation_id") or str(uuid.uuid4())
+        item = current()
+        matched = item is not None and requested.items() <= values(item).items()
+        if state.get("pending") and (
+            not matched or f"{marker}/{operation_id}" not in item["tags"]
+        ):
+            raise CredentialError(
+                f"Carrier API operation {operation_id} is uncertain; read back and reconcile before another write"
+            )
+        if not matched:
+            if item is None:
+                item = {
+                    "title": title,
+                    "category": "API_CREDENTIAL",
+                    "vault": {"id": vault},
+                    "tags": [marker],
+                    "fields": [],
+                }
+            fields = {field["id"]: field for field in item["fields"]}
+            for name, value in requested.items():
+                fields[name] = {
+                    "id": name,
+                    "label": name,
+                    "type": "CONCEALED",
+                    "value": value,
+                }
+            item["fields"] = list(fields.values())
+            operation_id = str(uuid.uuid4())
+            item["tags"] = [marker, f"{marker}/{operation_id}"]
+            # Fsync intent before sending any mutation. A crash, cancellation or
+            # failed response leaves the next invocation readback-only.
+            record(True, operation_id)
+            try:
+                request(["edit", item["id"]] if "id" in item else ["create", "-"], item)
+            except CredentialError as error:
+                raise CredentialError(
+                    f"Carrier API operation {operation_id} needs readback: {error}"
+                ) from error
+            item = current()
+            if (
+                item is None
+                or not requested.items() <= values(item).items()
+                or f"{marker}/{operation_id}" not in item["tags"]
+            ):
+                raise CredentialError(
+                    f"Carrier API operation {operation_id} lacks verified readback; do not retry the write"
+                )
+        record(False, operation_id)
+        stored = values(item)
+        print(
+            json.dumps(
+                {
+                    "status": "verified",
+                    "operation_id": operation_id,
+                    "carrier": carrier,
+                    "item_id": item["id"],
+                    "configured": bool(
+                        stored.get("client_id") and stored.get("client_secret")
+                    ),
+                }
+            )
+        )
     return 0
 
 
@@ -1057,13 +1340,34 @@ def main() -> int:
     write_mode.add_argument(
         "--apply",
         action="store_true",
-        help="Explicitly approve and execute the selected provider command through Switchboard",
+        help="Explicitly approve a provider command or carrier API credential write",
+    )
+    parser.add_argument(
+        "--store-carrier-api",
+        choices=("ups", "fedex", "usps"),
+        help="Store a dedicated carrier API item from stdin JSON; requires --apply and an op profile",
     )
     parser.add_argument("profile", nargs="?")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
         config = switchboard_config()
+        if args.store_carrier_api:
+            if (
+                not args.apply
+                or args.doctor
+                or args.shell
+                or args.accounts
+                or not args.profile
+                or not args.profile.startswith("op.")
+                or args.command
+            ):
+                raise CredentialError(
+                    "Carrier API storage requires --apply op.AUTH_PROFILE without a command"
+                )
+            return store_carrier_api(
+                args.profile.removeprefix("op."), args.store_carrier_api
+            )
         if args.profile and args.profile.startswith("op.") and not args.doctor:
             if args.draft or args.apply:
                 raise CredentialError("Machine 1Password access is read-only")

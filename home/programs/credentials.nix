@@ -92,7 +92,10 @@ in {
     ];
 
   xdg.configFile."with-credentials/auth-profiles.json".text = builtins.toJSON {
-    personal.token_file = "${config.xdg.configHome}/agent-credentials/personal.token";
+    personal = {
+      token_file = "${config.xdg.configHome}/agent-credentials/personal.token";
+      carrier_api_vault = "6f2yinpr4l6tp3qctbinvb3cky"; # AI Agents
+    };
   };
 
   xdg.configFile."with-credentials/profiles.json".force = true;

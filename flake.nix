@@ -90,7 +90,25 @@
     };
 
     ha-closet = {
-      url = "github:jessfraz/ha-closet/eaf393e37baf58f5749a28944a8ce21444c3318c";
+      url = "github:jessfraz/ha-closet/9e007e902c2e37f76b05972e5bad2f728f3a6b83";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
+    ha-utilities = {
+      url = "github:jessfraz/ha-utilities/1b29965627443e3a58de3730d6d8943a101c397f";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
+    ha-mail = {
+      url = "github:jessfraz/ha-mail/c7e287ec3aa1d875ec0df187927330bab19a36d5";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
+    ha-property = {
+      url = "github:jessfraz/ha-property/52e96d7c0f2b6bcb0db3336be3c2ab0c0949ae66";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
@@ -122,6 +140,9 @@
     ha-maintenance,
     ha-filevault,
     ha-closet,
+    ha-utilities,
+    ha-mail,
+    ha-property,
     beep-boop,
     fh,
   } @ inputs: let
@@ -225,7 +246,10 @@
       filevaultCli = ha-filevault.packages.${system}.ha-filevault;
       downloadsCli = ha-downloads.packages.${system}.ha-downloads;
       closetCli = ha-closet.packages.${system}.ha-closet;
-      haClis = [packagesCli maintenanceCli filevaultCli downloadsCli closetCli];
+      utilitiesCli = ha-utilities.packages.${system}.ha-utilities;
+      mailCli = ha-mail.packages.${system}.ha-mail;
+      propertyCli = ha-property.packages.${system}.ha-property;
+      haClis = [packagesCli maintenanceCli filevaultCli downloadsCli closetCli utilitiesCli mailCli propertyCli];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
       gwsPackage = pkgs.gws.overrideAttrs (old: {
         patches = (old.patches or []) ++ [./pkgs/gws-header-case.patch];
@@ -379,6 +403,9 @@
         ha-filevault = filevaultCli;
         ha-downloads = downloadsCli;
         ha-closet = closetCli;
+        ha-utilities = utilitiesCli;
+        ha-mail = mailCli;
+        ha-property = propertyCli;
         beep-boop = beepBoopCli;
         zoo = zooCli;
         codex = codexCli;

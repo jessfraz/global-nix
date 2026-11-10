@@ -227,17 +227,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794199348,
-        "narHash": "sha256-sLBBFfC/wMKdVLdw9QHE+1Q/eM4QAW1przNz4NLnei8=",
+        "lastModified": 1794326106,
+        "narHash": "sha256-kQYIMYVoXBPdlEnUaiwZXBSfjWybbtODirbHrt0l9qM=",
         "owner": "jessfraz",
         "repo": "ha-closet",
-        "rev": "eaf393e37baf58f5749a28944a8ce21444c3318c",
+        "rev": "9e007e902c2e37f76b05972e5bad2f728f3a6b83",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-closet",
-        "rev": "eaf393e37baf58f5749a28944a8ce21444c3318c",
+        "rev": "9e007e902c2e37f76b05972e5bad2f728f3a6b83",
         "type": "github"
       }
     },
@@ -289,6 +289,30 @@
         "type": "github"
       }
     },
+    "ha-mail": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794315588,
+        "narHash": "sha256-h2g5syJxmMWF6QXNOgtgPVMuSKEti44sJxVehhLcXaI=",
+        "owner": "jessfraz",
+        "repo": "ha-mail",
+        "rev": "c7e287ec3aa1d875ec0df187927330bab19a36d5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jessfraz",
+        "repo": "ha-mail",
+        "rev": "c7e287ec3aa1d875ec0df187927330bab19a36d5",
+        "type": "github"
+      }
+    },
     "ha-maintenance": {
       "inputs": {
         "nixpkgs": [
@@ -334,6 +358,54 @@
         "owner": "jessfraz",
         "repo": "ha-packages",
         "rev": "d486ce5984df57fd4ac408c30fb5fa248fe380ec",
+        "type": "github"
+      }
+    },
+    "ha-property": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794323682,
+        "narHash": "sha256-lp4y1jX48PfY8+hUcPmysTf0Aft70Jwrc5BzVI4J6Jk=",
+        "owner": "jessfraz",
+        "repo": "ha-property",
+        "rev": "52e96d7c0f2b6bcb0db3336be3c2ab0c0949ae66",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jessfraz",
+        "repo": "ha-property",
+        "rev": "52e96d7c0f2b6bcb0db3336be3c2ab0c0949ae66",
+        "type": "github"
+      }
+    },
+    "ha-utilities": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": [
+          "rust-overlay"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794321941,
+        "narHash": "sha256-+9Kw5sR9wfqbsEzn6rqsHp4lQDFlBqAfJGTz35933BI=",
+        "owner": "jessfraz",
+        "repo": "ha-utilities",
+        "rev": "1b29965627443e3a58de3730d6d8943a101c397f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jessfraz",
+        "repo": "ha-utilities",
+        "rev": "1b29965627443e3a58de3730d6d8943a101c397f",
         "type": "github"
       }
     },
@@ -546,8 +618,11 @@
         "ha-closet": "ha-closet",
         "ha-downloads": "ha-downloads",
         "ha-filevault": "ha-filevault",
+        "ha-mail": "ha-mail",
         "ha-maintenance": "ha-maintenance",
         "ha-packages": "ha-packages",
+        "ha-property": "ha-property",
+        "ha-utilities": "ha-utilities",
         "home-manager": "home-manager_2",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs_4",
