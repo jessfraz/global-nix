@@ -60,13 +60,13 @@
     };
 
     switchboard = {
-      url = "github:jessfraz/switchboard";
+      url = "github:jessfraz/switchboard/a3cb78478c843ea36ac7821b1ffbf32796b09281";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-packages = {
-      url = "github:jessfraz/ha-packages/f0c80162c8ae423a208b9f798c78989d2c1d7b17";
+      url = "github:jessfraz/ha-packages/d486ce5984df57fd4ac408c30fb5fa248fe380ec";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };

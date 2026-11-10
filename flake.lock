@@ -322,17 +322,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794310321,
-        "narHash": "sha256-0r1F4hwbJgdmmNPiBr4nkdpwIf93UzjrDkPD7lfQjKs=",
+        "lastModified": 1794317168,
+        "narHash": "sha256-a2K/5oaiQzB5UOsLWsJXnlMXyA3sR8ZtB3VlBCnlEAE=",
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "f0c80162c8ae423a208b9f798c78989d2c1d7b17",
+        "rev": "d486ce5984df57fd4ac408c30fb5fa248fe380ec",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "f0c80162c8ae423a208b9f798c78989d2c1d7b17",
+        "rev": "d486ce5984df57fd4ac408c30fb5fa248fe380ec",
         "type": "github"
       }
     },
@@ -621,16 +621,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1793654311,
-        "narHash": "sha256-Uh2Zl8f9n5ZZwSHpI+/YAVTwoENejsguH9kMcC/X2qQ=",
+        "lastModified": 1794316647,
+        "narHash": "sha256-GFM/AtGVnNgnkQ3xNdoZJwU2loOAPkvvy3ZDyYzBIFo=",
         "owner": "jessfraz",
         "repo": "switchboard",
-        "rev": "55aa115be3fdf1d20d51663f55c413680af34c0f",
+        "rev": "a3cb78478c843ea36ac7821b1ffbf32796b09281",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "switchboard",
+        "rev": "a3cb78478c843ea36ac7821b1ffbf32796b09281",
         "type": "github"
       }
     },
