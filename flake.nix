@@ -253,12 +253,16 @@
         switchboardPackages.plaid
         switchboardPackages.schwab
       ];
-      packagesCli = ha-packages.packages.${system}.ha-packages;
+      packagesCli = ha-packages.packages.${system}.ha-packages.overrideAttrs (old: {
+        buildInputs = (old.buildInputs or []) ++ [pkgs.aws-lc];
+      });
       maintenanceCli = ha-maintenance.packages.${system}.ha-maintenance;
       filevaultCli = ha-filevault.packages.${system}.ha-filevault;
       downloadsCli = ha-downloads.packages.${system}.ha-downloads;
       closetCli = ha-closet.packages.${system}.ha-closet;
-      utilitiesCli = ha-utilities.packages.${system}.ha-utilities;
+      utilitiesCli = ha-utilities.packages.${system}.ha-utilities.overrideAttrs (old: {
+        buildInputs = (old.buildInputs or []) ++ [pkgs.aws-lc];
+      });
       mailCli = ha-mail.packages.${system}.ha-mail;
       propertyCli = ha-property.packages.${system}.ha-property;
       haClis = [packagesCli maintenanceCli filevaultCli downloadsCli closetCli utilitiesCli mailCli propertyCli];
