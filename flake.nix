@@ -169,6 +169,15 @@
             # Bind view tests directly instead of racing a temporary DNS server.
             ./pkgs/coredns-view-test-listener.patch
           ];
+        postPatch =
+          (old.postPatch or "")
+          + prev.lib.optionalString prev.stdenv.hostPlatform.isDarwin ''
+            # This source-address test needs an extra loopback alias on Darwin.
+            substituteInPlace plugin/pkg/proxy/doq_test.go \
+              --replace-fail \
+                "func TestProxyDoQSourceAddress(" \
+                "func SkipProxyDoQSourceAddress("
+          '';
       });
       axiomCli = prev.callPackage ./pkgs/axiom-cli.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
