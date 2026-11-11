@@ -99,11 +99,17 @@ just check-codex # Build Codex and check its daemon lifecycle in a temporary hom
 just update-pins # Refresh artifact pins and all flake inputs; validate Zoo's vendor tree
 ```
 
-Individual updates: `just update-codex`, `just update-kicad`, `just update-mole`,
-`just update-orcaslicer`, `just update-ramp` and `just update-zoo`.
-The Zoo update also refreshes its Rust toolchain. Failed pin, lock or vendor validation
-restores the original pin and lockfile contents, including local edits.
-`nix flake update` refreshes flake inputs alone.
+Individual updates: `just update-codex`, `just update-kicad`,
+`just update-freecad`, `just update-mole`, `just update-orcaslicer`,
+`just update-ramp` and `just update-zoo`. The Zoo update also refreshes its Rust
+toolchain. Failed pin, lock or vendor validation restores the original pin and
+lockfile contents, including local edits. `nix flake update` refreshes flake
+inputs alone.
+
+The Mac laptop includes FreeCAD and LibreDWG for editing CAD drawings. Run
+`freecad drawing.dwg` or `freecad drawing.FCStd`; the launcher supplies the DWG
+converter automatically. To install them without a host rebuild, run
+`nix profile install .#freecad .#libredwg`.
 
 `just update-flakes-all` also commits and pushes lockfile updates in the sibling
 `../dotfiles` and `../vim` clones before updating this checkout. Use it only when

@@ -14,6 +14,8 @@ in {
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.disktree
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.kicad
     inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.orca-slicer
+    inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.freecad
+    pkgs.libredwg
     autoDnd
   ];
 

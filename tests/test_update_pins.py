@@ -17,6 +17,7 @@ PIN_FILES = (
     "flake.lock",
     "pkgs/codex.nix",
     "pkgs/kicad-bin.nix",
+    "pkgs/freecad-bin.nix",
     "pkgs/mole.nix",
     "pkgs/orca-slicer-bin.nix",
     "pkgs/ramp-cli.nix",
@@ -43,6 +44,7 @@ if tool == "gh":
     tags = {
         "openai/codex": os.environ.get("CODEX_TAG", "rust-v99.1.0"),
         "KiCad/kicad-source-mirror": "99.1.0",
+        "FreeCAD/FreeCAD": "99.1.0",
         "OrcaSlicer/OrcaSlicer": "v99.1.0",
     }
     print(json.dumps({"tag_name": tags[repository]}))

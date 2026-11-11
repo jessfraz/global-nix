@@ -74,6 +74,9 @@ update-codex:
 update-kicad:
     python3 scripts/update-pins.py kicad
 
+update-freecad:
+    python3 scripts/update-pins.py freecad
+
 update-mole:
     python3 scripts/update-pins.py mole
 

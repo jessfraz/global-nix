@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 FLAKE_PATH = REPO_ROOT / "flake.nix"
 FLAKE_LOCK_PATH = REPO_ROOT / "flake.lock"
 KICAD_BIN_PATH = REPO_ROOT / "pkgs" / "kicad-bin.nix"
+FREECAD_BIN_PATH = REPO_ROOT / "pkgs" / "freecad-bin.nix"
 MOLE_PATH = REPO_ROOT / "pkgs" / "mole.nix"
 ORCA_SLICER_BIN_PATH = REPO_ROOT / "pkgs" / "orca-slicer-bin.nix"
 RAMP_CLI_PATH = REPO_ROOT / "pkgs" / "ramp-cli.nix"
@@ -234,6 +235,40 @@ def update_kicad() -> None:
     print(f"kicad -> {latest_tag}")
 
 
+def update_freecad() -> None:
+    latest_tag = get_latest_github_release("FreeCAD/FreeCAD")
+    if not re.fullmatch(r"\d+\.\d+\.\d+", latest_tag):
+        raise UpdateError(f"Unexpected FreeCAD release tag: {latest_tag}")
+
+    original_text = FREECAD_BIN_PATH.read_text(encoding="utf-8")
+    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
+    if not version_match:
+        raise UpdateError("Could not find FreeCAD version in pkgs/freecad-bin.nix")
+    if version_match.group(1) == latest_tag:
+        print(f"freecad already at {latest_tag}")
+        return
+
+    src_url = (
+        f"https://github.com/FreeCAD/FreeCAD/releases/download/{latest_tag}/"
+        f"FreeCAD_{latest_tag}-macOS-arm64-py311.dmg"
+    )
+    src_hash = prefetch_sri(src_url, unpack=False)
+    updated = replace_one(
+        r'^(\s*version = ")[^"]+(";)',
+        rf"\g<1>{latest_tag}\g<2>",
+        original_text,
+        "FreeCAD version",
+    )
+    updated = replace_one(
+        r'^(\s*hash = ")[^"]+(";)',
+        rf"\g<1>{src_hash}\g<2>",
+        updated,
+        "FreeCAD hash",
+    )
+    FREECAD_BIN_PATH.write_text(updated, encoding="utf-8")
+    print(f"freecad -> {latest_tag}")
+
+
 def update_mole() -> None:
     tags = get_tags("https://github.com/tw93/Mole.git")
     latest_tag = select_latest_tag(tags, preferred_prefixes=("V", "v"))
@@ -382,6 +417,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         choices=[
             "codex",
             "kicad",
+            "freecad",
             "mole",
             "orcaslicer",
             "ramp",
@@ -401,6 +437,7 @@ def main(argv: Sequence[str]) -> int:
         targets = {
             "codex",
             "kicad",
+            "freecad",
             "mole",
             "orcaslicer",
             "ramp",
@@ -416,6 +453,7 @@ def main(argv: Sequence[str]) -> int:
             FLAKE_LOCK_PATH,
             CODEX_PATH,
             KICAD_BIN_PATH,
+            FREECAD_BIN_PATH,
             MOLE_PATH,
             ORCA_SLICER_BIN_PATH,
             RAMP_CLI_PATH,
@@ -428,6 +466,8 @@ def main(argv: Sequence[str]) -> int:
             lock_inputs.append("codex")
         if "kicad" in targets:
             update_kicad()
+        if "freecad" in targets:
+            update_freecad()
         if "mole" in targets:
             update_mole()
         if "orcaslicer" in targets:

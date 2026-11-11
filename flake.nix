@@ -316,6 +316,10 @@
         if pkgs.stdenv.hostPlatform.isDarwin
         then pkgs.callPackage ./pkgs/orca-slicer-bin.nix {}
         else pkgs.orca-slicer;
+      freecadPackage =
+        if pkgs.stdenv.hostPlatform.isDarwin
+        then pkgs.callPackage ./pkgs/freecad-bin.nix {}
+        else pkgs.freecad;
 
       # Common packages for all systems
       commonPackages =
@@ -431,6 +435,8 @@
           pkgs.nix-zsh-completions
           pkgs.texinfoInteractive
           orcaSlicerPackage
+          freecadPackage
+          pkgs.libredwg
         ];
       # Hosts install man/info outputs as well as executables. Use output paths
       # as link names so multi-output packages cannot overwrite each other.
@@ -459,6 +465,8 @@
         disktree = disktreePackage;
         kicad = kicadPackage;
         orca-slicer = orcaSlicerPackage;
+        freecad = freecadPackage;
+        libredwg = pkgs.libredwg;
         default = packageBundle;
         # Only package outputs belong in the public cache, never generated host
         # configurations or Home Manager generations.
