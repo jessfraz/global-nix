@@ -300,17 +300,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794377995,
-        "narHash": "sha256-H+j8y54w5lYskMZSDukgC2H/rD3TTpIWbYLxicgWkNA=",
+        "lastModified": 1794434472,
+        "narHash": "sha256-h5AtkEbl7fvP2c3Yq4R4cnCFAuE0/9Yk95pyB9R4RjY=",
         "owner": "jessfraz",
         "repo": "ha-mail",
-        "rev": "c93e5ef1a0e623713aec7a1409b54b5e0c710693",
+        "rev": "2c5d48452891130926e6cdc6b7420eec3a3dab7f",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-mail",
-        "rev": "c93e5ef1a0e623713aec7a1409b54b5e0c710693",
+        "rev": "2c5d48452891130926e6cdc6b7420eec3a3dab7f",
         "type": "github"
       }
     },
@@ -396,17 +396,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794381656,
-        "narHash": "sha256-uOWJzCDOV+DXUHC477nsmD9C/m/Yhrbj5x6I25lGY2g=",
+        "lastModified": 1794434085,
+        "narHash": "sha256-+bUKxZsHWc9YpKEuJllG8veL4iBclP0jV98XCXIn4Qs=",
         "owner": "jessfraz",
         "repo": "ha-utilities",
-        "rev": "fdeca1fb25c3758f1cd00063688a5488ab15225f",
+        "rev": "999605c20ec9a3709e4d2d10f8a888c116de641a",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "ha-utilities",
-        "rev": "fdeca1fb25c3758f1cd00063688a5488ab15225f",
+        "rev": "999605c20ec9a3709e4d2d10f8a888c116de641a",
         "type": "github"
       }
     },
