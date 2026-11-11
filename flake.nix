@@ -146,9 +146,9 @@
     beep-boop,
     fh,
   } @ inputs: let
-    withSystemAwsLc = pkgs: package:
+    withNativeLibraries = libraries: package:
       package.overrideAttrs (old: {
-        buildInputs = (old.buildInputs or []) ++ [pkgs.aws-lc];
+        buildInputs = (old.buildInputs or []) ++ libraries;
       });
 
     # Keep the editor bundle and Home Manager modules on the same repaired KCL.
@@ -280,14 +280,14 @@
         switchboardPackages.plaid
         switchboardPackages.schwab
       ];
-      packagesCli = withSystemAwsLc pkgs ha-packages.packages.${system}.ha-packages;
-      maintenanceCli = withSystemAwsLc pkgs ha-maintenance.packages.${system}.ha-maintenance;
-      filevaultCli = withSystemAwsLc pkgs ha-filevault.packages.${system}.ha-filevault;
-      downloadsCli = withSystemAwsLc pkgs ha-downloads.packages.${system}.ha-downloads;
-      closetCli = withSystemAwsLc pkgs ha-closet.packages.${system}.ha-closet;
-      utilitiesCli = withSystemAwsLc pkgs ha-utilities.packages.${system}.ha-utilities;
-      mailCli = withSystemAwsLc pkgs ha-mail.packages.${system}.ha-mail;
-      propertyCli = withSystemAwsLc pkgs ha-property.packages.${system}.ha-property;
+      packagesCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-packages.packages.${system}.ha-packages;
+      maintenanceCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-maintenance.packages.${system}.ha-maintenance;
+      filevaultCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-filevault.packages.${system}.ha-filevault;
+      downloadsCli = withNativeLibraries [pkgs.aws-lc] ha-downloads.packages.${system}.ha-downloads;
+      closetCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-closet.packages.${system}.ha-closet;
+      utilitiesCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-utilities.packages.${system}.ha-utilities;
+      mailCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-mail.packages.${system}.ha-mail;
+      propertyCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-property.packages.${system}.ha-property;
       haClis = [packagesCli maintenanceCli filevaultCli downloadsCli closetCli utilitiesCli mailCli propertyCli];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
       gwsPackage = pkgs.gws.overrideAttrs (old: {
