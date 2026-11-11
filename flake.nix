@@ -285,7 +285,13 @@
       filevaultCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-filevault.packages.${system}.ha-filevault;
       downloadsCli = withNativeLibraries [pkgs.aws-lc] ha-downloads.packages.${system}.ha-downloads;
       closetCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-closet.packages.${system}.ha-closet;
-      utilitiesCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-utilities.packages.${system}.ha-utilities;
+      utilitiesCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] (
+        ha-utilities.packages.${system}.ha-utilities.overrideAttrs (_:
+          pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+            # Keep SQLite-heavy fixture checks inside their existing wait bounds.
+            dontUseCargoParallelTests = true;
+          })
+      );
       mailCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-mail.packages.${system}.ha-mail;
       propertyCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-property.packages.${system}.ha-property;
       haClis = [packagesCli maintenanceCli filevaultCli downloadsCli closetCli utilitiesCli mailCli propertyCli];
