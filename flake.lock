@@ -75,17 +75,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794337844,
-        "narHash": "sha256-vIHQLCD8iJc5DXI4Kh68HkGY9xpVeAEyHpLg6hQaLNs=",
+        "lastModified": 1794371635,
+        "narHash": "sha256-UFuNcePl1dpHz4xOY9G2t5HCK9Cm00Q+HREaHXaOCX4=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "ee80f8436874e6725236173d6147a806da79e65b",
+        "rev": "5331141b87234c10c38eedcb3ce83e797594f43c",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "ee80f8436874e6725236173d6147a806da79e65b",
+        "rev": "5331141b87234c10c38eedcb3ce83e797594f43c",
         "type": "github"
       }
     },
