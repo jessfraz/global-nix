@@ -342,7 +342,8 @@ def update_ramp() -> None:
     version = latest_tag[1:]
     original_text = RAMP_CLI_PATH.read_text(encoding="utf-8")
 
-    version_match = re.search(r'^\s*version = "([^"]+)";', original_text, re.MULTILINE)
+    # Only update Ramp's own pins, not nested dependency versions or hashes.
+    version_match = re.search(r'^  version = "([^"]+)";', original_text, re.MULTILINE)
     if not version_match:
         raise UpdateError("Could not find Ramp CLI version in pkgs/ramp-cli.nix")
 
@@ -357,13 +358,13 @@ def update_ramp() -> None:
     src_hash = prefetch_sri(src_url)
 
     updated = replace_one(
-        r'^(\s*version = ")[^"]+(";)',
+        r'^(  version = ")[^"]+(";)',
         rf"\g<1>{version}\g<2>",
         original_text,
         "ramp version",
     )
     updated = replace_one(
-        r'^(\s*hash = ")[^"]+(";)',
+        r'^(    hash = ")[^"]+(";)',
         rf"\g<1>{src_hash}\g<2>",
         updated,
         "ramp hash",

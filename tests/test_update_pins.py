@@ -171,6 +171,39 @@ class UpdatePinsTests(unittest.TestCase):
         )
         self.assertIn("--rebuild", commands[-1])
 
+    def test_ramp_preserves_nested_dependency_pins(self) -> None:
+        path = self.root / "pkgs/ramp-cli.nix"
+        nested = (
+            "  passthru.fixture = {\n"
+            "    dependency = {\n"
+            '      version = "1.2.3";\n'
+            '      hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";\n'
+            "    };\n"
+            "  };\n\n"
+        )
+        path.write_text(
+            path.read_text().replace(
+                "  doCheck = false;", nested + "  doCheck = false;"
+            )
+        )
+
+        result = self.run_update("ramp")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        updated = path.read_text()
+        self.assertIn(nested, updated)
+        self.assertRegex(updated, r'(?m)^  version = "99\.1\.0";')
+        url = "https://github.com/ramp-public/ramp-cli/archive/refs/tags/v99.1.0.tar.gz"
+        expected_hash = (
+            "sha256-" + base64.b64encode(hashlib.sha256(url.encode()).digest()).decode()
+        )
+        self.assertIn(f'    hash = "{expected_hash}";', updated)
+        for relative in PIN_FILES:
+            if relative != "pkgs/ramp-cli.nix":
+                self.assertEqual(
+                    (self.root / relative).read_bytes(), self.original[relative]
+                )
+
     def test_zoo_refreshes_its_shared_toolchain_in_one_lock(self) -> None:
         result = self.run_update("zoo")
         self.assertEqual(result.returncode, 0, result.stderr)

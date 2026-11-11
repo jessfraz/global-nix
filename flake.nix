@@ -146,6 +146,33 @@
     beep-boop,
     fh,
   } @ inputs: let
+    withNativeLibraries = libraries: package:
+      package.overrideAttrs (old: {
+        buildInputs = (old.buildInputs or []) ++ libraries;
+      });
+
+    # Keep the editor bundle and Home Manager modules on the same repaired KCL.
+    dotvimWithAwsLc = let
+      upstreamOutputs = (import "${dotvim}/flake.nix").outputs (dotvim.inputs
+        // {
+          self = dotvimWithAwsLc;
+        });
+    in
+      dotvim
+      // upstreamOutputs
+      // {
+        packages = nixpkgs.lib.mapAttrs (system: packages: let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+          packages
+          // {
+            kcl-language-server = packages.kcl-language-server.overrideAttrs (old: {
+              buildInputs = pkgs.lib.remove pkgs.openssl (old.buildInputs or []) ++ [pkgs.aws-lc];
+            });
+          })
+        upstreamOutputs.packages;
+      };
+
     # Global variables
     username = "jessfraz";
     githubUsername = username; # This is the case for me but might not be for everyone.
@@ -169,6 +196,15 @@
             # Bind view tests directly instead of racing a temporary DNS server.
             ./pkgs/coredns-view-test-listener.patch
           ];
+        postPatch =
+          (old.postPatch or "")
+          + prev.lib.optionalString prev.stdenv.hostPlatform.isDarwin ''
+            # This source-address test needs an extra loopback alias on Darwin.
+            substituteInPlace plugin/pkg/proxy/doq_test.go \
+              --replace-fail \
+                "func TestProxyDoQSourceAddress(" \
+                "func SkipProxyDoQSourceAddress("
+          '';
       });
       axiomCli = prev.callPackage ./pkgs/axiom-cli.nix {};
       mole = prev.callPackage ./pkgs/mole.nix {};
@@ -213,7 +249,10 @@
           "rustfmt"
         ];
       };
-      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo;
+      # Zoo uses rustls with system AWS-LC, not the OpenSSL library.
+      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo.overrideAttrs (old: {
+        buildInputs = pkgs.lib.remove pkgs.openssl (old.buildInputs or []) ++ [pkgs.aws-lc];
+      });
       beepBoopCli = beep-boop.packages.${system}.beep-boop;
       chromeControl = pkgs.callPackage ./pkgs/chrome-control.nix {};
       cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};
@@ -241,14 +280,20 @@
         switchboardPackages.plaid
         switchboardPackages.schwab
       ];
-      packagesCli = ha-packages.packages.${system}.ha-packages;
-      maintenanceCli = ha-maintenance.packages.${system}.ha-maintenance;
-      filevaultCli = ha-filevault.packages.${system}.ha-filevault;
-      downloadsCli = ha-downloads.packages.${system}.ha-downloads;
-      closetCli = ha-closet.packages.${system}.ha-closet;
-      utilitiesCli = ha-utilities.packages.${system}.ha-utilities;
-      mailCli = ha-mail.packages.${system}.ha-mail;
-      propertyCli = ha-property.packages.${system}.ha-property;
+      packagesCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-packages.packages.${system}.ha-packages;
+      maintenanceCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-maintenance.packages.${system}.ha-maintenance;
+      filevaultCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-filevault.packages.${system}.ha-filevault;
+      downloadsCli = withNativeLibraries [pkgs.aws-lc] ha-downloads.packages.${system}.ha-downloads;
+      closetCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-closet.packages.${system}.ha-closet;
+      utilitiesCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] (
+        ha-utilities.packages.${system}.ha-utilities.overrideAttrs (_:
+          pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+            # Keep SQLite-heavy fixture checks inside their existing wait bounds.
+            dontUseCargoParallelTests = true;
+          })
+      );
+      mailCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-mail.packages.${system}.ha-mail;
+      propertyCli = withNativeLibraries [pkgs.aws-lc pkgs.sqlite] ha-property.packages.${system}.ha-property;
       haClis = [packagesCli maintenanceCli filevaultCli downloadsCli closetCli utilitiesCli mailCli propertyCli];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
       gwsPackage = pkgs.gws.overrideAttrs (old: {
@@ -350,7 +395,7 @@
       cachePackages =
         [
           packageBundle
-          dotvim.packages.${system}.editor-tools
+          dotvimWithAwsLc.packages.${system}.editor-tools
           disktreePackage
           kicadPackage
           # Packages introduced by host and Home Manager modules, outside the
@@ -372,7 +417,7 @@
         ]
         ++ commonPackages
         ++ systemSpecificPackages
-        ++ dotvim.packages.${system}.editor-tools.paths
+        ++ dotvimWithAwsLc.packages.${system}.editor-tools.paths
         ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
           ghostty.packages.${system}.default
         ]
@@ -520,7 +565,7 @@
             };
             home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
-              dotvim.homeManagerModules.default
+              dotvimWithAwsLc.homeManagerModules.default
               ./home/default.nix
               ./home/hosts/linux/default.nix
             ];
@@ -563,7 +608,7 @@
             };
             home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
-              dotvim.homeManagerModules.default
+              dotvimWithAwsLc.homeManagerModules.default
               ./home/default.nix
               ./home/hosts/darwin/default.nix
             ];
@@ -604,7 +649,7 @@
               };
               home-manager.users.${username}.imports = [
                 dotfiles.homeManagerModules.default
-                dotvim.homeManagerModules.default
+                dotvimWithAwsLc.homeManagerModules.default
                 ./home/default.nix
                 ./home/hosts/darwin/default.nix
               ];
