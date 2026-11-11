@@ -66,49 +66,49 @@
     };
 
     ha-packages = {
-      url = "github:jessfraz/ha-packages/0606e6ae3cf99ca353411532ddfdd365743f9d7f";
+      url = "github:jessfraz/ha-packages/9940b064f21b7f235dd8b8da2377abcceee15f55";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-downloads = {
-      url = "github:jessfraz/ha-downloads/e01a06146743d01a7c9b9c7248546ab58a6e4514";
+      url = "github:jessfraz/ha-downloads/94df59c414df36a7d9cb997ef7b96c98e85b8be7";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-maintenance = {
-      url = "github:jessfraz/ha-maintenance/1712d41ff26e4301eaa9b444d8558afba2f1f638";
+      url = "github:jessfraz/ha-maintenance/4c73d131d8b2a83bef2ab1ea45d0d464b325ffbe";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-filevault = {
-      url = "github:jessfraz/ha-filevault/c4998715dd790315957253edd9f92cc24064c2cd";
+      url = "github:jessfraz/ha-filevault/4232634cdd157444a4a548764cd533a24baaaea2";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-closet = {
-      url = "github:jessfraz/ha-closet/eb120a92f49b982feb0706178e312dac54bff024";
+      url = "github:jessfraz/ha-closet/54e6ed63209bee4bb8547649e8edb96941426150";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-utilities = {
-      url = "github:jessfraz/ha-utilities/c3f1313f96ad572488a9aaf164b7e137b7ab63cf";
+      url = "github:jessfraz/ha-utilities/fdeca1fb25c3758f1cd00063688a5488ab15225f";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-mail = {
-      url = "github:jessfraz/ha-mail/0b5ece373b46eb0d1adad5ce35fdc50aa679a0d4";
+      url = "github:jessfraz/ha-mail/c93e5ef1a0e623713aec7a1409b54b5e0c710693";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-property = {
-      url = "github:jessfraz/ha-property/1860a5cde15edbaca5e3ff8d67a8b4ef229977b5";
+      url = "github:jessfraz/ha-property/137a3c232b5d677b28ce3e0f0e4a76a7b59b8a9a";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
