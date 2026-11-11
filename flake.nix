@@ -96,13 +96,13 @@
     };
 
     ha-utilities = {
-      url = "github:jessfraz/ha-utilities/38453f707eb2a25c52a2bc6f8e251af42f96eeb1";
+      url = "github:jessfraz/ha-utilities/580af5deed8d8ea472eae7e56533732ab628f092";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
 
     ha-mail = {
-      url = "github:jessfraz/ha-mail/25f81bdf2085194636db7b6246380c299bc7870e";
+      url = "github:jessfraz/ha-mail/15f6ee13bf8d58612f9e3e636c1e0ab8c4cc81e5";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
