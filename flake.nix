@@ -96,7 +96,7 @@
     };
 
     ha-utilities = {
-      url = "github:jessfraz/ha-utilities/5366cba532dac88fb4f1ff9b2c606792b6ba8c93";
+      url = "github:jessfraz/ha-utilities/fc6450fabbe7963bb03c88b35a328089892c30d7";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
