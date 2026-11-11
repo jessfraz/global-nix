@@ -60,7 +60,7 @@
     };
 
     switchboard = {
-      url = "github:jessfraz/switchboard/6eab3edca19a9cce5db0d8494f4d6f69b3dfdca0";
+      url = "github:jessfraz/switchboard/b0623408d427d30cc5b5a13ef47bf1868be6ff37";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
@@ -460,6 +460,7 @@
         beep-boop = beepBoopCli;
         zoo = zooCli;
         codex = codexCli;
+        switchboard = switchboardPackages.switchboard;
         gws = gwsCli;
         cli-completions = cliCompletions;
         disktree = disktreePackage;
