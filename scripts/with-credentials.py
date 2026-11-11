@@ -1295,19 +1295,31 @@ def run_child(command: list[str], env: dict[str, str]) -> int:
     def terminated(signum: int, _frame: object) -> None:
         raise SystemExit(128 + signum)
 
-    # The credential-bearing child owns a session, including any helpers it
-    # starts. Cancel the whole group and reap before deleting temporary files.
+    # Let a service finish its own shutdown before killing remaining helpers
+    # and deleting temporary credentials owned by the child's session.
     previous = signal.signal(signal.SIGTERM, terminated)
     try:
         with subprocess.Popen(command, env=env, start_new_session=True) as child:
             try:
                 return child.wait()
-            except BaseException:
+            except BaseException as error:
                 try:
-                    os.killpg(child.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                child.wait()
+                    if isinstance(error, (SystemExit, KeyboardInterrupt)):
+                        child.send_signal(
+                            signal.SIGINT
+                            if isinstance(error, KeyboardInterrupt)
+                            else signal.SIGTERM
+                        )
+                        try:
+                            child.wait(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            pass
+                finally:
+                    try:
+                        os.killpg(child.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    child.wait()
                 raise
     finally:
         signal.signal(signal.SIGTERM, previous)

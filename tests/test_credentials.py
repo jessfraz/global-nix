@@ -1756,6 +1756,93 @@ else:
         with self.assertRaisesRegex(module.CredentialError, "expired"):
             auth.token()
 
+    def test_service_child_can_finish_shutdown_before_credential_cleanup(self) -> None:
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            with self.subTest(signal=signum):
+                self.marker.unlink(missing_ok=True)
+                stopped = self.root / "stopped"
+                stopped.unlink(missing_ok=True)
+                code = """
+import os, pathlib, signal, time
+def stop(signum, frame):
+    time.sleep(0.05)
+    pathlib.Path.home().joinpath('stopped').write_text(str(signum))
+    raise SystemExit(0)
+signal.signal(signal.SIGTERM, stop)
+signal.signal(signal.SIGINT, stop)
+pathlib.Path.home().joinpath('started').write_text(str(os.getpid()))
+time.sleep(60)
+"""
+                with subprocess.Popen(
+                    [
+                        sys.executable,
+                        str(SCRIPT),
+                        "fixture",
+                        "--",
+                        sys.executable,
+                        "-c",
+                        code,
+                    ],
+                    env=self.env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                ) as process:
+                    try:
+                        deadline = time.monotonic() + 5
+                        while not self.marker.exists() and time.monotonic() < deadline:
+                            time.sleep(0.01)
+                        self.assertTrue(self.marker.exists())
+                        process.send_signal(signum)
+                        stdout, stderr = process.communicate(timeout=5)
+                        self.assertEqual(process.returncode, 128 + signum)
+                        self.assertEqual(stdout, "")
+                        self.assertNotIn("test-only-", stderr)
+                        self.assertTrue(
+                            stopped.exists(),
+                            "Child shutdown was killed before it could finish",
+                        )
+                        self.assertEqual(stopped.read_text(), str(signum))
+                    finally:
+                        if process.poll() is None:
+                            process.kill()
+                        if self.marker.exists():
+                            try:
+                                os.killpg(int(self.marker.read_text()), signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
+
+    def test_unresponsive_service_child_is_killed_after_shutdown_deadline(self) -> None:
+        code = "import os,pathlib,signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); pathlib.Path.home().joinpath('started').write_text(str(os.getpid())); time.sleep(60)"
+        with subprocess.Popen(
+            [sys.executable, str(SCRIPT), "fixture", "--", sys.executable, "-c", code],
+            env=self.env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ) as process:
+            try:
+                deadline = time.monotonic() + 5
+                while not self.marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(self.marker.exists())
+                child_pid = int(self.marker.read_text())
+                process.send_signal(signal.SIGTERM)
+                stdout, stderr = process.communicate(timeout=15)
+                self.assertEqual(process.returncode, 128 + signal.SIGTERM)
+                self.assertEqual(stdout, "")
+                self.assertNotIn("test-only-", stderr)
+                with self.assertRaises(ProcessLookupError):
+                    os.killpg(child_pid, 0)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                if self.marker.exists():
+                    try:
+                        os.killpg(int(self.marker.read_text()), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+
     def test_cancelled_child_group_is_killed_and_reaped(self) -> None:
         for signum in (signal.SIGTERM, signal.SIGINT):
             with self.subTest(signal=signum):

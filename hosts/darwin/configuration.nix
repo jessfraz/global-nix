@@ -4,6 +4,7 @@
   homeDir,
   inputs,
   config,
+  lib,
   pkgs,
   ...
 }: let
@@ -34,6 +35,11 @@ in {
   };
 
   launchd.user.agents.agent.serviceConfig = {
+    ProgramArguments = lib.mkIf (config.services.agent.role == "coordinator") (lib.mkBefore [
+      "${config.home-manager.users.${username}.home.path}/bin/with-credentials"
+      "openai"
+      "--"
+    ]);
     StandardOutPath = "${homeDir}/Library/Logs/agent.log";
     StandardErrorPath = "${homeDir}/Library/Logs/agent.log";
     Umask = 63;
