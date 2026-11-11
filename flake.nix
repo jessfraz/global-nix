@@ -146,6 +146,33 @@
     beep-boop,
     fh,
   } @ inputs: let
+    withSystemAwsLc = pkgs: package:
+      package.overrideAttrs (old: {
+        buildInputs = (old.buildInputs or []) ++ [pkgs.aws-lc];
+      });
+
+    # Keep the editor bundle and Home Manager modules on the same repaired KCL.
+    dotvimWithAwsLc = let
+      upstreamOutputs = (import "${dotvim}/flake.nix").outputs (dotvim.inputs
+        // {
+          self = dotvimWithAwsLc;
+        });
+    in
+      dotvim
+      // upstreamOutputs
+      // {
+        packages = nixpkgs.lib.mapAttrs (system: packages: let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+          packages
+          // {
+            kcl-language-server = packages.kcl-language-server.overrideAttrs (old: {
+              buildInputs = pkgs.lib.remove pkgs.openssl (old.buildInputs or []) ++ [pkgs.aws-lc];
+            });
+          })
+        upstreamOutputs.packages;
+      };
+
     # Global variables
     username = "jessfraz";
     githubUsername = username; # This is the case for me but might not be for everyone.
@@ -253,18 +280,14 @@
         switchboardPackages.plaid
         switchboardPackages.schwab
       ];
-      packagesCli = ha-packages.packages.${system}.ha-packages.overrideAttrs (old: {
-        buildInputs = (old.buildInputs or []) ++ [pkgs.aws-lc];
-      });
-      maintenanceCli = ha-maintenance.packages.${system}.ha-maintenance;
-      filevaultCli = ha-filevault.packages.${system}.ha-filevault;
-      downloadsCli = ha-downloads.packages.${system}.ha-downloads;
-      closetCli = ha-closet.packages.${system}.ha-closet;
-      utilitiesCli = ha-utilities.packages.${system}.ha-utilities.overrideAttrs (old: {
-        buildInputs = (old.buildInputs or []) ++ [pkgs.aws-lc];
-      });
-      mailCli = ha-mail.packages.${system}.ha-mail;
-      propertyCli = ha-property.packages.${system}.ha-property;
+      packagesCli = withSystemAwsLc pkgs ha-packages.packages.${system}.ha-packages;
+      maintenanceCli = withSystemAwsLc pkgs ha-maintenance.packages.${system}.ha-maintenance;
+      filevaultCli = withSystemAwsLc pkgs ha-filevault.packages.${system}.ha-filevault;
+      downloadsCli = withSystemAwsLc pkgs ha-downloads.packages.${system}.ha-downloads;
+      closetCli = withSystemAwsLc pkgs ha-closet.packages.${system}.ha-closet;
+      utilitiesCli = withSystemAwsLc pkgs ha-utilities.packages.${system}.ha-utilities;
+      mailCli = withSystemAwsLc pkgs ha-mail.packages.${system}.ha-mail;
+      propertyCli = withSystemAwsLc pkgs ha-property.packages.${system}.ha-property;
       haClis = [packagesCli maintenanceCli filevaultCli downloadsCli closetCli utilitiesCli mailCli propertyCli];
       flakehubCli = fh.packages.${pkgs.stdenv.hostPlatform.system}.default;
       gwsPackage = pkgs.gws.overrideAttrs (old: {
@@ -366,7 +389,7 @@
       cachePackages =
         [
           packageBundle
-          dotvim.packages.${system}.editor-tools
+          dotvimWithAwsLc.packages.${system}.editor-tools
           disktreePackage
           kicadPackage
           # Packages introduced by host and Home Manager modules, outside the
@@ -388,7 +411,7 @@
         ]
         ++ commonPackages
         ++ systemSpecificPackages
-        ++ dotvim.packages.${system}.editor-tools.paths
+        ++ dotvimWithAwsLc.packages.${system}.editor-tools.paths
         ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
           ghostty.packages.${system}.default
         ]
@@ -536,7 +559,7 @@
             };
             home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
-              dotvim.homeManagerModules.default
+              dotvimWithAwsLc.homeManagerModules.default
               ./home/default.nix
               ./home/hosts/linux/default.nix
             ];
@@ -579,7 +602,7 @@
             };
             home-manager.users.${username}.imports = [
               dotfiles.homeManagerModules.default
-              dotvim.homeManagerModules.default
+              dotvimWithAwsLc.homeManagerModules.default
               ./home/default.nix
               ./home/hosts/darwin/default.nix
             ];
@@ -620,7 +643,7 @@
               };
               home-manager.users.${username}.imports = [
                 dotfiles.homeManagerModules.default
-                dotvim.homeManagerModules.default
+                dotvimWithAwsLc.homeManagerModules.default
                 ./home/default.nix
                 ./home/hosts/darwin/default.nix
               ];
