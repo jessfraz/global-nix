@@ -237,8 +237,8 @@
       },
       "original": {
         "owner": "jessfraz",
+        "ref": "main",
         "repo": "ha-closet",
-        "rev": "d6ad9fce9601e57787bb66a08e7c8235fc6a0382",
         "type": "github"
       }
     },
@@ -261,8 +261,8 @@
       },
       "original": {
         "owner": "jessfraz",
+        "ref": "main",
         "repo": "ha-downloads",
-        "rev": "e6a4628c3378d4246cdd169830ec3af48df1fa81",
         "type": "github"
       }
     },
@@ -285,8 +285,8 @@
       },
       "original": {
         "owner": "jessfraz",
+        "ref": "main",
         "repo": "ha-filevault",
-        "rev": "223a967cec8c28d2ab33baebf3ce1c9232fbd24d",
         "type": "github"
       }
     },
@@ -309,8 +309,8 @@
       },
       "original": {
         "owner": "jessfraz",
+        "ref": "main",
         "repo": "ha-mail",
-        "rev": "80bc58e7272341ee89a1e5610f5ecafa23a55949",
         "type": "github"
       }
     },
@@ -324,17 +324,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794459344,
-        "narHash": "sha256-QFK7IXUi08M9+1qGm3ZwP4M1wHJicajyvKdWGtMlN0s=",
+        "lastModified": 1794481930,
+        "narHash": "sha256-gbCzTF0ClXqKux/6F1WYzwtpVn9A8wXRvIm8fFk7KBY=",
         "owner": "jessfraz",
         "repo": "ha-maintenance",
-        "rev": "b3b8b2f29a0c345b79acf0b01aa2111c46f791e0",
+        "rev": "9d2e1c5d4bf155f1a4abe1450f83acd8bd7d39f9",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
+        "ref": "main",
         "repo": "ha-maintenance",
-        "rev": "b3b8b2f29a0c345b79acf0b01aa2111c46f791e0",
         "type": "github"
       }
     },
@@ -348,17 +348,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794459346,
-        "narHash": "sha256-/ADBELoONd4y3c/2qJP7ju6ihl7N+dcJv2DA8vatjkA=",
+        "lastModified": 1794515478,
+        "narHash": "sha256-vqY0GlX8+X6cEHT7EpGSo57/cp6wsgZ9f3IY2QbzgE0=",
         "owner": "jessfraz",
         "repo": "ha-packages",
-        "rev": "35ae44a3dcbdb31e5ebd52e0df9c80fbbf3bb308",
+        "rev": "bb53d245da45343f72d665154938c543013faaf2",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
+        "ref": "main",
         "repo": "ha-packages",
-        "rev": "35ae44a3dcbdb31e5ebd52e0df9c80fbbf3bb308",
         "type": "github"
       }
     },
@@ -381,8 +381,8 @@
       },
       "original": {
         "owner": "jessfraz",
+        "ref": "main",
         "repo": "ha-property",
-        "rev": "d5951536a0b749494c6ee9f9a37b730e1e7f63f6",
         "type": "github"
       }
     },
@@ -405,8 +405,8 @@
       },
       "original": {
         "owner": "jessfraz",
+        "ref": "main",
         "repo": "ha-utilities",
-        "rev": "469dbb3c54f9e0af8b3611af8c7b5cb59bcff8fa",
         "type": "github"
       }
     },
