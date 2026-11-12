@@ -60,7 +60,7 @@
     };
 
     switchboard = {
-      url = "github:jessfraz/switchboard/33a7f9627e83996123acd65e9f3742c22d8624f9";
+      url = "github:jessfraz/switchboard/5733c67dd3ef6a495d627a681a3f1b02ca330673";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.rust-overlay.follows = "rust-overlay";
     };
