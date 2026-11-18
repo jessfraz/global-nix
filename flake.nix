@@ -55,7 +55,7 @@
     };
 
     codex = {
-      url = "github:openai/codex/rust-v0.169.0";
+      url = "github:openai/codex/rust-v0.170.0";
       flake = false;
     };
 
@@ -250,9 +250,19 @@
         ];
       };
       # Zoo uses rustls with system AWS-LC, not the OpenSSL library.
-      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo.overrideAttrs (old: {
-        buildInputs = pkgs.lib.remove pkgs.openssl (old.buildInputs or []) ++ [pkgs.aws-lc];
-      });
+      zooCli = zoo-cli.packages.${pkgs.stdenv.hostPlatform.system}.zoo.overrideAttrs (final: old:
+        {
+          buildInputs = pkgs.lib.remove pkgs.openssl (old.buildInputs or []) ++ [pkgs.aws-lc];
+        }
+        // pkgs.lib.optionalAttrs (zoo-cli.rev == "a844c321ef4beaa80072510260331313b70065bd") {
+          # This upstream revision has a stale Cargo vendor hash.
+          cargoHash = "sha256-Kil7uZ7fBp/q150KTkyCxJE4QyrkcCqQQ0ibA4DngOE=";
+          cargoDeps = old.cargoDeps.overrideAttrs (deps: {
+            vendorStaging = deps.vendorStaging.overrideAttrs (_: {
+              outputHash = final.cargoHash;
+            });
+          });
+        });
       beepBoopCli = beep-boop.packages.${system}.beep-boop;
       chromeControl = pkgs.callPackage ./pkgs/chrome-control.nix {};
       cliCompletions = pkgs.callPackage ./pkgs/cli-completions.nix {inherit zooCli;};

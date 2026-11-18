@@ -9,11 +9,11 @@
   releases = {
     aarch64-darwin = {
       target = "aarch64-apple-darwin";
-      hash = "sha256-iiMiYN96EsXoPgtLdlnhyNklm0GUJRe8AGjYq1XDZGE=";
+      hash = "sha256-l1UkvxOu3RsSLY0OAMCe5nCRuPaIwLN0lD27PPIseJM=";
     };
     x86_64-linux = {
       target = "x86_64-unknown-linux-musl";
-      hash = "sha256-O47QkRScxjpZBGufCUvPohzbTdoV7eRBzjabzuSnG6A=";
+      hash = "sha256-p3/4e+e6gJ1xVygnCnj1zjUn3AdSlBbR74kpuQuEdes=";
     };
   };
   release = releases.${stdenvNoCC.hostPlatform.system};
