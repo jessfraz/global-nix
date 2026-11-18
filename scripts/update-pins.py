@@ -61,9 +61,20 @@ def get_tags(repo_url: str) -> list[str]:
 
 
 def get_latest_github_release(repository: str) -> str:
-    command = ["gh", "api", f"repos/{repository}/releases/latest"]
-    if not (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")):
-        command = ["with-credentials", "github.personal", "--", *command]
+    command = ["api", f"repos/{repository}/releases/latest"]
+    use_switchboard = not (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN"))
+    if use_switchboard:
+        command = [
+            "switchboard",
+            "github.cli.read",
+            "--ns",
+            "github.personal",
+            "--json",
+            "--",
+            *command,
+        ]
+    else:
+        command = ["gh", *command]
     try:
         result = subprocess.run(
             command,
@@ -73,6 +84,9 @@ def get_latest_github_release(repository: str) -> str:
             timeout=30,
         )
         payload = json.loads(result.stdout)
+        if use_switchboard and isinstance(payload, dict):
+            fields = payload.get("fields")
+            payload = fields.get("response") if isinstance(fields, dict) else None
     except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
         raise UpdateError(
             f"Could not read the latest GitHub release for {repository}: {exc}"

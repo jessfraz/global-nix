@@ -39,7 +39,9 @@ args = sys.argv[1:]
 with (root / "commands.jsonl").open("a") as log:
     log.write(json.dumps([tool, *args]) + "\n")
 
-if tool == "gh":
+if tool in ("gh", "switchboard"):
+    if tool == "switchboard":
+        args = args[args.index("--") + 1:]
     repository = args[1].removeprefix("repos/").removesuffix("/releases/latest")
     tags = {
         "openai/codex": os.environ.get("CODEX_TAG", "rust-v99.1.0"),
@@ -47,7 +49,8 @@ if tool == "gh":
         "FreeCAD/FreeCAD": "99.1.0",
         "OrcaSlicer/OrcaSlicer": "v99.1.0",
     }
-    print(json.dumps({"tag_name": tags[repository]}))
+    release = {"tag_name": tags[repository]}
+    print(json.dumps({"fields": {"response": release}} if tool == "switchboard" else release))
 elif tool == "git":
     print("0" * 40 + "\trefs/tags/v99.1.0")
 elif args[:2] == ["store", "prefetch-file"]:
@@ -103,7 +106,7 @@ class UpdatePinsTests(unittest.TestCase):
         (self.root / "unrelated.txt").write_text("untouched\n")
         self.bin = self.root / "bin"
         self.bin.mkdir()
-        for name in ("gh", "git", "nix"):
+        for name in ("gh", "git", "nix", "switchboard"):
             command = self.bin / name
             command.write_text(f"#!{sys.executable}\n{FAKE_CLI}")
             command.chmod(0o755)
@@ -172,6 +175,27 @@ class UpdatePinsTests(unittest.TestCase):
             [{"rebuild": False, "lock": lock}, {"rebuild": True, "lock": lock}],
         )
         self.assertIn("--rebuild", commands[-1])
+
+    def test_local_release_reads_use_configured_switchboard_namespace(self) -> None:
+        result = self.run_update("codex", GH_TOKEN="")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.commands()[0],
+            [
+                "switchboard",
+                "github.cli.read",
+                "--ns",
+                "github.personal",
+                "--json",
+                "--",
+                "api",
+                "repos/openai/codex/releases/latest",
+            ],
+        )
+        self.assertEqual(self.lock()["inputs"], ["codex"])
+        self.assertIn(
+            "github:openai/codex/rust-v99.1.0", self.lock()["pins"]["flake.nix"]
+        )
 
     def test_ramp_preserves_nested_dependency_pins(self) -> None:
         path = self.root / "pkgs/ramp-cli.nix"
