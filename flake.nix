@@ -254,9 +254,9 @@
         {
           buildInputs = pkgs.lib.remove pkgs.openssl (old.buildInputs or []) ++ [pkgs.aws-lc];
         }
-        // pkgs.lib.optionalAttrs (zoo-cli.rev == "a844c321ef4beaa80072510260331313b70065bd") {
+        // pkgs.lib.optionalAttrs (zoo-cli.rev == "251cfca75d4f03c213e95da2f81a8d497a62755f") {
           # This upstream revision has a stale Cargo vendor hash.
-          cargoHash = "sha256-Kil7uZ7fBp/q150KTkyCxJE4QyrkcCqQQ0ibA4DngOE=";
+          cargoHash = "sha256-cH4P/t5jySHEe0QEqGiwtn5Nqw5ESbm3VQZcgo8nPyw=";
           cargoDeps = old.cargoDeps.overrideAttrs (deps: {
             vendorStaging = deps.vendorStaging.overrideAttrs (_: {
               outputHash = final.cargoHash;
