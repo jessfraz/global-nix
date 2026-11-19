@@ -75,11 +75,41 @@ elif args[0] == "build":
             "rebuild": "--rebuild" in args,
             "lock": json.loads((root / "flake.lock").read_text()),
         }) + "\n")
+    if os.environ.get("ZOO_VENDOR_MISMATCH"):
+        expected_hash = "sha256-" + base64.b64encode(bytes(range(32))).decode()
+        flake = (root / "flake.nix").read_text()
+        pinned = (
+            f'zoo-cli.rev == "{"f" * 40}"' in flake
+            and f'cargoHash = "{expected_hash}";' in flake
+        )
+        if not pinned:
+            drv = "/nix/store/" + "0" * 32 + "-zoo-vendor-staging.drv"
+            if os.environ["ZOO_VENDOR_MISMATCH"] == "dependency":
+                drv = drv.replace("-zoo-vendor", "-unrelated-vendor")
+            got = (
+                "not-a-hash"
+                if os.environ["ZOO_VENDOR_MISMATCH"] == "invalid"
+                else expected_hash
+            )
+            print(
+                f"error: hash mismatch in fixed-output derivation '{drv}':\n"
+                "  specified: sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\n"
+                f"  got: {got}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
     if os.environ.get("FAIL_VENDOR") and "--rebuild" in args:
         print("fixture vendor reproducibility failure", file=sys.stderr)
         sys.exit(1)
 elif args[0] == "eval":
-    print("99.1.0")
+    if "cargoDeps.vendorStaging" in args[-1]:
+        print(json.dumps({
+            "revision": "f" * 40,
+            "drv": "/nix/store/" + "0" * 32 + "-zoo-vendor-staging.drv",
+            "hash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        }))
+    else:
+        print("99.1.0")
 else:
     raise SystemExit(f"unexpected fixture command: {tool} {args}")
 """
@@ -275,6 +305,40 @@ class UpdatePinsTests(unittest.TestCase):
 
     def test_vendor_rebuild_failure_restores_all_pins_and_lock(self) -> None:
         result = self.run_update("all", FAIL_VENDOR="1")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("fixture vendor reproducibility failure", result.stderr)
+        self.assert_restored()
+
+    def test_zoo_vendor_hash_refresh_retries_the_resolved_package_then_rebuilds(
+        self,
+    ) -> None:
+        result = self.run_update("all", ZOO_VENDOR_MISMATCH="staging")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        vendor_checks = [
+            json.loads(line)
+            for line in (self.root / "vendor-checks.jsonl").read_text().splitlines()
+        ]
+        self.assertEqual(
+            [check["rebuild"] for check in vendor_checks], [False, False, True]
+        )
+        self.assertEqual(
+            [command[:2] for command in self.commands()].count(["nix", "flake"]), 1
+        )
+        self.assertIn("Zoo Cargo vendor hash", result.stdout)
+
+    def test_unrelated_vendor_hash_mismatch_does_not_rewrite_zoo(self) -> None:
+        result = self.run_update("all", ZOO_VENDOR_MISMATCH="dependency")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("-unrelated-vendor-staging.drv", result.stderr)
+        self.assert_restored()
+
+    def test_invalid_vendor_hash_does_not_change_pins(self) -> None:
+        result = self.run_update("all", ZOO_VENDOR_MISMATCH="invalid")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assert_restored()
+
+    def test_failed_rebuild_after_vendor_hash_refresh_restores_every_pin(self) -> None:
+        result = self.run_update("all", ZOO_VENDOR_MISMATCH="staging", FAIL_VENDOR="1")
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertIn("fixture vendor reproducibility failure", result.stderr)
         self.assert_restored()

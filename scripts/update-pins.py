@@ -151,6 +151,60 @@ def prefetch_sri(url: str, *, unpack: bool = True) -> str:
     raise UpdateError("nix or nix-prefetch-url is required to compute source hashes.")
 
 
+def refresh_zoo_vendor_hash(error_output: str) -> bool:
+    # Only repair the resolved Zoo vendor output, never an unrelated dependency.
+    expression = (
+        "let flake = builtins.getFlake (toString ./.); "
+        "vendor = flake.packages.${builtins.currentSystem}.zoo.cargoDeps.vendorStaging; "
+        "in { revision = flake.inputs.zoo-cli.rev; "
+        "drv = vendor.drvPath; hash = vendor.outputHash; }"
+    )
+    result = run(
+        ["nix", "eval", "--impure", "--json", "--expr", expression], cwd=REPO_ROOT
+    )
+    try:
+        metadata = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise UpdateError("Invalid Zoo vendor metadata.") from exc
+    if not isinstance(metadata, dict):
+        raise UpdateError("Invalid Zoo vendor metadata.")
+    revision = metadata.get("revision")
+    drv = metadata.get("drv")
+    expected_hash = metadata.get("hash")
+    if (
+        not isinstance(revision, str)
+        or not re.fullmatch(r"[0-9a-f]{40}", revision)
+        or not isinstance(drv, str)
+        or not re.fullmatch(r"/nix/store/[0-9a-z]{32}-[^/\n']+\.drv", drv)
+        or not isinstance(expected_hash, str)
+    ):
+        raise UpdateError("Invalid Zoo vendor metadata.")
+    mismatch = re.search(
+        rf"hash mismatch in fixed-output derivation '{re.escape(drv)}':\s+"
+        rf"specified: {re.escape(expected_hash)}\s+"
+        r"got:\s+(sha256-[A-Za-z0-9+/]{43}=)(?:\s|$)",
+        error_output,
+    )
+    if mismatch is None:
+        return False
+    cargo_hash = mismatch.group(1)
+    updated = replace_one(
+        r'(zoo-cli\.rev == ")[^"]+("\))',
+        rf"\g<1>{revision}\g<2>",
+        FLAKE_PATH.read_text(encoding="utf-8"),
+        "Zoo vendor revision",
+    )
+    updated = replace_one(
+        r'(cargoHash = ")[^"]+(";)',
+        rf"\g<1>{cargo_hash}\g<2>",
+        updated,
+        "Zoo vendor hash",
+    )
+    FLAKE_PATH.write_text(updated, encoding="utf-8")
+    print(f"Zoo Cargo vendor hash -> {cargo_hash} ({revision})", flush=True)
+    return True
+
+
 def validate_zoo_vendor() -> None:
     package_expr = (
         "let flake = builtins.getFlake (toString ./.); "
@@ -165,7 +219,12 @@ def validate_zoo_vendor() -> None:
         "--no-link",
     ]
     print("Zoo Cargo vendor build", flush=True)
-    run(command, cwd=REPO_ROOT)
+    try:
+        run(command, cwd=REPO_ROOT)
+    except subprocess.CalledProcessError as exc:
+        if not refresh_zoo_vendor_hash(exc.stderr or ""):
+            raise
+        run(command, cwd=REPO_ROOT)
     print("Zoo Cargo vendor reproducibility validation", flush=True)
     run([*command, "--rebuild"], cwd=REPO_ROOT)
 
