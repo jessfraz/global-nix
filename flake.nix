@@ -498,7 +498,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in {
       default = pkgs.mkShell {
-        packages = with pkgs; [python3 ruff just alejandra];
+        packages = with pkgs; [python3 ruff just alejandra git];
       };
     });
 
