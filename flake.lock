@@ -5,11 +5,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1795138230,
-        "narHash": "sha256-3b7/Z7jtSaJmZxHGcqGsp1qj6ksm6tQX9HLtKI2ZmWo=",
+        "lastModified": 1795203305,
+        "narHash": "sha256-wcpTJP9n+dSxvKuOpKdTSTCmzcKP1j6PxsVh+3TwhJw=",
         "owner": "jessfraz",
         "repo": "beep-boop",
-        "rev": "824366f08add89c5ec17f6ed9d0507ee310467e2",
+        "rev": "f0ef2d1501af526c0a45a007f70357355953b888",
         "type": "github"
       },
       "original": {
@@ -75,17 +75,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794456751,
-        "narHash": "sha256-YQuY5jSCmjXY/IEVJAhMRBbANok4qkdoFsBxd7mK11Q=",
+        "lastModified": 1795196249,
+        "narHash": "sha256-g/RUekiOEGsnRrMDVksZ8qMiB/0Y9+Cq+5u2WU3t7TY=",
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "a963a5faaa8c2d4b038f2a06517423ae88d4216a",
+        "rev": "cbbbcb3ccd1bc935cfcae01143213648633a29e0",
         "type": "github"
       },
       "original": {
         "owner": "jessfraz",
         "repo": "dotfiles",
-        "rev": "a963a5faaa8c2d4b038f2a06517423ae88d4216a",
+        "rev": "cbbbcb3ccd1bc935cfcae01143213648633a29e0",
         "type": "github"
       }
     },

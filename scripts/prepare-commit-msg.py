@@ -30,7 +30,7 @@ except Exception:  # noqa: BLE001
 
 # Defaults (adjust here rather than via env vars)
 # Use GPT-6.1 Sol for commit message generation.
-MODEL = "gpt-6.1-sol"
+MODEL = "gpt-6.2-sol"
 # Narrow string types for clarity.
 Effort = Literal["low", "medium", "high", "xhigh"]
 Verbosity = Literal["low", "medium", "high"]

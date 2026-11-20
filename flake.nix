@@ -36,7 +36,7 @@
     };
 
     dotfiles = {
-      url = "github:jessfraz/dotfiles/a963a5faaa8c2d4b038f2a06517423ae88d4216a";
+      url = "github:jessfraz/dotfiles/cbbbcb3ccd1bc935cfcae01143213648633a29e0";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
