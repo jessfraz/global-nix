@@ -55,7 +55,7 @@
     };
 
     codex = {
-      url = "github:openai/codex/rust-v0.170.0";
+      url = "github:openai/codex/rust-v0.171.0";
       flake = false;
     };
 
@@ -193,8 +193,6 @@
             ./pkgs/coredns-cache-acl-test.patch
             # A 10ms handshake deadline flakes under Darwin's socket scheduling.
             ./pkgs/coredns-test-timeouts.patch
-            # Bind view tests directly instead of racing a temporary DNS server.
-            ./pkgs/coredns-view-test-listener.patch
           ];
         postPatch =
           (old.postPatch or "")
