@@ -6,11 +6,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "orca-slicer-bin";
-  version = "2.5.1";
+  version = "2.5.2";
 
   src = fetchurl {
     url = "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v${finalAttrs.version}/OrcaSlicer_Mac_universal_V${finalAttrs.version}.dmg";
-    hash = "sha256-3fSKfzR4Wk1bQxPk3E160Bdp1IvEyNgl+Anallk+b0Y=";
+    hash = "sha256-bqGvzf+36asBHi1vbbZlyxhGPRxHdFkc1dt+4CJUedk=";
   };
 
   # The release DMG uses APFS; preserve the bundle's framework symlinks.
