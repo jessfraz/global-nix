@@ -94,7 +94,9 @@
         "home-manager": [
           "home-manager"
         ],
-        "modeling-app": "modeling-app",
+        "modeling-app": [
+          "modeling-app"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -454,20 +456,18 @@
     "modeling-app": {
       "inputs": {
         "nixpkgs": [
-          "dotvim",
           "nixpkgs"
         ],
         "rust-overlay": [
-          "dotvim",
           "rust-overlay"
         ]
       },
       "locked": {
-        "lastModified": 1792427843,
-        "narHash": "sha256-klj9qR/0C3nJr1gvDCHufZd4v/PStbpEZbaVaTs0Brc=",
+        "lastModified": 1795545898,
+        "narHash": "sha256-fRGz4kfqo0KN0ow4Q2I/EwAxWuab/0EGS6xKAwIyovE=",
         "owner": "kittycad",
         "repo": "modeling-app",
-        "rev": "bf81482414bdf4c4fbb9c129d3733ab1ace60124",
+        "rev": "aa73a1bb6d6cd36047d101b5120e9e83c0cd3869",
         "type": "github"
       },
       "original": {
@@ -625,6 +625,7 @@
         "ha-property": "ha-property",
         "ha-utilities": "ha-utilities",
         "home-manager": "home-manager_2",
+        "modeling-app": "modeling-app",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs_4",
         "rex": "rex",
