@@ -41,11 +41,19 @@
       inputs.home-manager.follows = "home-manager";
     };
 
+    # Refresh KCL independently of dotvim's checked-in lockfile.
+    modeling-app = {
+      url = "github:kittycad/modeling-app";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+
     dotvim = {
       url = "git+https://github.com/jessfraz/.vim";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
       inputs.rust-overlay.follows = "rust-overlay";
+      inputs.modeling-app.follows = "modeling-app";
     };
 
     zoo-cli = {
@@ -131,6 +139,7 @@
     rex,
     disktree,
     dotfiles,
+    modeling-app,
     dotvim,
     zoo-cli,
     codex,
